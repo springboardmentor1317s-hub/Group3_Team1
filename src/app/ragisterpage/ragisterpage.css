@@ -1,0 +1,86 @@
+/* Full page center */
+.page {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #eef2f7, #f9fbff);
+}
+
+/* Card */
+.card {
+  width: 360px;
+  background: white;
+  padding: 25px;
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+/* Title */
+h1 {
+  text-align: center;
+  margin-bottom: 0px;
+  color: #1976d2;
+}
+
+/* Form elements */
+form {
+  display: flex;
+  flex-direction: column;
+}
+
+input, select {
+  margin-bottom: 12px;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+/* Button */
+button {
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
+  background: #1976d2;
+  color: white;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #125ca1;
+}
+
+/* Link */
+.link {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.link a {
+  color: #1976d2;
+  text-decoration: none;
+}
+.icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 10px;
+  border-radius: 50%;
+  background: #1976d2;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+.subtitle {
+  text-align: center;
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 20px;
+  margin-top: 1px;
+}
+
+
