@@ -16,11 +16,17 @@
              required>
 
       <label>Password</label>
-      <input type="password"
-             [(ngModel)]="user.password"
-             name="password"
-             placeholder="Enter your password"
-             required>
+        <div class="password-box">
+          <input [type]="show ? 'text' : 'password'"
+                [(ngModel)]="user.password"
+                name="password"
+                placeholder="Enter your password"
+                required>
+          <i class="fa-solid"
+            [class.fa-eye]="!show"
+            [class.fa-eye-slash]="show"
+            (click)="show = !show"></i>
+        </div>
 
       <label>Login As</label>
       <select [(ngModel)]="user.role" name="role">

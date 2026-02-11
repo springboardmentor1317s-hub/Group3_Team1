@@ -1,91 +1,196 @@
 .page {
-  height: 100vh;
+  min-height: 100vh;
+  background:
+    linear-gradient(rgba(79,70,229,.7), rgba(139,92,246,.7)),
+    url('../../assets/login.jpg');
+  background-size: cover;
+  background-position: center;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #eef2f7, #f9fbff);
 }
 
+
 .card {
-  width: 360px;
-  background: #fff;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+  width: 380px;
+  background: white;
+  padding: 35px;
+  border-radius: 20px;
+  box-shadow: 0 25px 50px rgba(0,0,0,.25);
+  text-align: center;
+  animation: fadeIn .8s ease;
 }
 
 .icon {
-  width: 60px;
-  height: 60px;
-  margin: 0 auto 6px;
-  border-radius: 50%;
-  background: #1976d2;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
+  font-size: 38px;
+  margin-bottom: 10px;
 }
 
 h2 {
-  text-align: center;
-  margin: 6px 0 4px;
-  color: #1976d2;
+  margin-bottom: 5px;
+  font-weight: 600;
 }
 
 .subtitle {
-  text-align: center;
-  font-size: 13px;
-  color: #666;
-  margin-bottom: 16px;
+  color: #64748b;
+  margin-bottom: 25px;
 }
 
+/* Form */
 form {
-  display: flex;
-  flex-direction: column;
+  text-align: left;
 }
 
 label {
-  font-size: 13px;
-  color: #444;
-  margin: 6px 0 4px;
+  font-size: 14px;
   font-weight: 500;
+  display: block;
+  margin-bottom: 5px;
+  margin-top: 15px;
 }
 
 input, select {
-  padding: 10px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  font-size: 14px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  outline: none;
+  transition: all .2s ease;
 }
 
 input:focus, select:focus {
-  outline: none;
-  border-color: #1976d2;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99,102,241,.2);
 }
 
+/* Button */
 button {
-  margin-top: 14px;
-  padding: 10px;
-  border-radius: 6px;
+  width: 100%;
+  margin-top: 20px;
+  padding: 12px;
+  border-radius: 25px;
   border: none;
-  background: #1976d2;
-  color: #fff;
-  font-size: 15px;
+  background: linear-gradient(135deg,#6366f1,#8b5cf6);
+  color: white;
+  font-weight: 600;
   cursor: pointer;
+  transition: all .25s ease;
 }
 
 button:hover {
-  background: #125ca1;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(99,102,241,.4);
 }
 
+/* Link */
 .link {
-  margin-top: 12px;
   text-align: center;
-  font-size: 13px;
+  margin-top: 15px;
+  font-size: 14px;
 }
 
 .link a {
-  color: #1976d2;
+  color: #6366f1;
+  font-weight: 500;
   text-decoration: none;
+}
+.password-box {
+  position: relative;
+}
+.password-box i {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  cursor: pointer;
+}
+
+/* Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.card {
+  width: 400px;
+  padding: 40px;
+  border-radius: 22px;
+
+  /* Glass effect */
+  background: rgba(255,255,255,0.18);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  border: 1px solid rgba(255,255,255,0.3);
+  box-shadow: 0 30px 60px rgba(0,0,0,.35);
+
+  text-align: center;
+  animation: floatIn .9s ease;
+}
+
+/* Icon polish */
+.icon {
+  font-size: 42px;
+  background: linear-gradient(135deg,#6366f1,#ec4899);
+  color: white;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 15px;
+  box-shadow: 0 12px 30px rgba(99,102,241,.45);
+}
+
+/* Headings */
+.card h2 {
+  color: white;
+}
+.subtitle {
+  color: #e5e7eb;
+}
+
+/* Inputs inside glass */
+input, select {
+  background: rgba(255,255,255,.9);
+}
+
+/* Animation */
+@keyframes floatIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@media (max-width: 480px) {
+  .card {
+    width: 90%;
+    padding: 25px;
+  }
+}
+@media (max-width: 480px) {
+
+  .card {
+    width: 90%;
+    padding: 25px;
+  }
+
+  h1, h2 {
+    font-size: 22px;
+  }
+
+  button {
+    padding: 12px;
+  }
 }

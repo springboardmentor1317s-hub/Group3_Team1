@@ -12,7 +12,7 @@ import { Auth } from '../auth/auth';
   styleUrls: ['./loginpage.css']
 })
 export class Loginpage {
-
+  show = false;
   user = {
     email: '',
     password: '',
