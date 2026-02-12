@@ -1,0 +1,187 @@
+
+.dashboard {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #333;
+  padding: 20px;
+}
+
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 10px;
+}
+
+.profile-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.profile-pic {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;   
+  object-fit: cover;
+  border: 2px solid #0078d4;
+}
+
+.profile-text h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #0078d4;
+}
+
+.profile-text p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.header-actions {
+  display: flex;
+  gap: 15px;
+}
+
+
+.metrics {
+  display: flex;
+  justify-content: center;
+  gap: 25px;
+  margin: 30px auto;
+  flex-wrap: wrap;
+}
+
+.metric-card {
+  background: linear-gradient(135deg, #ffffff, #f0f8ff);
+  border-radius: 12px;
+  padding: 25px;
+  width: 200px;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  text-align: center;
+}
+
+.metric-card:hover {
+  transform: translateY(-8px) scale(1.03);
+  box-shadow: 0 10px 18px rgba(0,0,0,0.2);
+}
+
+.icon {
+  font-size: 18px; 
+  line-height: 1;
+  color: #fff;
+}
+
+.metric-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.metric-value {
+  font-size: 26px;
+  font-weight: bold;
+  color: #0078d4;
+}
+
+
+.create-btn {
+  display: flex;              
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #0078d4, #6a5acd);
+  color: #fff;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  transition: transform 0.2s ease;
+}
+
+.create-btn:hover {
+  transform: scale(1.05);
+}
+
+.create-btn .btn-text {
+  display: inline-block;
+}
+
+.tabs {
+  margin: 25px 0;
+  text-align: center;
+}
+
+.tabs button {
+  background: #f0f0f0;
+  border: none;
+  padding: 10px 18px;
+  margin: 0 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.tabs button.active {
+  background-color: #0078d4;
+  color: #fff;
+  transform: scale(1.05);
+}
+
+
+.overview-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 30px;
+  margin-top: 25px;
+}
+
+
+.recent-events {
+  flex: 0 0 50%;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+
+.quick-actions {
+  flex: 0 0 50%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 15px;
+  background: #f9f9ff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.quick-btn {
+  display: flex;               
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #6a5acd, #0078d4);
+  color: #fff;
+  border: none;
+  padding: 14px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+  transition: transform 0.2s ease;
+  text-align: center;
+}
