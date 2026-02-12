@@ -1,0 +1,63 @@
+<div class="events">
+  <h3>My Events</h3>
+
+ 
+  <button class="primary-btn" (click)="addEvent()">
+    <span class="icon">➕</span> Create Event
+  </button>
+
+  
+  <div *ngIf="showForm" class="event-form">
+    <h4><span class="icon">📝</span> Add Event Details</h4>
+
+    <label>
+      <span class="icon">🏷️</span> Event Name
+      <input [(ngModel)]="newEvent.name" placeholder="Enter event name">
+    </label>
+
+    <label>
+      <span class="icon">📅</span> Date & Time
+      <input type="datetime-local" [(ngModel)]="newEvent.date">
+    </label>
+
+    <label>
+      <span class="icon">📍</span> Location
+      <input [(ngModel)]="newEvent.location" placeholder="Venue or meeting link">
+    </label>
+
+    <label>
+      <span class="icon">📝</span> Description
+      <textarea [(ngModel)]="newEvent.description" placeholder="Short overview"></textarea>
+    </label>
+
+    <label>
+      <span class="icon">👤</span> Organizer
+      <input [(ngModel)]="newEvent.organizer" placeholder="Organizer name">
+    </label>
+
+    <label>
+      <span class="icon">📧</span> Contact
+      <input [(ngModel)]="newEvent.contact" placeholder="Email or phone">
+    </label>
+
+    <button class="primary-btn" (click)="saveEvent()">
+      <span class="icon">💾</span> Save Event
+    </button>
+  </div>
+
+
+  <ul>
+    <li *ngFor="let event of events; let i = index">
+      <strong>{{ event.name }}</strong> — {{ event.date }}
+      <br>{{ event.location }} | {{ event.organizer }} | {{ event.contact }}
+      <p>{{ event.description }}</p>
+      <button class="secondary-btn" (click)="editEvent(event, i)">
+        <span class="icon">✏️</span> Edit
+      </button>
+      <button class="danger-btn" (click)="deleteEvent(i)">
+        <span class="icon">🗑️</span> Delete
+      </button>
+    </li>
+  </ul>
+</div>
+

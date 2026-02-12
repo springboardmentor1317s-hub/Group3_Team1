@@ -1,0 +1,26 @@
+<div class="top-bar">
+  <div class="nav-links">
+    <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+    <a routerLink="/events" routerLinkActive="active">Events</a>
+  </div>
+  <div class="profile-info">
+    <span>Sarah Williams — sarahgmail.com</span>
+    <button class="notif-btn" (click)="toggleNotifications()">
+      <span class="icon">🔔</span>
+      <span class="notif-count" *ngIf="notifications.length > 0">{{ notifications.length }}</span>
+    </button>
+  </div>
+</div>
+
+
+<div class="notif-dropdown" *ngIf="showNotifications">
+  <h4>Notifications</h4>
+  <p *ngIf="notifications.length === 0">No new notifications</p>
+  <ul>
+    <li *ngFor="let note of notifications">{{ note }}</li>
+  </ul>
+</div>
+
+
+<app-dashboard></app-dashboard>
+

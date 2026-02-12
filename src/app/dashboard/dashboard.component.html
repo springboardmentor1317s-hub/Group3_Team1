@@ -1,0 +1,93 @@
+<div class="dashboard">
+  
+  <div class="dashboard-header">
+    <div class="profile-info">
+      
+      <img src="https://via.placeholder.com/50" alt="Profile Picture" class="profile-pic" />
+      <div class="profile-text">
+        <h2>Event Organizer Dashboard</h2>
+        <p>Sarah Williams — sarahgmail.com</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="create-btn" (click)="createEvent()">
+        <span class="icon">➕</span>
+        <span class="btn-text">Create Event</span>
+      </button>
+    </div>
+  </div>
+
+  
+  <div class="metrics">
+    <div class="metric-card">
+      <span class="icon">📊</span>
+      <div class="metric-title">Total Events</div>
+      <div class="metric-value">{{ totalEvents }}</div>
+    </div>
+    <div class="metric-card">
+      <span class="icon">✅</span>
+      <div class="metric-title">Active Events</div>
+      <div class="metric-value">{{ activeEvents }}</div>
+    </div>
+    <div class="metric-card">
+      <span class="icon">📝</span>
+      <div class="metric-title">Total Registrations</div>
+      <div class="metric-value">{{ totalRegistrations }}</div>
+    </div>
+    <div class="metric-card">
+      <span class="icon">👥</span>
+      <div class="metric-title">Average Participants</div>
+      <div class="metric-value">{{ avgParticipants }}</div>
+    </div>
+  </div>
+
+  
+  <nav class="tabs">
+    <button (click)="selectTab('overview')" [class.active]="tab==='overview'">Overview</button>
+    <button (click)="selectTab('events')" [class.active]="tab==='events'">My Events</button>
+    <button (click)="selectTab('analytics')" [class.active]="tab==='analytics'">Analytics</button>
+  </nav>
+
+ 
+  <div class="tab-content">
+    <ng-container *ngIf="tab==='overview'">
+      <div class="overview-container">
+       
+        <div class="recent-events">
+          <h3>Recent Events</h3>
+          <p *ngIf="recentEvents.length===0">No recent events</p>
+          <ul *ngIf="recentEvents.length > 0">
+            <li *ngFor="let event of recentEvents">
+              <strong>{{ event.name }}</strong> - {{ event.date }} ({{ event.location }})
+            </li>
+          </ul>
+        </div>
+
+        
+        <div class="quick-actions">
+          <button class="quick-btn" (click)="createEvent()">
+            <span class="icon">➕</span>
+            <span class="btn-text">Create New Event</span>
+          </button>
+          <button class="quick-btn" (click)="viewRegistrations()">
+            <span class="icon">📑</span>
+            <span class="btn-text">View All Registrations</span>
+          </button>
+          <button class="quick-btn" (click)="exportData()">
+            <span class="icon">📤</span>
+            <span class="btn-text">Export Event Data</span>
+          </button>
+        </div>
+      </div>
+    </ng-container>
+
+    <ng-container *ngIf="tab==='events'">
+      <app-events></app-events>
+    </ng-container>
+
+    <ng-container *ngIf="tab==='analytics'">
+      <app-analytics></app-analytics>
+    </ng-container>
+  </div>
+</div>
