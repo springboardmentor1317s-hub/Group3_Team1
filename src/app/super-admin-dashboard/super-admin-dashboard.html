@@ -1,0 +1,135 @@
+<div class="container">
+
+    <!-- Title -->
+    <div class="header">
+        <div>
+            <h2>Super Admin Dashboard</h2>
+            <p>System-wide analytics and administrative reports</p>
+        </div>
+        <div class="actions">
+            <button class="btn1">
+                <i class="fa-solid fa-download"></i>
+                Export Reports
+            </button>
+
+            <button class="btn primary">
+                <i class="fa-solid fa-user-plus"></i>
+                New Admin
+            </button>
+
+            <button class="btn1" (click)="logout()" style="background: #fee2e2; color: #dc2626; border-color: #fca5a5;">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                Logout
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="stats">
+
+        <div class="card">
+            <div class="icon blue"><i class="fa-solid fa-user-shield"></i></div>
+            <h4>Total Admins</h4>
+            <h2>12</h2>
+            <span class="green">+2 this month</span>
+        </div>
+
+        <div class="card">
+            <div class="icon purple"><i class="fa-solid fa-calendar-check"></i></div>
+            <h4>Total Events</h4>
+            <h2>156</h2>
+            <span class="green">Across all admins</span>
+        </div>
+
+        <div class="card">
+            <div class="icon green"><i class="fa-solid fa-users"></i></div>
+            <h4>Total Students</h4>
+            <h2>4,520</h2>
+            <span class="green">+120 this week</span>
+        </div>
+
+        <div class="card">
+            <div class="icon orange"><i class="fa-solid fa-server"></i></div>
+            <h4>System Load</h4>
+            <h2>42%</h2>
+            <span class="ok">Stable</span>
+        </div>
+
+    </div>
+
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <span class="active">Overview</span>
+        <span>Admin Management</span>
+        <span>System Reports</span>
+        <span>Settings</span>
+    </div>
+
+    <!-- Bottom Section -->
+    <div class="bottom">
+        <!-- Admin Performance / Reports -->
+        <div class="reports-section">
+            <h3>Admin Activity Reports</h3>
+            <ul class="events">
+                <li>
+                    <div class="event-left">
+                        <div class="event-icon" style="background: #fee2e2; color: #dc2626;">
+                            <i class="fa-solid fa-user-tie"></i>
+                        </div>
+                        <div>
+                            <b class="event-title">John Doe (Engineering)</b>
+                            <span>Created 5 events · Last active 2h ago</span>
+                        </div>
+                    </div>
+                    <span class="tag">High Activity</span>
+                </li>
+
+                <li>
+                    <div class="event-left">
+                        <div class="event-icon" style="background: #fef3c7; color: #d97706;">
+                            <i class="fa-solid fa-user-tie"></i>
+                        </div>
+                        <div>
+                            <b class="event-title">Sarah Smith (Arts)</b>
+                            <span>Created 3 events · Last active 1d ago</span>
+                        </div>
+                    </div>
+                    <span class="tag">Medium Activity</span>
+                </li>
+
+                <li>
+                    <div class="event-left">
+                        <div class="event-icon" style="background: #e0e7ff; color: #4f46e5;">
+                            <i class="fa-solid fa-user-tie"></i>
+                        </div>
+                        <div>
+                            <b class="event-title">Mike Johnson (Sports)</b>
+                            <span>Created 8 events · Last active 10m ago</span>
+                        </div>
+                    </div>
+                    <span class="tag">High Activity</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- System Health -->
+        <div class="box">
+            <h3>System Health</h3>
+            <p>Server Status <span class="ok">Healthy</span></p>
+            <p>Database <span class="ok">Connected</span></p>
+            <p>API Response <span class="ok">145ms</span></p>
+            <p>Uptime <span class="ok">99.98%</span></p>
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(0,0,0,0.1);">
+                <p><strong>Storage Usage</strong></p>
+                <div
+                    style="background: rgba(0,0,0,0.1); border-radius: 10px; height: 10px; width: 100%; overflow: hidden;">
+                    <div style="background: #4f46e5; width: 65%; height: 100%;"></div>
+                </div>
+                <p style="font-size: 12px; margin-top: 5px; color: #666;">65% Used (1.2TB / 2TB)</p>
+            </div>
+        </div>
+    </div>
+
+</div>
