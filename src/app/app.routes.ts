@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { Ragisterpage } from './registerpage/registerpage';
+import { Registerpage } from './registerpage/registerpage';
 import { Loginpage } from './loginpage/loginpage';
 import { Homepage } from './homepage/homepage';
 import { StudentDashboard } from './student-dashboard/student-dashboard';
@@ -10,7 +10,7 @@ export const routes: Routes = [
 
   { path: '', component: Homepage },
 
-  { path: 'register', component: Ragisterpage },
+  { path: 'register', component: Registerpage },
   { path: 'login', component: Loginpage },
 
   {
