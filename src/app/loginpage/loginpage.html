@@ -1,0 +1,46 @@
+<div class="page">
+  <div class="card">
+
+    <div class="icon">👤</div>
+
+    <h2>Welcome Back</h2>
+    <p class="subtitle">Login to CampusEventHub</p>
+
+    <form (ngSubmit)="login()">
+
+      <label>Email Address</label>
+      <input type="email"
+             [(ngModel)]="user.email"
+             name="email"
+             placeholder="Enter your email"
+             required>
+
+      <label>Password</label>
+        <div class="password-box">
+          <input [type]="show ? 'text' : 'password'"
+                [(ngModel)]="user.password"
+                name="password"
+                placeholder="Enter your password"
+                required>
+          <i class="fa-solid"
+            [class.fa-eye]="!show"
+            [class.fa-eye-slash]="show"
+            (click)="show = !show"></i>
+        </div>
+
+      <label>Login As</label>
+      <select [(ngModel)]="user.role" name="role">
+        <option value="student">Student</option>
+        <option value="college_admin">College Admin</option>
+      </select>
+
+      <button type="submit">Login</button>
+
+      <p class="link">
+        Don’t have an account?
+        <a routerLink="/register">Create Account</a>
+      </p>
+
+    </form>
+  </div>
+</div>
