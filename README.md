@@ -1,59 +1,68 @@
 # DemoPages
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.1.2.
+This project was generated using **Angular CLI v21.1.2**.
 
-## Development server
+## Description
+A simple Angular application scaffold. This README explains how to set up the project, run it locally, and fix a common issue (`'ng' is not recognized`) that you may encounter on Windows.
 
-To start a local development server, run:
+---
 
+## Prerequisites
+- **Node.js** (LTS recommended) — includes `npm`  
+- Optionally: **Angular CLI** installed globally (`npm install -g @angular/cli`)  
+  *You can also run CLI commands without global install using `npx`.*
+
+---
+
+## Install dependencies
+From the project root run:
+
+```bash
+npm install
+```
+## If ng is not recognized (Windows PowerShell)
+If running ng serve yields:
+```bash
+'ng' is not recognized as the name of a cmdlet, function, script file, or operable program.
+```
+Fix 1 — install Angular CLI globally:
+```bash
+npm install -g @angular/cli
+```
+After global install:
+Close and re-open the terminal (or restart your shell) so PATH updates take effect.
+Run ng serve again.
+Fix 2 — use npx to run local/temporary CLI without global install:
+```bash
+npx @angular/cli serve
+```
+If permissions are denied when installing globally on Windows, run PowerShell as Administrator.
+## Start development server
 ```bash
 ng serve
 ```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
+or with npx:
 ```bash
-ng generate component component-name
+npx @angular/cli serve
 ```
+### Notes:
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+ - On first run the CLI may ask about sharing anonymous usage data (analytics). You can safely choose No.
 
+ - Once running, open: http://localhost:4200/
+
+ - The dev server watches files and reloads on changes.
+
+Terminal hint: press h + Enter to show help while the dev server is running.
+## Common issues & quick fixes
+ng command not found
+ - npm install -g @angular/cli or use npx @angular/cli <command>. Restart the shell after global install.
+
+Missing dependencies / build errors
+ - npm install to re-install packages. If errors persist, remove node_modules and package-lock.json and run npm install again:
 ```bash
-ng generate --help
+rm -rf node_modules package-lock.json
+npm install
 ```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Permission errors on global install (Windows)
+ - Run terminal as Administrator.
