@@ -1,0 +1,53 @@
+.topbar{
+  height:70px;
+  background:white;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:0 30px;
+  box-shadow:0 2px 8px rgba(0,0,0,.1);
+}
+
+.logo{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-weight:700;
+  color:#4f46e5;
+}
+
+.logo-icon{
+  font-size:22px;
+}
+
+.nav-links{
+  display:flex;
+  gap:30px;
+}
+
+.nav-links a{
+  cursor:pointer;
+  color:#555;
+  font-weight:500;
+}
+
+.nav-links .active{
+  color:#4f46e5;
+  border-bottom:2px solid #4f46e5;
+}
+
+.user{
+  display:flex;
+  align-items:center;
+  gap:15px;
+}
+
+.user-info strong{
+  color:#1f2937;
+}
+
+.user-info small{
+  display:block;
+  color:#120c0c;
+  font-size:12px;
+}

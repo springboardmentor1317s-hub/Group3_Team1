@@ -1,0 +1,93 @@
+﻿<div class="analytics-wrap">
+  <div class="analytics-head glass">
+    <div>
+      <h3>Event Analytics</h3>
+      <p>Insights generated from your event list</p>
+    </div>
+    <div class="head-actions">
+      <small>Updated {{ refreshedAt | date:'MMM d, y, h:mm a' }}</small>
+      <button type="button" class="refresh-btn" (click)="refreshAnalytics()">Refresh Analytics</button>
+    </div>
+  </div>
+
+  <div class="empty glass" *ngIf="totalEvents === 0">
+    <h4>No analytics yet</h4>
+    <p>Create events to view trends, upcoming schedules, and location insights.</p>
+  </div>
+
+  <ng-container *ngIf="totalEvents > 0">
+    <div class="metrics-grid">
+      <article class="metric glass">
+        <p>Total Events</p>
+        <h2>{{ totalEvents }}</h2>
+      </article>
+      <article class="metric glass">
+        <p>Upcoming</p>
+        <h2>{{ upcomingEvents }}</h2>
+      </article>
+      <article class="metric glass">
+        <p>Completed</p>
+        <h2>{{ completedEvents }}</h2>
+      </article>
+      <article class="metric glass">
+        <p>This Month</p>
+        <h2>{{ eventsThisMonth }}</h2>
+      </article>
+      <article class="metric glass">
+        <p>Locations</p>
+        <h2>{{ uniqueLocations }}</h2>
+      </article>
+      <article class="metric glass">
+        <p>Organizers</p>
+        <h2>{{ uniqueOrganizers }}</h2>
+      </article>
+    </div>
+
+    <div class="insights-grid">
+      <section class="panel glass">
+        <h4>6-Month Activity</h4>
+        <div class="bars">
+          <div class="bar-col" *ngFor="let month of monthlyData; trackBy: trackByMonth">
+            <div class="bar" [style.height.%]="month.percent"></div>
+            <span class="bar-value">{{ month.count }}</span>
+            <small>{{ month.label }}</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel glass">
+        <h4>Location Distribution</h4>
+        <ul class="location-list">
+          <li *ngFor="let location of locationData; trackBy: trackByLocation">
+            <span>{{ location.name }}</span>
+            <strong>{{ location.count }}</strong>
+          </li>
+        </ul>
+      </section>
+    </div>
+
+    <div class="details-grid">
+      <section class="panel glass" *ngIf="nextEvent as event">
+        <h4>Next Upcoming Event</h4>
+        <p class="event-name">{{ event.name }}</p>
+        <p>{{ toDisplayDate(event.date) }}</p>
+        <p>{{ event.location || 'Location not set' }}</p>
+        <span class="pill">In {{ nextEventDays }} day(s)</span>
+      </section>
+
+      <section class="panel glass">
+        <h4>Upcoming Schedule</h4>
+        <ul class="schedule">
+          <li *ngIf="upcomingSchedule.length === 0">No upcoming events scheduled.</li>
+          <li *ngFor="let event of upcomingSchedule | slice:0:5">
+            <div>
+              <strong>{{ event.name }}</strong>
+              <small>{{ event.location || 'Location not set' }}</small>
+            </div>
+            <span>{{ toDisplayDate(event.date) }}</span>
+          </li>
+        </ul>
+      </section>
+    </div>
+  </ng-container>
+</div>

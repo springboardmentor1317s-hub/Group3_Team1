@@ -1,0 +1,51 @@
+<div class="overlay" *ngIf="visible">
+  <div class="event-modal">
+    <div class="banner">
+      <img src="/image.png" alt="event">
+      <button class="close" (click)="closeForm()">X</button>
+      <div class="banner-text">
+        <h1>Create Event</h1>
+        <h3>Add details about your upcoming event</h3>
+      </div>
+    </div>
+
+    <form class="form" (ngSubmit)="saveEvent()">
+      <div class="grid">
+        <div class="field">
+          <label>Event Name</label>
+          <input type="text" [(ngModel)]="newEvent.name" name="name" required>
+        </div>
+
+        <div class="field">
+          <label>Date &amp; Time</label>
+          <input type="date" [(ngModel)]="newEvent.date" name="date" required>
+        </div>
+
+        <div class="field">
+          <label>Location</label>
+          <input type="text" [(ngModel)]="newEvent.location" name="location">
+        </div>
+
+        <div class="field">
+          <label>Organizer</label>
+          <input type="text" [(ngModel)]="newEvent.organizer" name="organizer">
+        </div>
+
+        <div class="field">
+          <label>Contact</label>
+          <input type="text" [(ngModel)]="newEvent.contact" name="contact">
+        </div>
+
+        <div class="field full">
+          <label>Description</label>
+          <textarea rows="3" [(ngModel)]="newEvent.description" name="description"></textarea>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="cancel" (click)="closeForm()">Cancel</button>
+        <button type="submit" class="save">Save Event</button>
+      </div>
+    </form>
+  </div>
+</div>

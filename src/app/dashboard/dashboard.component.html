@@ -1,0 +1,124 @@
+﻿<div class="page">
+  <div class="ambient"></div>
+  <div class="container">
+
+    <div class="header glass">
+      <div class="header-copy">
+        <p class="eyebrow">Campus Event Hub</p>
+        <h1>Event Organizer Dashboard</h1>
+        <p>Manage events, registrations, and updates from one place.</p>
+      </div>
+      <div class="actions">
+        <button class="btn primary" (click)="createEvent()">Create Event</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="card glass">
+        <div class="icon">EV</div>
+        <h4>Total Events</h4>
+        <h2>{{ totalEvents }}</h2>
+      </div>
+
+      <div class="card glass">
+        <div class="icon">AC</div>
+        <h4>Active Events</h4>
+        <h2>{{ activeEvents }}</h2>
+      </div>
+
+      <div class="card glass">
+        <div class="icon">RG</div>
+        <h4>Total Registrations</h4>
+        <h2>{{ totalRegistrations }}</h2>
+      </div>
+
+      <div class="card glass">
+        <div class="icon">AP</div>
+        <h4>Average Participants</h4>
+        <h2>{{ avgParticipants }}</h2>
+      </div>
+    </div>
+
+    <div class="tabs glass">
+      <span (click)="selectTab('overview')" [class.active]="tab==='overview'">Overview</span>
+      <span (click)="selectTab('events')" [class.active]="tab==='events'">My Events</span>
+      <span (click)="selectTab('analytics')" [class.active]="tab==='analytics'">Analytics</span>
+    </div>
+
+    <div class="bottom" *ngIf="tab==='overview'">
+      <ul class="events glass">
+        <li *ngIf="recentEvents.length===0" class="empty">No recent events yet.</li>
+        <li *ngFor="let event of recentEvents">
+          <div class="event-left">
+            <div class="event-icon">E</div>
+            <div>
+              <div class="event-title">{{ event.name }}</div>
+              <small>{{ event.date }} • {{ event.location }}</small>
+            </div>
+          </div>
+          <span class="tag">Event</span>
+        </li>
+      </ul>
+
+      <div class="quick-actions glass">
+        <div class="action-card" (click)="createEvent()">
+          <span class="action-icon">+</span>
+          <div>
+            <h4>Create New Event</h4>
+            <p>Add and publish a new event</p>
+          </div>
+        </div>
+
+        <div class="action-card" (click)="viewRegistrations()">
+          <span class="action-icon">R</span>
+          <div>
+            <h4>View Registrations</h4>
+            <p>Track student participation</p>
+          </div>
+        </div>
+
+        <div class="action-card" (click)="exportData()">
+          <span class="action-icon">D</span>
+          <div>
+            <h4>Export Data</h4>
+            <p>Download event details as CSV</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom" *ngIf="tab==='events'">
+      <ul class="events glass">
+        <li *ngIf="allEvents.length===0" class="empty">No events available. Create your first event.</li>
+        <li *ngFor="let event of allEvents">
+          <div class="event-left">
+            <div class="event-icon">E</div>
+            <div>
+              <div class="event-title">{{ event.name }}</div>
+              <small>{{ event.date }} • {{ event.location }}</small>
+            </div>
+          </div>
+          <span class="tag">Event</span>
+        </li>
+      </ul>
+
+      <div class="quick-actions glass">
+        <div class="action-card" (click)="createEvent()">
+          <span class="action-icon">+</span>
+          <div>
+            <h4>Create New Event</h4>
+            <p>Add and publish a new event</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <app-analytics *ngIf="tab==='analytics'"></app-analytics>
+  </div>
+</div>
+
+<app-events
+  [visible]="showEventForm"
+  (close)="closeEventForm()">
+</app-events>
+

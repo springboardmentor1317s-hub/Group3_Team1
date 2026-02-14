@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --bg-1: #3944c1;
+  --bg-2: #5431c4;
+  --bg-3: #8d4dff;
+  --card: rgba(255, 255, 255, 0.16);
+  --text: #ffffff;
+  --muted: #d8dcff;
+  --input: #eef0ff;
+  --accent: linear-gradient(90deg, #626fff, #8f4fff);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Poppins', 'Segoe UI', sans-serif;
+  color: var(--text);
+  background: #2b2f7d;
+}
