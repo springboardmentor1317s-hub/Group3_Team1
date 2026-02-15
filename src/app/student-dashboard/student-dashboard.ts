@@ -798,17 +798,15 @@ END:VCALENDAR`;
     return months[date.getMonth()];
   }
 
+  
   // Logout Methods
   handleLogout(): void {
-    if (confirm('Are you sure you want to logout?')) {
-      // Clear local storage
-      localStorage.clear();
-      sessionStorage.clear();
-      
-      // Navigate to login
-      alert('Logged out successfully!');
-      // You can add navigation here when you set up routing
-    }
+    // Clear local storage
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // Redirect to login page
+    window.location.href = '/login';
   }
 
   cancelLogout(): void {

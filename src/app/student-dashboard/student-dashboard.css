@@ -10,7 +10,8 @@
 .dashboard-container {
   font-family: 'Poppins', sans-serif;
   min-height: 100vh;
-  background: linear-gradient(135deg, #1e3c72, #2a5298);
+  /* background:  linear-gradient(135deg, #5b4fb5, #7b68ee, #6a5acd); */
+  background:linear-gradient(135deg, #B8A9E3, #A58CFF, #C88BE8);
   display: flex;
   color: #fff;
 }
@@ -569,23 +570,27 @@
 .notification-item {
   display: flex;
   gap: 1rem;
-  background: rgba(0,0,0,0.4);
-  backdrop-filter: blur(10px);
+  background: rgba(20, 20, 50, 0.7);
+  backdrop-filter: blur(15px);
   border-radius: 15px;
   padding: 1.5rem;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 2px solid rgba(123, 104, 238, 0.5);
   transition: all 0.3s ease;
   cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .notification-item:hover {
-  background: rgba(0,0,0,0.6);
+  background: rgba(30, 30, 60, 0.85);
   transform: translateX(5px);
+  border-color: #7b68ee;
+  box-shadow: 0 6px 25px rgba(123, 104, 238, 0.4);
 }
 
 .notification-item.unread {
-  border-left: 4px solid #3b82f6;
-  background: rgba(59, 130, 246, 0.1);
+  border-left: 4px solid #7b68ee;
+  background: rgba(40, 35, 80, 0.75);
+  box-shadow: 0 4px 20px rgba(123, 104, 238, 0.3);
 }
 
 .notification-icon {
@@ -882,8 +887,9 @@
 ============================================== */
 
 .registered-card {
-  border: 2px solid #3b82f6 !important;
-  background: rgba(59, 130, 246, 0.1) !important;
+  border: 2px solid #7b68ee !important;
+  background: rgba(30, 30, 60, 0.8) !important;
+  box-shadow: 0 8px 30px rgba(123, 104, 238, 0.4) !important;
 }
 
 .registered-badge {
