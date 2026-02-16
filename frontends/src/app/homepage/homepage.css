@@ -1,0 +1,246 @@
+.home {
+  font-family: Arial, sans-serif;
+}
+
+/* Hero */
+.hero {
+  min-height: 80vh;
+
+  /* Image + overlay */
+  background:
+    linear-gradient(
+      rgba(79,70,229,0.7),
+      rgba(139,92,246,0.7)
+    ),
+    url('../../assets/party-bg.jpg');
+
+  background-size: cover;
+  background-position: center;
+
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 40px;
+}
+
+
+.hero h1 {
+  font-size: 48px;
+  margin-bottom: 10px;
+}
+.hero p {
+  font-size: 18px;
+  max-width: 600px;
+}
+
+.hero-actions {
+  margin-top: 20px;
+}
+.btn {
+  padding: 10px 22px;
+  border-radius: 25px;
+  text-decoration: none;
+  margin: 0 8px;
+  border: 1px solid white;
+  color: white;
+}
+.primary {
+  background: white;
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+/* Features */
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  padding: 50px;
+  background: #f8fafc;
+}
+.feature {
+  background: white;
+  padding: 25px;
+  border-radius: 14px;
+  text-align: center;
+  box-shadow: 0 6px 18px rgba(0,0,0,.08);
+}
+.feature i {
+  font-size: 28px;
+  color: #4f46e5;
+  margin-bottom: 10px;
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 15px;
+  background: #1e293b;
+  color: #cbd5f5;
+}
+.hero h1 {
+  font-size: 52px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.hero p {
+  font-size: 19px;
+  opacity: 0.95;
+}
+.hero-actions .btn {
+  transition: all .25s ease;
+}
+
+.hero-actions .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0,0,0,.25);
+}
+
+.hero-actions .primary {
+  background: linear-gradient(135deg,#ffffff,#e0e7ff);
+}
+.hero {
+  animation: fadeIn 1.2s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.feature {
+  transition: all .25s ease;
+}
+
+.feature:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 30px rgba(0,0,0,.15);
+}
+
+.feature h3 {
+  font-weight: 600;
+}
+.feature i {
+  background: #eef2ff;
+  padding: 14px;
+  border-radius: 50%;
+  box-shadow: 0 6px 18px rgba(79,70,229,.25);
+}
+.stats-home {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px,1fr));
+  gap: 20px;
+  padding: 40px;
+  background: #eef2ff;
+  text-align: center;
+}
+
+.stat {
+  background: white;
+  border-radius: 16px;
+  padding: 25px;
+  box-shadow: 0 10px 22px rgba(0,0,0,.1);
+  transition: transform .25s ease;
+}
+
+.stat:hover {
+  transform: translateY(-6px);
+}
+
+.stat h2 {
+  font-size: 36px;
+  color: #4f46e5;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.stat p {
+  color: #64748b;
+  font-weight: 500;
+}
+/* ===== UNIVERSAL CARD LOOK ===== */
+.feature,
+.stat {
+  position: relative;
+  overflow: hidden;
+  background: white;
+  border-radius: 18px;
+  padding: 26px;
+  box-shadow: 0 10px 25px rgba(0,0,0,.12);
+  transition: all .35s ease;
+}
+
+/* Top colorful line (event vibe) */
+.feature::before,
+.stat::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 5px;
+  width: 100%;
+  background: linear-gradient(90deg,#6366f1,#ec4899,#f59e0b);
+}
+
+/* Hover effect */
+.feature:hover,
+.stat:hover {
+  transform: translateY(-10px) scale(1.02);
+  box-shadow: 0 22px 40px rgba(0,0,0,.2);
+}
+.feature i {
+  font-size: 30px;
+  color: white;
+  background: linear-gradient(135deg,#6366f1,#8b5cf6);
+  padding: 18px;
+  border-radius: 50%;
+  margin-bottom: 14px;
+  box-shadow: 0 10px 22px rgba(99,102,241,.45);
+}
+.feature h3,
+.stat p {
+  font-weight: 600;
+}
+
+.feature p {
+  color: #475569;
+  line-height: 1.6;
+}
+.stat h2 {
+  font-size: 40px;
+  font-weight: 800;
+  background: linear-gradient(135deg,#6366f1,#ec4899);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+@media (max-width: 768px) {
+
+  .hero h1 {
+    font-size: 34px;
+  }
+
+  .hero p {
+    font-size: 16px;
+  }
+
+  .hero-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .features,
+  .stats-home {
+    padding: 25px;
+    grid-template-columns: 1fr;
+  }
+}

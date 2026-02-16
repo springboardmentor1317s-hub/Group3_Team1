@@ -1,0 +1,206 @@
+/* Full-screen modern SaaS background */
+.success-page {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  overflow: hidden;
+  /* Page background: image + gradient overlay (copied from login page) */
+  background:
+    linear-gradient(rgba(79,70,229,0.70), rgba(139,92,246,0.70)),
+    url('../../assets/login.jpg');
+  background-size: cover;
+  background-position: center;
+}
+
+/* moving gradient / soft waves layer */
+.bg-animated {
+  position: absolute;
+  inset: -12%;
+  /* premium violet / pink / orange mix */
+  background: radial-gradient( circle at 10% 20%, rgba(147, 51, 234, 0.16), transparent 12% ),
+              radial-gradient( circle at 80% 10%, rgba(255, 115, 170, 0.12), transparent 12% ),
+              linear-gradient(120deg, rgba(183, 89, 255, 0.06), rgba(255,135,84,0.06));
+  transform-origin: center;
+  filter: blur(18px) saturate(110%);
+  opacity: 0.22;
+  animation: waveMove 18s linear infinite;
+  z-index: 0;
+}
+
+/* glassmorphism, floating card (signup-success only) */
+.success-page .card {
+  position: relative;
+  z-index: 5;
+  width: min(700px, 92%);
+  padding: 36px 36px;
+      /* Brighter glass: light white glossy base to keep text/animation legible */
+      background: linear-gradient(
+  135deg,
+  rgba(255,255,255,0.60),
+  rgba(255,255,255,0.30)
+);
+
+      /* thin light-white outer border preserved */
+      border: 1px solid rgba(255,255,255,0.75);
+      /* moderate backdrop blur for glass, keep card readable */
+      backdrop-filter: blur(10px) saturate(115%);
+      -webkit-backdrop-filter: blur(10px) saturate(115%);
+  border-radius: 20px;
+        /* double-border effect: inner thin dark border (more visible) + floating shadow tuned for glass card */
+        box-shadow: inset 0 0 0 1.6px rgba(6,10,15,0.32), 0 30px 60px rgba(6,10,15,0.20), 0 18px 40px rgba(15,176,122,0.06), inset 0 0 30px rgba(255,255,255,0.06);
+  text-align: center;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap: 12px;
+  transform: translateY(30px) scale(.95);
+  opacity: 0;
+  animation: floatIn .9s ease forwards;
+  color: #0b2330;
+}
+
+/* Subtle side shadow placed under the signup-success card only */
+.success-page .card::after {
+  content: '';
+  position: absolute;
+  right: 18px;
+  bottom: -34px;
+  width: 360px;
+  height: 92px;
+  /* darker neutral core with a faint accent tint to harmonize with the page */
+  background: radial-gradient(ellipse at center, rgba(6,10,15,0.30), rgba(6,10,15,0.12) 56%, rgba(15,176,122,0.06) 72%, transparent 78%);
+  filter: blur(36px) saturate(105%);
+  transform: rotate(-6deg) translateZ(0);
+  border-radius: 50%;
+  box-shadow: 0 36px 84px rgba(6,10,15,0.26);
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* subtle matte overlay on top of the glossy surface (slightly transparent) */
+.success-page .card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(250,250,250,0.55);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ensure card children render above the matte overlay */
+.success-page .card > * {
+  position: relative;
+  z-index: 2;
+}
+
+.check-wrap { width: 140px; height: 140px; display:flex; align-items:center; justify-content:center; position:relative }
+.check { width: 130px; height: 130px; }
+.check .ring { stroke: rgba(15,107,74,0.12); stroke-width: 3; opacity: 0.95 }
+.check .core { stroke: rgba(16,144,99,0.20); stroke-width: 14; opacity: 0.20; transform-origin: 30px 30px; animation: corePulse 1200ms ease-out 520ms infinite; }
+.check .mark {
+  stroke: #0fb07a;
+  stroke-width: 5.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: draw 640ms cubic-bezier(.2,.9,.2,1) 260ms forwards, markGlow 2s ease-in-out 900ms infinite;
+  filter: drop-shadow(0 0 3px rgba(15,176,122,0.45));
+}
+
+.card .title { margin: 0; font-size: 24px; color: #0a2330; font-weight: 800; letter-spacing: -0.2px; opacity: 0; transform: translateY(8px) scale(.995); animation: textFade 420ms ease forwards 320ms; text-shadow: 0 1px 8px rgba(15,176,122,0.08); }
+.card .subtitle { margin: 0; color: #3a5652; opacity: 0; transform: translateY(6px); animation: textFade 420ms ease forwards 380ms; font-size: 15px; font-weight: 500; }
+
+.countdown-wrap { margin-top: 16px; display:flex; align-items:center; justify-content:center; gap: 18px; position: relative; animation: countdownBreathe 2.4s ease-in-out 1s infinite, countdownScale 1.4s ease-in-out 900ms infinite; }
+.count-circle { width: 96px; height: 96px; filter: drop-shadow(0 0 24px rgba(15,176,122,0.60)) drop-shadow(0 0 48px rgba(15,176,122,0.38)); animation: circlePulse 1.8s ease-in-out 800ms infinite; position: relative; }
+.count-circle::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: rgba(15,176,122,0.40);
+  border-right-color: rgba(15,176,122,0.25);
+  animation: spinGlow 3s linear infinite;
+  z-index: -1;
+}
+.count-circle::after {
+  content: '';
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(15,176,122,0.15);
+  animation: spinGlow 4.5s linear reverse infinite;
+  z-index: -1;
+}
+.count-bg { stroke: rgba(9,40,30,0.12); stroke-width: 7; opacity: 0; }
+.count-progress {
+  stroke: url(#countGradient) #0fb07a;
+  stroke-width: 7;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 32px 32px;
+  transition: stroke-dashoffset 0.6s cubic-bezier(.25,.46,.45,.94);
+  filter: drop-shadow(0 3px 12px rgba(15,176,122,0.55)) drop-shadow(0 0 6px rgba(15,176,122,0.30));
+  opacity: 1;
+  animation: countGlow 1.6s ease-in-out 800ms infinite, countPulse 2.2s ease-in-out 900ms infinite;
+}
+.count-number { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 96px; height: 96px; display:flex; align-items:center; justify-content:center; font-size: 36px; line-height:1; font-weight: 900; color: #0fb07a; background: linear-gradient(135deg, rgba(255,255,255,0.96), rgba(255,255,255,0.88)); border-radius: 50%; padding: 8px 12px; border: 2.5px solid rgba(15,176,122,0.50); box-shadow: 0 12px 36px rgba(15,176,122,0.28), inset 0 0 28px rgba(255,255,255,0.50), 0 0 28px rgba(15,176,122,0.25); animation: pop .36s cubic-bezier(.2,.9,.2,1), numberGlow 2.2s ease-in-out 1.2s infinite; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px) }
+
+@keyframes pop { from { transform: translate(-50%,-50%) scale(.88); opacity: 0 } to { transform: translate(-50%,-50%) scale(1); opacity: 1 } }
+@keyframes numberGlow { 0%, 100% { box-shadow: 0 12px 36px rgba(15,176,122,0.28), inset 0 0 28px rgba(255,255,255,0.50), 0 0 28px rgba(15,176,122,0.25); } 50% { box-shadow: 0 12px 48px rgba(15,176,122,0.40), inset 0 0 32px rgba(255,255,255,0.60), 0 0 40px rgba(15,176,122,0.35); } }
+@keyframes countGlow { 0%, 100% { filter: drop-shadow(0 3px 12px rgba(15,176,122,0.55)) drop-shadow(0 0 6px rgba(15,176,122,0.30)); } 50% { filter: drop-shadow(0 6px 24px rgba(15,176,122,0.75)) drop-shadow(0 0 12px rgba(15,176,122,0.50)); } }
+@keyframes countPulse { 0%, 100% { opacity: 0.95; } 50% { opacity: 1; } }
+@keyframes circlePulse { 0%, 100% { filter: drop-shadow(0 0 24px rgba(15,176,122,0.60)) drop-shadow(0 0 48px rgba(15,176,122,0.38)); } 50% { filter: drop-shadow(0 0 32px rgba(15,176,122,0.80)) drop-shadow(0 0 64px rgba(15,176,122,0.50)); } }
+@keyframes countdownBreathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.92; } }
+@keyframes spinGlow { 0% { transform: rotate(0deg); opacity: 0.8; } 50% { opacity: 0.6; } 100% { transform: rotate(360deg); opacity: 0.8; } }
+@keyframes countdownScale { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+
+.redirect { margin-top: 6px; color: #3b5f52; font-size: 14px; opacity: 0; animation: textFade 420ms ease forwards 460ms }
+.redirect .count { font-weight: 800; color: #0a6b4a; margin: 0 6px; font-size: 14px }
+
+/* glow behind check */
+.check-wrap::after {
+  content: '';
+  position: absolute;
+  width: 180px; height: 180px;
+  border-radius: 50%;
+  filter: blur(18px);
+  background: radial-gradient(circle at 35% 35%, rgba(14,176,115,0.60), rgba(14,176,115,0.28) 36%, transparent 60%);
+  z-index: -1;
+  animation: ringExpand 680ms cubic-bezier(.2,.9,.2,1) 160ms forwards, glowPulse 2.6s ease-in-out 900ms infinite;
+}
+
+@keyframes draw { to { stroke-dashoffset: 0 } }
+@keyframes markGlow { 0%, 100% { filter: drop-shadow(0 0 3px rgba(15,176,122,0.45)); } 50% { filter: drop-shadow(0 0 8px rgba(15,176,122,0.65)); } }
+@keyframes corePulse { 0% { transform: scale(.94); opacity:.18 } 50% { transform: scale(1.06); opacity:.26 } 100% { transform: scale(.94); opacity:.18 } }
+@keyframes ringExpand { 0% { transform: scale(.82); opacity: .0 } 60% { transform: scale(1.03); opacity:.9 } 100% { transform: scale(1); opacity: .82 } }
+@keyframes textFade { to { opacity: 1; transform: translateY(0) scale(1) } }
+@keyframes cardEntrance { to { opacity: 1; transform: translateY(0) scale(1); filter: bright brightness(1); } }
+@keyframes floatIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes bgRotate { 0% { transform: translateX(0) rotate(0deg) } 50% { transform: translateX(-6%) rotate(6deg) } 100% { transform: translateX(0) rotate(0deg) } }
+@keyframes waveMove { 0% { transform: translate3d(0,0,0) scale(1) } 50% { transform: translate3d(-4%,1%,0) scale(1.02) } 100% { transform: translate3d(0,0,0) scale(1) } }
+@keyframes glowPulse { 0%, 100% { opacity: 0.8; } 50% { opacity: 1; } }
+
+/* Responsive tweaks */
+@media (max-width:620px) {
+  .card { padding: 22px }
+  .check-wrap { width: 110px; height: 110px }
+  .check { width: 86px; height: 86px }
+  .card .title { font-size: 18px }
+}
+/* (no animation here) */
+
