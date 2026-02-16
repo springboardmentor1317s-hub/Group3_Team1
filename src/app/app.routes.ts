@@ -5,6 +5,7 @@ import { Homepage } from './homepage/homepage';
 import { StudentDashboard } from './student-dashboard/student-dashboard';
 import { AdminDashboard } from './admin-dashboard/admin-dashboard';
 import { SuperAdminDashboard } from './super-admin-dashboard/super-admin-dashboard';
+import { SignupSuccessComponent } from './signup-success/signup-success.component';
 import { roleGuard } from './role/role';
 
 export const routes: Routes = [
@@ -13,6 +14,7 @@ export const routes: Routes = [
 
   { path: 'register', component: Ragisterpage },
   { path: 'login', component: Loginpage },
+  { path: 'signup-success', component: SignupSuccessComponent },
 
   {
     path: 'student-dashboard',
