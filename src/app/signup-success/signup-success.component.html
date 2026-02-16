@@ -1,0 +1,43 @@
+<div class="success-page">
+  <div class="bg-animated" aria-hidden></div>
+
+  <div class="card" role="status" aria-live="polite">
+    <div class="check-wrap">
+      <svg class="check" viewBox="0 0 60 60" aria-hidden>
+        <!-- glowing expanding ring -->
+        <circle class="ring" cx="30" cy="30" r="28" fill="none"></circle>
+        <!-- subtle core pulse -->
+        <circle class="core" cx="30" cy="30" r="12" fill="none"></circle>
+        <!-- checkmark path -->
+        <path class="mark" d="M18 33l8 8 18-22" fill="none"></path>
+      </svg>
+    </div>
+
+    <h1 class="title">Your account has been created successfully</h1>
+    <p class="subtitle">Welcome to CampusEventHub — we're glad you're here.</p>
+
+    <div class="countdown-wrap" aria-hidden="false">
+      <svg class="count-circle" viewBox="0 0 64 64" aria-hidden>
+        <defs>
+          <linearGradient id="countGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#0fb07a;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#1ae8a0;stop-opacity:1" />
+          </linearGradient>
+        </defs>
+        <circle class="count-bg" cx="32" cy="32" r="28" fill="none"></circle>
+        <circle
+          class="count-progress"
+          cx="32"
+          cy="32"
+          r="28"
+          fill="none"
+          [attr.stroke-dasharray]="circumference"
+          [attr.stroke-dashoffset]="dashOffset"
+        ></circle>
+      </svg>
+
+      <div class="count-number" aria-live="polite">{{ remaining }}</div>
+    </div>
+    <div class="redirect">Redirecting in <span class="count">{{ totalSeconds }}</span> seconds...</div>
+  </div>
+</div>
