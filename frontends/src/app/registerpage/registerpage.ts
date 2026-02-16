@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';   // ⭐ ADD THIS
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../auth.service';
 
 @Component({
@@ -10,10 +10,10 @@ import { AuthService } from '../auth.service';
   imports: [
     CommonModule,
     FormsModule,
-    RouterLink   
+    RouterLink
   ],
   templateUrl: './registerpage.html',
-  styleUrl: './registerpage.css',
+  styleUrls: ['./registerpage.css'],
 })
 export class Registerpage {
 
@@ -21,7 +21,7 @@ export class Registerpage {
     fullName: '',
     email: '',
     college: '',
-    role: 'Student',
+    role: 'student',
     password: '',
     confirmPassword: ''
   };
@@ -29,7 +29,21 @@ export class Registerpage {
   constructor(private authService: AuthService) {}
 
   register() {
-    this.authService.register(this.user).subscribe({
+    if (this.user.password !== this.user.confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
+
+    const payload = {
+      fullName: this.user.fullName,
+      email: this.user.email,
+      college: this.user.college,
+      role: this.user.role.toLowerCase(),
+      password: this.user.password,
+      confirmPassword: this.user.confirmPassword
+    };
+
+    this.authService.register(payload).subscribe({
       next: (res: any) => {
         alert("Registration Successful!");
         console.log(res);
@@ -40,4 +54,5 @@ export class Registerpage {
       }
     });
   }
+
 }
