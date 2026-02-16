@@ -11,7 +11,7 @@
             <input type="text"
                     placeholder="Full Name"
                     [(ngModel)]="user.fullName"
-                    name="name"
+                    name="fullName"
                     required>
                 <label>Email Address</label>
             <input type="email"
@@ -27,8 +27,9 @@
 
             <label>Role</label>
             <select [(ngModel)]="user.role" name="role">
-                <option value="student">Student</option>
+                <option value="student">student</option>
                 <option value="college_admin">College Admin</option>
+                <option value="super_Admin">Super Admin</option>
             </select>
             <label>Password</label>
             <input type="password"
