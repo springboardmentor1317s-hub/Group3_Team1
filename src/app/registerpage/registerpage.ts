@@ -2,14 +2,15 @@ import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 
 @Component({
-  selector: 'app-ragisterpage',
-  imports: [CommonModule,FormsModule],
+  selector: 'app-registerpage',
+  imports: [CommonModule,FormsModule,RouterModule],
   templateUrl: './registerpage.html',
   styleUrl: './registerpage.css',
 })
-export class Ragisterpage {
+export class Registerpage {
 
  user = {
     name: '',
