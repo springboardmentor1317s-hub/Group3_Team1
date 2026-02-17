@@ -1,0 +1,1020 @@
+<div class="dashboard-container">
+  <!-- Sidebar Overlay (Mobile) -->
+  <div class="sidebar-overlay" [class.active]="sidebarOpen" (click)="toggleSidebar()"></div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" [class.open]="sidebarOpen">
+    <div class="sidebar-header">
+      <div class="logo">
+        <span class="logo-icon material-icons">school</span>
+        <span class="logo-text">CampusEventHub</span>
+      </div>
+      <button class="close-btn" (click)="toggleSidebar()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a 
+        *ngFor="let item of menuItems" 
+        [class.active]="activeTab === item.id"
+        (click)="setActiveTab(item.id)"
+        class="nav-item"
+      >
+        <span class="material-icons">{{ item.icon }}</span>
+        <span class="nav-label">{{ item.label }}</span>
+        <span *ngIf="item.badge" class="badge">{{ item.badge }}</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+     <div class="user-info" (click)="setActiveTab('profile')" style="cursor: pointer;">
+        <div class="user-avatar">
+          <span class="material-icons">account_circle</span>
+        </div>
+        <div class="user-details">
+          <div class="user-name">{{ studentName }}</div>
+          <div class="user-role">{{ department }}</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Header -->
+    <header class="header">
+      <button class="menu-btn" (click)="toggleSidebar()">
+        <span class="material-icons">menu</span>
+      </button>
+      <div class="header-title">
+        {{ activeSubPage === 'edit-profile' ? 'Edit Profile' : 
+           activeSubPage === 'settings' ? 'Settings' : 
+           activeSubPage === 'change-password' ? 'Change Password' : 
+           (activeTab | titlecase) }}
+      </div>
+      <div class="header-actions">
+        <div class="search-container">
+          <input 
+            type="text" 
+            class="search-input" 
+            placeholder="Search events..."
+            [(ngModel)]="globalSearchQuery"
+            (keyup.enter)="performGlobalSearch()"
+          >
+          <button class="search-btn" (click)="performGlobalSearch()">
+            <span class="material-icons">search</span>
+          </button>
+        </div>
+        <button class="icon-btn notification-btn" (click)="setActiveTab('notifications')">
+          <span class="material-icons">notifications</span>
+          <span class="notification-dot" *ngIf="getUnreadNotificationsCount() > 0"></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- DASHBOARD TAB -->
+    <div class="content-wrapper" *ngIf="activeTab === 'dashboard' && !activeSubPage">
+      <!-- Welcome Section -->
+      <section class="welcome-banner">
+        <div class="welcome-content">
+          <h1 class="welcome-title">Hi {{ studentName }}, welcome back! 👋</h1>
+          <p class="welcome-subtitle">Here's what's happening with your campus events</p>
+        </div>
+      </section>
+
+      <!-- Stats Cards -->
+      <section class="stats-section">
+        <div class="stats-grid">
+          <div 
+            *ngFor="let stat of stats" 
+            class="stat-card"
+            [style.--card-color]="stat.color"
+          >
+            <div class="stat-icon-wrapper">
+              <span class="stat-icon material-icons">{{ stat.icon }}</span>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ stat.value }}</div>
+              <div class="stat-title">{{ stat.title }}</div>
+              <div class="stat-subtitle">{{ stat.subtitle }}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Quick Actions -->
+      <section class="quick-actions-section">
+        <h2 class="section-title">Quick Actions</h2>
+        <div class="quick-actions-grid">
+          <button class="action-btn" (click)="setActiveTab('events')">
+            <span class="material-icons">search</span>
+            <span>Browse Events</span>
+          </button>
+          <button class="action-btn" (click)="setActiveTab('calendar')">
+            <span class="material-icons">calendar_month</span>
+            <span>View Calendar</span>
+          </button>
+          <button class="action-btn" (click)="setActiveTab('registrations')">
+            <span class="material-icons">assignment</span>
+            <span>My Registrations</span>
+          </button>
+          <button class="action-btn" (click)="setActiveTab('history')">
+            <span class="material-icons">history</span>
+            <span>Event History</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Notifications Preview -->
+      <section class="notifications-preview">
+        <div class="section-header">
+          <h2 class="section-title">Recent Notifications</h2>
+          <a (click)="setActiveTab('notifications')" class="view-all-link">View All →</a>
+        </div>
+        <div class="notifications-list">
+          <div 
+            *ngFor="let notification of notifications.slice(0, 3)" 
+            class="notification-item"
+            [class.unread]="!notification.read"
+            (click)="markNotificationAsRead(notification)"
+          >
+            <div class="notification-icon" [class]="notification.type">
+              <span class="material-icons">
+                {{ notification.type === 'info' ? 'info' : notification.type === 'warning' ? 'warning' : 'check_circle' }}
+              </span>
+            </div>
+            <div class="notification-content">
+              <div class="notification-title">{{ notification.title }}</div>
+              <div class="notification-message">{{ notification.message }}</div>
+              <div class="notification-time">{{ notification.time }}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Upcoming Events -->
+      <section class="events-section">
+        <div class="section-header">
+          <h2 class="section-title">Upcoming Events</h2>
+          <a (click)="setActiveTab('events')" class="view-all-link">View All →</a>
+        </div>
+
+        <div class="events-grid">
+          <div 
+            *ngFor="let event of upcomingEvents.slice(0, 4)" 
+            class="event-card"
+          >
+            <div class="event-header">
+              <span 
+                class="event-category" 
+                [style.background]="getCategoryColor(event.category)"
+              >
+                {{ event.category }}
+              </span>
+              <span 
+                class="event-status"
+                [style.background]="getStatusColor(event.status)"
+              >
+                {{ event.status }}
+              </span>
+            </div>
+
+            <h3 class="event-title">{{ event.title }}</h3>
+            <p class="event-description">{{ event.description }}</p>
+
+            <div class="event-details">
+              <div class="event-detail">
+                <span class="material-icons">calendar_today</span>
+                <span>{{ formatDate(event.date) }}</span>
+              </div>
+              <div class="event-detail">
+                <span class="material-icons">schedule</span>
+                <span>{{ event.time }}</span>
+              </div>
+              <div class="event-detail">
+                <span class="material-icons">location_on</span>
+                <span>{{ event.location }}</span>
+              </div>
+            </div>
+
+            <div class="event-footer">
+              <div class="event-attendees">
+                <span class="material-icons">group</span>
+                <span>{{ event.attendees }}/{{ event.maxAttendees }}</span>
+              </div>
+              <button 
+                class="register-btn" 
+                [class.registered]="event.registered"
+                [class.full]="event.status === 'Full'"
+                [disabled]="event.status === 'Full' && !event.registered"
+                (click)="registerForEvent(event)"
+              >
+                {{ event.registered ? 'Registered ✓' : event.status === 'Full' ? 'Full' : 'Register' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- BROWSE EVENTS TAB -->
+    <div class="content-wrapper" *ngIf="activeTab === 'events'">
+      <section class="events-section">
+        <h2 class="section-title">Browse Events</h2>
+        
+        <!-- Search and Filter -->
+        <div class="filter-header">
+          <div class="search-box">
+            <span class="material-icons">search</span>
+            <input 
+              type="text" 
+              placeholder="Search events..." 
+              [(ngModel)]="searchQuery"
+            >
+          </div>
+          
+          <div class="category-filters">
+            <button 
+              *ngFor="let category of eventCategories"
+              class="category-filter"
+              [class.active]="selectedCategory === category"
+              (click)="filterByCategory(category)"
+            >
+              {{ category }}
+            </button>
+          </div>
+        </div>
+
+        <!-- All Events -->
+        <div class="events-grid">
+          <div 
+            *ngFor="let event of getFilteredEvents()" 
+            class="event-card"
+          >
+            <div class="event-header">
+              <span 
+                class="event-category" 
+                [style.background]="getCategoryColor(event.category)"
+              >
+                {{ event.category }}
+              </span>
+              <span 
+                class="event-status"
+                [style.background]="getStatusColor(event.status)"
+              >
+                {{ event.status }}
+              </span>
+            </div>
+
+            <h3 class="event-title">{{ event.title }}</h3>
+            <p class="event-description">{{ event.description }}</p>
+
+            <div class="event-details">
+              <div class="event-detail">
+                <span class="material-icons">calendar_today</span>
+                <span>{{ formatDate(event.date) }}</span>
+              </div>
+              <div class="event-detail">
+                <span class="material-icons">schedule</span>
+                <span>{{ event.time }}</span>
+              </div>
+              <div class="event-detail">
+                <span class="material-icons">location_on</span>
+                <span>{{ event.location }}</span>
+              </div>
+            </div>
+
+            <div class="event-footer">
+              <div class="event-attendees">
+                <span class="material-icons">group</span>
+                <span>{{ event.attendees }}/{{ event.maxAttendees }}</span>
+              </div>
+              <button 
+                class="register-btn" 
+                [class.registered]="event.registered"
+                [class.full]="event.status === 'Full'"
+                [disabled]="event.status === 'Full' && !event.registered"
+                (click)="registerForEvent(event)"
+              >
+                {{ event.registered ? 'Registered ✓' : event.status === 'Full' ? 'Full' : 'Register' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- MY REGISTRATIONS TAB -->
+    <div class="content-wrapper" *ngIf="activeTab === 'registrations'">
+      <section class="events-section">
+        <h2 class="section-title">My Registrations ({{ myRegistrations.length }})</h2>
+
+        <!-- Registered Events -->
+        <div class="events-grid" *ngIf="myRegistrations.length > 0">
+          <div 
+            *ngFor="let event of myRegistrations" 
+            class="event-card registered-card"
+          >
+            <div class="event-header">
+              <span 
+                class="event-category" 
+                [style.background]="getCategoryColor(event.category)"
+              >
+                {{ event.category }}
+              </span>
+              <span class="registered-badge">
+                <span class="material-icons">check_circle</span>
+                Registered
+              </span>
+            </div>
+
+            <h3 class="event-title">{{ event.title }}</h3>
+            <p class="event-description">{{ event.description }}</p>
+
+            <div class="event-details">
+              <div class="event-detail">
+                <span class="material-icons">calendar_today</span>
+                <span>{{ formatDate(event.date) }}</span>
+              </div>
+              <div class="event-detail">
+                <span class="material-icons">schedule</span>
+                <span>{{ event.time }}</span>
+              </div>
+              <div class="event-detail">
+                <span class="material-icons">location_on</span>
+                <span>{{ event.location }}</span>
+              </div>
+            </div>
+
+            <div class="event-footer">
+              <div class="event-attendees">
+                <span class="material-icons">group</span>
+                <span>{{ event.attendees }}/{{ event.maxAttendees }}</span>
+              </div>
+              
+              <!-- Action Buttons -->
+              <div class="event-actions">
+                <button class="action-btn view-btn" (click)="viewEventDetails(event)">
+                  <span class="material-icons">visibility</span>
+                  <span>View</span>
+                </button>
+                <button class="action-btn calendar-btn" (click)="addToCalendar(event)">
+                  <span class="material-icons">event</span>
+                  <span>Calendar</span>
+                </button>
+                <button class="action-btn cancel-btn" (click)="cancelRegistration(event)">
+                  <span class="material-icons">close</span>
+                  <span>Cancel</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" *ngIf="myRegistrations.length === 0">
+          <span class="material-icons">event_busy</span>
+          <h3>No Registrations Yet</h3>
+          <p>You haven't registered for any events. Browse events to get started!</p>
+          <button class="btn-primary" (click)="setActiveTab('events')">
+            <span class="material-icons">search</span>
+            Browse Events
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <!-- CALENDAR TAB -->
+    <div class="content-wrapper" *ngIf="activeTab === 'calendar'">
+      <section class="calendar-section">
+        <h2 class="section-title">Event Calendar</h2>
+
+        <div class="calendar-header">
+          <button class="calendar-nav-btn" (click)="previousMonth()">
+            <span class="material-icons">chevron_left</span>
+          </button>
+          <div class="calendar-month-year">{{ currentMonthYear }}</div>
+          <button class="calendar-nav-btn" (click)="nextMonth()">
+            <span class="material-icons">chevron_right</span>
+          </button>
+        </div>
+
+        <div class="calendar-grid">
+          <div *ngFor="let day of weekDays" class="calendar-day-header">
+            {{ day }}
+          </div>
+          
+          <div 
+            *ngFor="let day of calendarDays" 
+            class="calendar-day"
+            [class.other-month]="!day.isCurrentMonth"
+            [class.today]="day.isToday"
+            [class.has-events]="day.events.length > 0"
+          >
+            <div class="day-number">{{ day.date }}</div>
+            <div class="day-events" *ngIf="day.events.length > 0">
+              <span 
+                *ngFor="let event of day.events.slice(0, 2)"
+                class="calendar-event-dot"
+                [style.background]="getCategoryColor(event.category)"
+              ></span>
+              <span *ngIf="day.events.length > 2" class="more-events">
+                +{{ day.events.length - 2 }} more
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- EVENT HISTORY TAB -->
+    <div class="content-wrapper" *ngIf="activeTab === 'history'">
+      <section class="history-section">
+        <h2 class="section-title">Event History</h2>
+
+        <!-- Filter Tabs -->
+        <div class="history-filters">
+          <button 
+            class="filter-tab"
+            [class.active]="historyFilter === 'all'"
+            (click)="historyFilter = 'all'"
+          >
+            All Events ({{ eventHistory.length }})
+          </button>
+          <button 
+            class="filter-tab"
+            [class.active]="historyFilter === 'attended'"
+            (click)="historyFilter = 'attended'"
+          >
+            Attended ({{ getAttendedEvents().length }})
+          </button>
+          <button 
+            class="filter-tab"
+            [class.active]="historyFilter === 'missed'"
+            (click)="historyFilter = 'missed'"
+          >
+            Missed ({{ getMissedEvents().length }})
+          </button>
+        </div>
+
+        <!-- History Cards -->
+        <div class="history-list">
+          <div 
+            *ngFor="let item of getFilteredHistory()" 
+            class="history-card"
+            [class.attended]="item.attended"
+            [class.missed]="!item.attended"
+          >
+            <div class="history-date">
+              <div class="history-day">{{ getDay(item.event.date) }}</div>
+              <div class="history-month">{{ getMonth(item.event.date) }}</div>
+            </div>
+
+            <div class="history-content">
+              <div class="history-header">
+                <h3 class="history-title">{{ item.event.title }}</h3>
+                <span 
+                  class="history-status"
+                  [class.status-attended]="item.attended"
+                  [class.status-missed]="!item.attended"
+                >
+                  {{ item.attended ? 'Attended' : 'Missed' }}
+                </span>
+              </div>
+
+              <span 
+                class="event-category" 
+                [style.background]="getCategoryColor(item.event.category)"
+              >
+                {{ item.event.category }}
+              </span>
+
+              <div class="event-details">
+                <div class="event-detail">
+                  <span class="material-icons">schedule</span>
+                  <span>{{ item.event.time }}</span>
+                </div>
+                <div class="event-detail">
+                  <span class="material-icons">location_on</span>
+                  <span>{{ item.event.location }}</span>
+                </div>
+              </div>
+
+              <p class="event-description">{{ item.event.description }}</p>
+
+              <!-- Rating for attended events -->
+              <div *ngIf="item.attended && item.rating" class="event-rating">
+                <span class="material-icons" *ngFor="let star of [1,2,3,4,5]">
+                  {{ star <= item.rating ? 'star' : 'star_border' }}
+                </span>
+              </div>
+              <button *ngIf="item.attended && !item.rating" class="rate-btn">
+                Rate Event
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" *ngIf="getFilteredHistory().length === 0">
+          <span class="material-icons">history</span>
+          <h3>No {{ historyFilter === 'all' ? '' : historyFilter === 'attended' ? 'Attended' : 'Missed' }} Events</h3>
+          <p>No event history to display.</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- NOTIFICATIONS TAB -->
+    <div class="content-wrapper" *ngIf="activeTab === 'notifications'">
+      <section class="notifications-full">
+        <h2 class="section-title">Notifications</h2>
+
+        <div class="notifications-container">
+          <div 
+            *ngFor="let notification of notifications" 
+            class="notification-item"
+            [class.unread]="!notification.read"
+            (click)="markNotificationAsRead(notification)"
+          >
+            <div class="notification-icon" [class]="notification.type">
+              <span class="material-icons">
+                {{ notification.type === 'info' ? 'info' : notification.type === 'warning' ? 'warning' : 'check_circle' }}
+              </span>
+            </div>
+            <div class="notification-content">
+              <div class="notification-title">{{ notification.title }}</div>
+              <div class="notification-message">{{ notification.message }}</div>
+              <div class="notification-time">{{ notification.time }}</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- PROFILE TAB -->
+    <div class="content-wrapper" *ngIf="activeTab === 'profile' && !activeSubPage">
+      <section class="profile-section">
+        <h2 class="section-title">My Profile</h2>
+        
+        <div class="profile-header">
+          <div class="profile-avatar-large">
+            <span class="material-icons">account_circle</span>
+          </div>
+          <div class="profile-header-info">
+            <h3 class="profile-name">{{ studentName }}</h3>
+            <p class="profile-email">{{ email }}</p>
+            <div class="profile-stats">
+              <div class="profile-stat-item">
+                <span class="material-icons">badge</span>
+                <span>{{ studentId }}</span>
+              </div>
+              <div class="profile-stat-item">
+                <span class="material-icons">school</span>
+                <span>{{ department }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-card">
+          <h3 class="profile-section-title">Personal Information</h3>
+          <div class="profile-grid">
+            <div class="profile-item">
+              <span class="material-icons">person</span>
+              <div class="profile-item-content">
+                <label>Full Name</label>
+                <p>{{ studentName }}</p>
+              </div>
+            </div>
+            <div class="profile-item">
+              <span class="material-icons">badge</span>
+              <div class="profile-item-content">
+                <label>Student ID</label>
+                <p>{{ studentId }}</p>
+              </div>
+            </div>
+            <div class="profile-item">
+              <span class="material-icons">school</span>
+              <div class="profile-item-content">
+                <label>Department</label>
+                <p>{{ department }}</p>
+              </div>
+            </div>
+            <div class="profile-item">
+              <span class="material-icons">email</span>
+              <div class="profile-item-content">
+                <label>Email</label>
+                <p>{{ email }}</p>
+              </div>
+            </div>
+            <div class="profile-item">
+              <span class="material-icons">phone</span>
+              <div class="profile-item-content">
+                <label>Phone</label>
+                <p>{{ phone }}</p>
+              </div>
+            </div>
+            <div class="profile-item">
+              <span class="material-icons">home</span>
+              <div class="profile-item-content">
+                <label>Address</label>
+                <p>{{ address }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-actions">
+          <button class="profile-btn primary" (click)="openEditProfile()">
+            <span class="material-icons">edit</span>
+            <span>Edit Profile</span>
+          </button>
+          <button class="profile-btn secondary" (click)="openSettings()">
+            <span class="material-icons">settings</span>
+            <span>Settings</span>
+          </button>
+          <button class="profile-btn secondary" (click)="openChangePassword()">
+            <span class="material-icons">lock</span>
+            <span>Change Password</span>
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <!-- EDIT PROFILE PAGE -->
+    <div class="content-wrapper" *ngIf="activeTab === 'profile' && activeSubPage === 'edit-profile'">
+      <section class="edit-profile-section">
+        <div class="page-header">
+          <button class="back-btn" (click)="cancelEditProfile()">
+            <span class="material-icons">arrow_back</span>
+            Back to Profile
+          </button>
+          <h2 class="section-title">Edit Profile</h2>
+        </div>
+
+        <div class="profile-card">
+          <form>
+            <div class="form-group">
+              <label for="name">Full Name</label>
+              <input 
+                type="text" 
+                id="name" 
+                [(ngModel)]="editProfileForm.name" 
+                name="name"
+                placeholder="Enter your full name"
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="email">Email Address</label>
+              <input 
+                type="email" 
+                id="email" 
+                [(ngModel)]="editProfileForm.email" 
+                name="email"
+                placeholder="Enter your email"
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="phone">Phone Number</label>
+              <input 
+                type="tel" 
+                id="phone" 
+                [(ngModel)]="editProfileForm.phone" 
+                name="phone"
+                placeholder="Enter your phone number"
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="address">Address</label>
+              <textarea 
+                id="address" 
+                [(ngModel)]="editProfileForm.address" 
+                name="address"
+                rows="3"
+                placeholder="Enter your address"
+              ></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="bio">Bio</label>
+              <textarea 
+                id="bio" 
+                [(ngModel)]="editProfileForm.bio" 
+                name="bio"
+                rows="4"
+                placeholder="Tell us about yourself"
+              ></textarea>
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="profile-btn secondary" (click)="cancelEditProfile()">
+                Cancel
+              </button>
+              <button type="button" class="profile-btn primary" (click)="saveProfile()">
+                <span class="material-icons">save</span>
+                Save Changes
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </div>
+
+    <!-- SETTINGS PAGE -->
+    <div class="content-wrapper" *ngIf="activeTab === 'profile' && activeSubPage === 'settings'">
+      <section class="settings-section">
+        <div class="page-header">
+          <button class="back-btn" (click)="cancelSettings()">
+            <span class="material-icons">arrow_back</span>
+            Back to Profile
+          </button>
+          <h2 class="section-title">Settings</h2>
+        </div>
+
+        <div class="profile-card">
+          <h3 class="profile-section-title">Notification Preferences</h3>
+          
+          <div class="settings-group">
+            <div class="setting-item">
+              <div class="setting-info">
+                <span class="material-icons">email</span>
+                <div>
+                  <div class="setting-label">Email Notifications</div>
+                  <div class="setting-description">Receive event updates via email</div>
+                </div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" [(ngModel)]="settingsForm.emailNotifications" name="emailNotifications">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <span class="material-icons">sms</span>
+                <div>
+                  <div class="setting-label">SMS Notifications</div>
+                  <div class="setting-description">Get text messages for important updates</div>
+                </div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" [(ngModel)]="settingsForm.smsNotifications" name="smsNotifications">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <span class="material-icons">event_note</span>
+                <div>
+                  <div class="setting-label">Event Reminders</div>
+                  <div class="setting-description">Get reminded about upcoming events</div>
+                </div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" [(ngModel)]="settingsForm.eventReminders" name="eventReminders">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="setting-item">
+              <div class="setting-info">
+                <span class="material-icons">campaign</span>
+                <div>
+                  <div class="setting-label">Marketing Emails</div>
+                  <div class="setting-description">Receive promotional content and newsletters</div>
+                </div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" [(ngModel)]="settingsForm.marketingEmails" name="marketingEmails">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <h3 class="profile-section-title">General Preferences</h3>
+          
+          <div class="form-group">
+            <label for="language">Language</label>
+            <select id="language" [(ngModel)]="settingsForm.language" name="language">
+              <option value="en">English</option>
+              <option value="es">Spanish</option>
+              <option value="fr">French</option>
+              <option value="de">German</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="timezone">Timezone</label>
+            <select id="timezone" [(ngModel)]="settingsForm.timezone" name="timezone">
+              <option value="UTC-5">Eastern Time (UTC-5)</option>
+              <option value="UTC-6">Central Time (UTC-6)</option>
+              <option value="UTC-7">Mountain Time (UTC-7)</option>
+              <option value="UTC-8">Pacific Time (UTC-8)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="theme">Theme</label>
+            <select id="theme" [(ngModel)]="settingsForm.theme" name="theme">
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+              <option value="auto">Auto</option>
+            </select>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="profile-btn secondary" (click)="cancelSettings()">
+              Cancel
+            </button>
+            <button type="button" class="profile-btn primary" (click)="saveSettings()">
+              <span class="material-icons">save</span>
+              Save Settings
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- CHANGE PASSWORD PAGE -->
+    <div class="content-wrapper" *ngIf="activeTab === 'profile' && activeSubPage === 'change-password'">
+      <section class="change-password-section">
+        <div class="page-header">
+          <button class="back-btn" (click)="cancelChangePassword()">
+            <span class="material-icons">arrow_back</span>
+            Back to Profile
+          </button>
+          <h2 class="section-title">Change Password</h2>
+        </div>
+
+        <div class="profile-card">
+          <div class="password-requirements">
+            <h4>Password Requirements:</h4>
+            <ul>
+              <li>At least 8 characters long</li>
+              <li>Include uppercase and lowercase letters</li>
+              <li>Include at least one number</li>
+              <li>Include at least one special character</li>
+            </ul>
+          </div>
+
+          <form>
+            <div class="form-group">
+              <label for="currentPassword">Current Password</label>
+              <input 
+                type="password" 
+                id="currentPassword" 
+                [(ngModel)]="changePasswordForm.currentPassword" 
+                name="currentPassword"
+                placeholder="Enter current password"
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="newPassword">New Password</label>
+              <input 
+                type="password" 
+                id="newPassword" 
+                [(ngModel)]="changePasswordForm.newPassword" 
+                name="newPassword"
+                placeholder="Enter new password"
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="confirmPassword">Confirm New Password</label>
+              <input 
+                type="password" 
+                id="confirmPassword" 
+                [(ngModel)]="changePasswordForm.confirmPassword" 
+                name="confirmPassword"
+                placeholder="Confirm new password"
+              >
+            </div>
+
+            <div class="form-actions">
+              <button type="button" class="profile-btn secondary" (click)="cancelChangePassword()">
+                Cancel
+              </button>
+              <button type="button" class="profile-btn primary" (click)="changePassword()">
+                <span class="material-icons">lock</span>
+                Change Password
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </div>
+
+    <!-- LOGOUT TAB -->
+    <div class="content-wrapper" *ngIf="activeTab === 'logout'">
+      <div class="logout-container">
+        <div class="logout-card">
+          <div class="logout-icon">
+            <span class="material-icons">logout</span>
+          </div>
+          
+          <h2 class="logout-title">Logout Confirmation</h2>
+          <p class="logout-message">Are you sure you want to logout from your account?</p>
+          
+          <div class="logout-info">
+            <div class="info-item">
+              <span class="material-icons">person</span>
+              <div class="info-content">
+                <div class="info-label">Student Name</div>
+                <div class="info-value">{{ studentName }}</div>
+              </div>
+            </div>
+            <div class="info-item">
+              <span class="material-icons">badge</span>
+              <div class="info-content">
+                <div class="info-label">Student ID</div>
+                <div class="info-value">{{ studentId }}</div>
+              </div>
+            </div>
+            <div class="info-item">
+              <span class="material-icons">school</span>
+              <div class="info-content">
+                <div class="info-label">Department</div>
+                <div class="info-value">{{ department }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="logout-stats">
+            <div class="logout-stat-item">
+              <span class="material-icons">event</span>
+              <div class="logout-stat-content">
+                <div class="logout-stat-value">{{ stats[1].value }}</div>
+                <div class="logout-stat-label">Active Registrations</div>
+              </div>
+            </div>
+            <div class="logout-stat-item">
+              <span class="material-icons">notifications</span>
+              <div class="logout-stat-content">
+                <div class="logout-stat-value">{{ getUnreadNotificationsCount() }}</div>
+                <div class="logout-stat-label">Unread Notifications</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="logout-warning">
+            <span class="material-icons">info</span>
+            <p>You will be redirected to the login page. Make sure to save any ongoing work.</p>
+          </div>
+
+          <div class="logout-actions">
+            <button class="logout-cancel-btn" (click)="cancelLogout()">
+              <span class="material-icons">arrow_back</span>
+              Stay Logged In
+            </button>
+            <button class="logout-confirm-btn" (click)="handleLogout()">
+              <span class="material-icons">logout</span>
+              Yes, Logout
+            </button>
+          </div>
+        </div>
+
+        <!-- Quick Stats on Logout -->
+        <div class="logout-activity-summary">
+          <h3 class="summary-title">Your Activity Summary</h3>
+          <div class="summary-grid">
+            <div class="summary-card">
+              <div class="summary-icon" style="background: rgba(59, 130, 246, 0.2); border: 2px solid #3b82f6;">
+                <span class="material-icons">event_available</span>
+              </div>
+              <div class="summary-content">
+                <div class="summary-value">{{ stats[0].value }}</div>
+                <div class="summary-label">Upcoming Events</div>
+              </div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-icon" style="background: rgba(139, 92, 246, 0.2); border: 2px solid #8b5cf6;">
+                <span class="material-icons">assignment_turned_in</span>
+              </div>
+              <div class="summary-content">
+                <div class="summary-value">{{ stats[1].value }}</div>
+                <div class="summary-label">Registered</div>
+              </div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-icon" style="background: rgba(16, 185, 129, 0.2); border: 2px solid #10b981;">
+                <span class="material-icons">check_circle</span>
+              </div>
+              <div class="summary-content">
+                <div class="summary-value">{{ stats[2].value }}</div>
+                <div class="summary-label">Attended</div>
+              </div>
+            </div>
+          </div>
+          <p class="summary-note">We hope to see you back soon! 👋</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
