@@ -10,6 +10,12 @@
   align-items: center;
 }
 
+.error {
+  color: red;
+  margin-top: 10px;
+  font-size: 14px;
+  text-align: center;
+}
 
 .card {
   width: 380px;
@@ -173,7 +179,6 @@ input, select {
     transform: translateY(0) scale(1);
   }
 }
-/* gradientBG not used on this page */
 @media (max-width: 480px) {
   .card {
     width: 90%;
