@@ -1,4 +1,4 @@
-# DemoPages
+# Angular project
 
 This project was generated using **Angular CLI v21.1.2**.
 

@@ -1,0 +1,48 @@
+<div class="signup-card">
+  <h2>Create Account</h2>
+  <p class="subtitle">Join CampusEventHub — it only takes a moment</p>
+
+  <form class="form" (ngSubmit)="onSubmit()">
+    <label>Full name</label>
+    <input type="text" name="name" [(ngModel)]="user.name" placeholder="Full Name" required />
+
+    <label>Email</label>
+    <input type="email" name="email" [(ngModel)]="user.email" placeholder="you@school.edu" required />
+
+    <label>College / University</label>
+    <input type="text" name="college" [(ngModel)]="user.college" placeholder="College or University" />
+
+    <label>Password</label>
+    <input type="password" name="password" [(ngModel)]="user.password" placeholder="Password" required />
+
+    <label>Confirm Password</label>
+    <input type="password" name="confirmPassword" [(ngModel)]="user.confirmPassword" placeholder="Confirm Password" required />
+
+    <div class="actions">
+      <button
+        class="btn"
+        type="submit"
+        [disabled]="isSubmitting || isSuccess"
+        [class.shrink]="isSubmitting || isSuccess">
+
+        <span class="label" *ngIf="!isSubmitting && !isSuccess">Sign Up</span>
+        <span class="spinner" *ngIf="isSubmitting" aria-hidden></span>
+        <svg *ngIf="isSuccess" class="btn-check" viewBox="0 0 52 52" aria-hidden>
+          <circle cx="26" cy="26" r="24" class="circle" fill="none"/>
+          <path d="M14 27l7 7 17-17" class="check" fill="none"/>
+        </svg>
+      </button>
+    </div>
+  </form>
+
+  <div class="success-panel" *ngIf="isSuccess">
+    <div class="check-wrap">
+      <svg class="success-check" viewBox="0 0 52 52" aria-hidden>
+        <circle cx="26" cy="26" r="24" class="bg" fill="none"/>
+        <path d="M14 27l7 7 17-17" class="mark" fill="none"/>
+      </svg>
+    </div>
+    <h3 class="title">Account Created Successfully</h3>
+    <p class="subtitle-muted">Welcome to CampusEventHub!</p>
+  </div>
+</div>
