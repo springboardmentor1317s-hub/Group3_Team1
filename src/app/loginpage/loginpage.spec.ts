@@ -11,15 +11,15 @@ describe('Loginpage', () => {
     await TestBed.configureTestingModule({
       imports: [
         Loginpage,
-        FormsModule,          // ✅ ADD THIS
-        RouterTestingModule   // ✅ ADD THIS
+        FormsModule,          //  ADD THIS
+        RouterTestingModule   // ADD THIS
       ]
     })
     .compileComponents();
 
     fixture = TestBed.createComponent(Loginpage);
     component = fixture.componentInstance;
-    fixture.detectChanges();   // ✅ ADD THIS
+    fixture.detectChanges();   //  ADD THIS
   });
 
   it('should create', () => {
