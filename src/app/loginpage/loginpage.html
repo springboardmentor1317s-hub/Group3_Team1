@@ -26,6 +26,9 @@
       </select>
 
       <button type="submit">Login</button>
+      <p class="error" *ngIf="errorMessage">
+      {{ errorMessage }}
+      </p>
 
       <p class="link">
         Don’t have an account?
