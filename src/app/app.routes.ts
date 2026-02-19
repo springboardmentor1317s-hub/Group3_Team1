@@ -5,6 +5,7 @@ import { Homepage } from './homepage/homepage';
 import { StudentDashboard } from './student-dashboard/student-dashboard';
 import { AdminDashboard } from './admin-dashboard/admin-dashboard';
 import { roleGuard } from './role/role';
+import { CreateEvent } from './create-event/create-event';
 
 export const routes: Routes = [
 
@@ -23,5 +24,7 @@ export const routes: Routes = [
     path: 'admin-dashboard',
     component: AdminDashboard,
     canActivate: [roleGuard('college_admin')]
-  }
+  },
+
+  {path:'create-event',component: CreateEvent}
 ];

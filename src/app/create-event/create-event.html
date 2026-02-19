@@ -1,0 +1,33 @@
+<div class="bg">
+
+  <div class="glass-card">
+    <h2>Create Event</h2>
+    <p class="sub">Fill details to create a new event</p>
+
+    <form>
+      <input type="text" placeholder="Event Title">
+      <input type="date">
+
+      <input type="text" placeholder="Location">
+
+      <select>
+        <option value="">Select Category</option>
+        <option>Hackathon</option>
+        <option>Cultural</option>
+        <option>Sports</option>
+        <option>Workshop</option>
+      </select>
+
+      <textarea rows="3" placeholder="Event Description"></textarea>
+
+      <button class="main-btn" type="button" (click)="createEvent()">
+        CREATE EVENT
+      </button>
+
+      <button class="link-btn" type="button" (click)="cancel()">
+        Cancel
+      </button>
+    </form>
+  </div>
+
+</div>

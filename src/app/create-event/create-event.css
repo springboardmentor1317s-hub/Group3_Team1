@@ -1,0 +1,134 @@
+/* ===== FULL BACKGROUND IMAGE ===== */
+.bg {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background: url('https://images.unsplash.com/photo-1501785888041-af3ef285b470')
+              no-repeat center center/cover;
+  position: relative;
+}
+
+/* Dark overlay */
+.bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+}
+
+/* ===== GLASS CARD ===== */
+.glass-card {
+  position: relative;
+  z-index: 1;
+
+  width: 380px;
+  padding: 35px;
+  border-radius: 18px;
+
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+
+  box-shadow: 0 25px 60px rgba(0,0,0,.5);
+  text-align: center;
+
+  animation: fadeUp 0.9s ease;
+}
+
+/* ===== TEXT ===== */
+.glass-card h2 {
+  color: #fff;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.sub {
+  color: #e5e7eb;
+  font-size: 14px;
+  margin-bottom: 22px;
+}
+
+/* ===== INPUTS ===== */
+form input,
+form select,
+form textarea {
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  border-radius: 20px;
+  border: none;
+  outline: none;
+
+  background: rgba(255,255,255,0.25);
+  color: rgb(249, 249, 249);
+  font-size: 14px;
+
+  transition: all 0.3s ease;
+}
+option{
+    color: #1f2937;
+}
+
+form input::placeholder,
+form textarea::placeholder {
+  color: #f1f5f9;
+}
+
+form input:focus,
+form select:focus,
+form textarea:focus {
+  background: rgba(255,255,255,0.35);
+  transform: scale(1.02);
+}
+
+/* ===== BUTTON ===== */
+.main-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 25px;
+  border: none;
+  cursor: pointer;
+
+  background: #f5c7a9;
+  color: #1f2937;
+  font-weight: 700;
+  letter-spacing: 1px;
+
+  transition: all 0.3s ease;
+}
+
+.main-btn:hover {
+  background: #f1bfa0;
+  transform: translateY(-2px);
+}
+
+/* Cancel link */
+.link-btn {
+  margin-top: 12px;
+  background: transparent;
+  border: none;
+  color: #e5e7eb;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+/* ===== ANIMATION ===== */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== MOBILE ===== */
+@media (max-width: 480px) {
+  .glass-card {
+    width: 90%;
+  }
+}
