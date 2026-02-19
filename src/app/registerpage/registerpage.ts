@@ -29,7 +29,10 @@ export class Registerpage {
   };
 
   // constructor(private router: Router) {}
-  constructor(private authService: AuthService) {}
+  constructor(
+  private authService: AuthService,
+  private router: Router
+) {}
 
   // register() {
   //   console.log(this.user);
