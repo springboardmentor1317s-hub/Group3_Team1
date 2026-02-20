@@ -56,6 +56,16 @@ export class Loginpage {
 
   this.errorMessage = '';
 
+     if (this.user.role === 'super_admin') {
+          if (this.user.email === 'super@campus.com' && this.user.password === 'super@123') {
+          this.auth.setRole('super_admin');
+          this.router.navigate(['/super-admin-dashboard']);
+      } else {
+        alert('Invalid Super Admin Credentials');
+      }
+      return;
+    } 
+
   this.http.post('http://localhost:5000/api/login', this.user)
     .subscribe({
       next: (res: any) => {
@@ -76,22 +86,16 @@ export class Loginpage {
           
         //   this.router.navigate(['/student-dashboard']);
         // }
-        if (this.user.role === 'super_admin') {
-          if (this.user.email === 'super@campus.com' && this.user.password === 'super@123') {
-        this.auth.setRole(this.user.role);
-        this.router.navigate(['/super-admin-dashboard']);
-      } else {
-        alert('Invalid Super Admin Credentials');
-      }
-    } else {
-      this.auth.setRole(this.user.role);
+        
+    
+      this.auth.setRole(res.user.role);
 
       if (this.user.role === 'college_admin') {
         this.router.navigate(['/admin-dashboard']);
       } else {
         this.router.navigate(['/student-dashboard']);
       }
-    }
+   
         
 
       },
