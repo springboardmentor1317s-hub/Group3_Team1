@@ -39,4 +39,3 @@ export const routes: Routes = [
   component: StudentDashboardComponent
 }
 ];
-
