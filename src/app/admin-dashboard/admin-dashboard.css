@@ -86,8 +86,7 @@
   text-emphasis-color: calc();
   box-shadow: 0 8px 20px rgba(73, 75, 202, 0.45);
 }
-<<<<<<< HEAD
-=======
+
 #create{
   padding: 10px 18px;
   border-radius: 14px;
@@ -119,7 +118,7 @@
   text-decoration: none;
   color: white;
 }
->>>>>>> f02281b (create button and form)
+
 
 /* ===== STATS CARDS ===== */
 .stats {

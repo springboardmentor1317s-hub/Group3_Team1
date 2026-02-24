@@ -1,11 +1,12 @@
-import { Component } from '@angular/core';
+import { Component, ViewEncapsulation } from '@angular/core';
 import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-create-event',
   standalone: true,
   templateUrl: './create-event.html',
-  styleUrls: ['./create-event.css']
+  styleUrls: ['./create-event.css'],
+   encapsulation: ViewEncapsulation.None 
 })
 export class CreateEvent {
 

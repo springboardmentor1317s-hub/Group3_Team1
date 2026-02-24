@@ -1,10 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-<<<<<<< HEAD
-import { RouterLink } from "@angular/router";
-=======
-import { RouterLink, Router } from '@angular/router';
->>>>>>> f02281b (create button and form)
+import { Router, RouterLink } from '@angular/router';
+
 
 @Component({
   selector: 'app-admin-dashboard',
