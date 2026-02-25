@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-
+import { HttpClient } from '@angular/common/http';
 type DashboardTab = 'overview' | 'events' | 'analytics';
 
 interface OrganizerEvent {
@@ -37,6 +37,9 @@ interface CreateEventForm {
   styleUrls: ['./admin-dashboard.css']
 })
 export class AdminDashboard implements OnInit {
+
+  private readonly API_URL = 'http://localhost:5000/api/events';
+  constructor(private readonly http: HttpClient) {}
   activeTab: DashboardTab = 'overview';
   createModalOpen = false;
 
@@ -44,7 +47,7 @@ export class AdminDashboard implements OnInit {
   createForm: CreateEventForm = this.getEmptyCreateForm();
 
   ngOnInit(): void {
-    this.loadEvents();
+    this.fetchEvents();
   }
 
   setTab(tab: DashboardTab): void {
@@ -96,6 +99,18 @@ export class AdminDashboard implements OnInit {
     this.createForm.posterDataUrl = null;
   }
 
+  fetchEvents(): void {
+    this.http.get<OrganizerEvent[]>(this.API_URL).subscribe({
+      next: (data) => {
+        this.events = data;
+        this.refreshEventStatuses();
+      },
+      error: (err) => {
+        console.error('Error fetching events', err);
+      }
+    });
+  }
+
   saveEvent(): void {
     const name = this.createForm.name.trim();
     if (!name || !this.createForm.dateTime.trim() || !this.createForm.location.trim()) {
@@ -103,8 +118,7 @@ export class AdminDashboard implements OnInit {
       return;
     }
 
-    const newEvent: OrganizerEvent = {
-      id: this.makeId(),
+    const payload = {
       name,
       dateTime: this.createForm.dateTime,
       location: this.createForm.location.trim(),
@@ -117,20 +131,35 @@ export class AdminDashboard implements OnInit {
       participants: 0
     };
 
-    this.events = [newEvent, ...this.events];
-    this.persistEvents();
+    this.http.post<OrganizerEvent>(this.API_URL, payload).subscribe({
+      next: (savedEvent) => {
+        this.events = [savedEvent, ...this.events];
 
-    this.createModalOpen = false;
-    this.resetCreateForm();
-    this.activeTab = 'events';
+        this.createModalOpen = false;
+        this.resetCreateForm();
+        this.activeTab = 'events';
+      },
+      error: (err) => {
+        console.error('Error saving event', err);
+        const message = err?.error?.error ?? err?.error?.message ?? 'Could not save event. Please try again.';
+        alert(message);
+      }
+    });
   }
 
   deleteEvent(event: OrganizerEvent): void {
     const ok = window.confirm(`Delete "${event.name}"? This can't be undone.`);
     if (!ok) return;
 
-    this.events = this.events.filter((e) => e.id !== event.id);
-    this.persistEvents();
+    this.http.delete<void>(`${this.API_URL}/${event.id}`).subscribe({
+      next: () => {
+        this.events = this.events.filter((e) => e.id !== event.id);
+      },
+      error: (err) => {
+        console.error('Error deleting event', err);
+        alert('Could not delete event. Please try again.');
+      }
+    });
   }
 
   exportEvents(): void {
@@ -202,22 +231,6 @@ export class AdminDashboard implements OnInit {
     return Math.round(total / this.events.length);
   }
 
-  private loadEvents(): void {
-    try {
-      const raw = localStorage.getItem('campus_event_hub_admin_events');
-      if (!raw) return;
-      const parsed: unknown = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return;
-
-      this.events = parsed
-        .filter((v): v is OrganizerEvent => typeof v === 'object' && v !== null)
-        .map((v) => v as OrganizerEvent);
-      this.refreshEventStatuses();
-    } catch {
-      // ignore invalid storage values
-    }
-  }
-
   private refreshEventStatuses(): void {
     const today = this.startOfToday();
     this.events = this.events.map((event) => {
@@ -259,14 +272,6 @@ export class AdminDashboard implements OnInit {
     return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
   }
 
-  private persistEvents(): void {
-    try {
-      localStorage.setItem('campus_event_hub_admin_events', JSON.stringify(this.events));
-    } catch {
-      // ignore quota errors
-    }
-  }
-
   private resetCreateForm(): void {
     this.createForm = this.getEmptyCreateForm();
   }
@@ -283,7 +288,4 @@ export class AdminDashboard implements OnInit {
     };
   }
 
-  private makeId(): string {
-    return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  }
 }
