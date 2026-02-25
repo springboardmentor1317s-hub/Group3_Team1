@@ -24,13 +24,17 @@ export class Loginpage {
     private router: Router
   ) {}
 
-  login() {
-    this.auth.setRole(this.user.role);
+ login() {
+  this.auth.setRole(this.user.role);
 
-    if (this.user.role === 'college_admin') {
-      this.router.navigate(['/admin-dashboard']);
-    } else {
-      this.router.navigate(['/student-dashboard']);
-    }
+  if (this.user.role === 'super-admin') {
+    this.router.navigate(['/super-admin-dashboard']);
+  } 
+  else if (this.user.role === 'college_admin') {
+    this.router.navigate(['/admin-dashboard']);
+  } 
+  else {
+    this.router.navigate(['/student-dashboard']);
   }
+}
 }
