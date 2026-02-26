@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
+import { tap } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root'
@@ -11,7 +12,46 @@ export class AuthService {
   constructor(private http: HttpClient) {}
 
   register(user: any) {
-    return this.http.post(`${this.API_URL}/register`, user);
+    // backend uses '/signup'
+    return this.http.post(`${this.API_URL}/signup`, user);
   }
 
+  login(identifier: string, password: string) {
+    return this.http
+      .post<{ token: string; role: string; name: string }>(
+        `${this.API_URL}/login`,
+        { identifier, password }
+      )
+      .pipe(
+        tap((res) => {
+          // store token & role locally
+          this.setToken(res.token);
+          this.setRole(res.role);
+        })
+      );
+  }
+
+  setRole(role: string) {
+    localStorage.setItem('role', role);
+  }
+
+  getRole(): string | null {
+    return localStorage.getItem('role');
+  }
+
+  setToken(token: string) {
+    localStorage.setItem('token', token);
+  }
+
+  getToken(): string | null {
+    return localStorage.getItem('token');
+  }
+
+  logout() {
+    localStorage.clear();
+  }
+
+  isLoggedIn(): boolean {
+    return !!this.getToken();
+  }
 }

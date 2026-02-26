@@ -45,7 +45,8 @@
                     required>
 
             <button type="submit">Create Account</button>
-            
+
+            <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
 
             <p class="link">
                 Already have an account?
