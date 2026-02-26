@@ -9,8 +9,8 @@ import { SignupSuccessComponent } from './signup-success/signup-success.componen
 import { roleGuard } from './role/role';
 
 
-export const routes: Routes = [
 
+export const routes: Routes = [
   { path: '', component:  Homepage },
 
   { path: 'register', component: Registerpage },
@@ -33,9 +33,7 @@ export const routes: Routes = [
     path: 'super-admin-dashboard',
     component: SuperAdminDashboard,
     canActivate: [roleGuard('super_admin')]
-  },
- {
-  path: 'student-dashboard',
-  component: StudentDashboardComponent
-}
+  }
 ];
+
+

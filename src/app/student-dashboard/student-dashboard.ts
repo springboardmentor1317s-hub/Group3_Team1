@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -50,9 +50,12 @@ export interface CalendarEvent {
   styleUrls: ['./student-dashboard.css']
 })
 export class StudentDashboardComponent implements OnInit {
+  @ViewChild('profileImageInput') private profileImageInput?: ElementRef<HTMLInputElement>;
+
   sidebarOpen = false;
   activeTab = 'dashboard';
   activeSubPage = ''; // For nested pages like 'edit-profile', 'settings', 'change-password'
+  profileImageUrl: string | null = null;
   
   // Student Information
   studentName = 'John Doe';
@@ -577,17 +580,33 @@ export class StudentDashboardComponent implements OnInit {
     
     // Check if already added
     const exists = this.calendarEvents.find(ce => ce.eventId === event.id);
-    if (exists) {
-      alert('This event is already in your calendar!');
-      return;
+    if (!exists) {
+      this.calendarEvents.push(calendarEvent);
     }
-    
-    this.calendarEvents.push(calendarEvent);
     
     // Create .ics file for download
     this.downloadICSFile(event);
     
-    alert(`"${event.title}" has been added to your calendar!\n\nYou can also import the downloaded .ics file to Google Calendar, Outlook, or Apple Calendar.`);
+    alert(
+      `"${event.title}" ${exists ? 'is already marked in your dashboard calendar' : 'has been added to your calendar'}.\n\nA .ics file was downloaded. Import it into Google Calendar, Outlook, or Apple Calendar to add the event.`
+    );
+  }
+
+  openProfileImagePicker(): void {
+    this.profileImageInput?.nativeElement.click();
+  }
+
+  onProfileImageSelected(event: globalThis.Event): void {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.profileImageUrl = typeof reader.result === 'string' ? reader.result : null;
+    };
+    reader.readAsDataURL(file);
   }
 
   downloadICSFile(event: Event): void {

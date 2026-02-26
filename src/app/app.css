@@ -1,0 +1,213 @@
+.ai-bot-container {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.ai-bot-toggle {
+  width: 74px;
+  height: 74px;
+  border: none;
+  border-radius: 50%;
+  padding: 0;
+  background: transparent;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+  position: relative;
+}
+
+.ai-bot-toggle:hover {
+  transform: scale(1.03);
+}
+
+.ai-bot-toggle::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  border: 1.8px solid rgba(255, 86, 205, 0.95);
+  box-shadow: 0 0 14px rgba(255, 86, 205, 0.55), 0 0 22px rgba(123, 47, 247, 0.35);
+  pointer-events: none;
+  animation: botWave 3.8s cubic-bezier(0.19, 1, 0.22, 1) infinite;
+}
+
+.bot-avatar-img {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 0.2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  animation: botAvatarFloat 2.4s ease-in-out infinite, botAvatarGlow 2.4s ease-in-out infinite;
+}
+
+@keyframes botAvatarFloat {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes botAvatarGlow {
+  0% {
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.22), 0 0 0 rgba(241, 7, 163, 0);
+  }
+  50% {
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.24), 0 0 14px rgba(241, 7, 163, 0.35);
+  }
+  100% {
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.22), 0 0 0 rgba(241, 7, 163, 0);
+  }
+}
+
+@keyframes botWave {
+  0% {
+    transform: scale(1);
+    opacity: 0.92;
+  }
+  100% {
+    transform: scale(1.95);
+    opacity: 0;
+  }
+}
+
+.ai-chat-window {
+  width: min(360px, calc(100vw - 24px));
+  height: min(480px, 72vh);
+  background: #fff;
+  border: 1px solid #f0d2eb;
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 44px rgba(0, 0, 0, 0.18);
+}
+
+.chat-header {
+  background: linear-gradient(130deg, #7b2ff7 0%, #f107a3 58%, #ff8a00 100%);
+  color: #fff;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chat-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.role-badge {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  padding: 2px 8px;
+  text-transform: capitalize;
+}
+
+.chat-header button {
+  border: none;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.chat-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  background: #f3e2b3;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat-body p {
+  margin: 0;
+  max-width: 85%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.35;
+  white-space: pre-line;
+}
+
+.quick-questions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.quick-question-btn {
+  border: 1px solid #efb8df;
+  background: #ffffff;
+  color: #8a216f;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.quick-question-btn:hover {
+  background: #ffe9f8;
+}
+
+.chat-body .bot {
+  align-self: flex-start;
+  background: #fff2fb;
+  color: #4b1c53;
+}
+
+.chat-body .user {
+  align-self: flex-end;
+  background: linear-gradient(140deg, #7b2ff7 0%, #f107a3 55%, #ff8a00 100%);
+  color: #fff;
+}
+
+.chat-footer {
+  border-top: 1px solid #f0d2eb;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.chat-footer input {
+  border: 1px solid #efb8df;
+  border-radius: 8px;
+  padding: 8px 10px;
+  outline: none;
+}
+
+.chat-footer button {
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(140deg, #7b2ff7 0%, #f107a3 60%, #ff8a00 100%);
+  color: #fff;
+  padding: 0 14px;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .ai-bot-container {
+    right: 12px;
+    bottom: 12px;
+  }
+}

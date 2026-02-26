@@ -212,6 +212,10 @@
               >
                 {{ event.registered ? 'Registered ✓' : event.status === 'Full' ? 'Full' : 'Register' }}
               </button>
+              <button class="register-btn calendar-inline-btn" (click)="addToCalendar(event)">
+                <span class="material-icons">event</span>
+                <span>Add to Calendar</span>
+              </button>
             </div>
           </div>
         </div>
@@ -298,6 +302,10 @@
                 (click)="registerForEvent(event)"
               >
                 {{ event.registered ? 'Registered ✓' : event.status === 'Full' ? 'Full' : 'Register' }}
+              </button>
+              <button class="register-btn calendar-inline-btn" (click)="addToCalendar(event)">
+                <span class="material-icons">event</span>
+                <span>Add to Calendar</span>
               </button>
             </div>
           </div>
@@ -559,7 +567,18 @@
         
         <div class="profile-header">
           <div class="profile-avatar-large">
-            <span class="material-icons">account_circle</span>
+            <img *ngIf="profileImageUrl" [src]="profileImageUrl" alt="Profile photo">
+            <span *ngIf="!profileImageUrl" class="material-icons">account_circle</span>
+            <input
+              #profileImageInput
+              type="file"
+              accept="image/*"
+              class="profile-avatar-input"
+              (change)="onProfileImageSelected($event)"
+            >
+            <button type="button" class="profile-avatar-add" aria-label="Add profile photo" (click)="openProfileImagePicker()">
+              <span class="material-icons">add</span>
+            </button>
           </div>
           <div class="profile-header-info">
             <h3 class="profile-name">{{ studentName }}</h3>

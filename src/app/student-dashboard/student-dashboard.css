@@ -1,4 +1,4 @@
- @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+﻿ @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 
 * {
@@ -882,6 +882,17 @@
   cursor: not-allowed;
 }
 
+.calendar-inline-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.calendar-inline-btn:hover {
+  background: #10b981;
+  border-color: #10b981;
+  box-shadow: 0 6px 15px rgba(16, 185, 129, 0.4);
+}
+
 /* ==============================================
    MY REGISTRATIONS - UPDATED BUTTONS
 ============================================== */
@@ -1334,11 +1345,49 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  position: relative;
 }
 
 .profile-avatar-large .material-icons {
   font-size: 5rem;
   color: #fff;
+}
+
+.profile-avatar-large img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.profile-avatar-input {
+  display: none;
+}
+
+.profile-avatar-add {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  background: #10b981;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.profile-avatar-add .material-icons {
+  font-size: 1.1rem;
+  color: #fff;
+}
+
+.profile-avatar-add:hover {
+  background: #059669;
 }
 
 .profile-header-info {
@@ -1678,7 +1727,7 @@ input:checked + .toggle-slider:before {
 }
 
 .password-requirements li:before {
-  content: '✓';
+  content: 'âœ“';
   position: absolute;
   left: 0;
   color: #3b82f6;
