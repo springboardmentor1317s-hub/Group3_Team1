@@ -14,10 +14,10 @@ import { AuthService } from '../auth.service';
 })
 export class Loginpage {
   show = false;
-  user = {
+  user: { email: string; password: string } = {
     email: '',
     password: '',
-    role: 'student' // student | college_admin
+    // role is determined by server; no need for front‑end selection
   };
 
   constructor(
@@ -56,24 +56,20 @@ export class Loginpage {
 
     this.errorMessage = '';
 
-    // handle hard‑coded super admin
-    if (this.user.role === 'super_admin') {
-      if (this.user.email === 'super@campus.com' && this.user.password === 'super@123') {
-        this.auth.setRole('super_admin');
-        this.router.navigate(['/super-admin-dashboard']);
-      } else {
-        alert('Invalid Super Admin Credentials');
-      }
+    // local super‑admin credentials (not stored in DB)
+    if (this.user.email === 'super@campus.com' && this.user.password === 'super@123') {
+      this.auth.setRole('super_admin');
+      this.router.navigate(['/super-admin-dashboard']);
       return;
     }
 
+    // perform login via service
     this.authService
       .login(this.user.email, this.user.password)
       .subscribe({
         next: (res) => {
           console.log('Login Success', res);
 
-          // navigation already handled by AuthService storing role
           const role = this.auth.getRole();
           if (role === 'super_admin') {
             this.router.navigate(['/super-admin-dashboard']);

@@ -7,13 +7,19 @@ import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'app-registerpage',
-  imports: [CommonModule,FormsModule,RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './registerpage.html',
-  styleUrl: './registerpage.css',
+  styleUrls: ['./registerpage.css'],
 })
 export class Registerpage {
-
- user = {
+  user: {
+    fullName: string;
+    email: string;
+    college: string;
+    role: string;
+    password: string;
+    confirmPassword: string;
+  } = {
     fullName: '',
     email: '',
     college: '',
@@ -23,14 +29,25 @@ export class Registerpage {
   };
 
   errorMessage = '';
-      alert('Please fill all required fields and ensure passwords match.');
+
+  constructor(private router: Router, private authService: AuthService) {}
+
+  register() {
+    // basic client validation
+    if (
+      !this.user.email ||
+      !this.user.password ||
+      this.user.password !== this.user.confirmPassword
+    ) {
+      this.errorMessage =
+        'Please fill all required fields and ensure passwords match.';
       return;
     }
 
     // backend expects {name, userId, email, password, role}
     const payload: any = {
       name: this.user.fullName,
-      userId: this.user.email,        // using email as ID for now
+      userId: this.user.email, // using email as ID for now
       email: this.user.email,
       password: this.user.password,
       role: this.user.role
@@ -40,9 +57,9 @@ export class Registerpage {
       next: () => {
         this.router.navigate(['/signup-success']);
       },
-      error: (err) => {
+      error: (err: any) => {
         console.error('Registration failed', err);
-        alert(err.error?.message || 'Registration failed');
+        this.errorMessage = err.error?.message || 'Registration failed';
       }
     });
   }
