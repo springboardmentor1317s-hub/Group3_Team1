@@ -41,7 +41,7 @@ exports.signup = async (req, res) => {
 // ================= LOGIN =================
 exports.login = async (req, res) => {
   try {
-    const { identifier, password } = req.body;
+    const { identifier, password, role: requestedRole } = req.body;
 
     // identifier can be email OR userId
     const user = await User.findOne({
@@ -50,6 +50,11 @@ exports.login = async (req, res) => {
 
     if (!user) {
       return res.status(400).json({ message: "User not found" });
+    }
+
+    // if client provided a role, enforce it
+    if (requestedRole && user.role !== requestedRole) {
+      return res.status(403).json({ message: "Role mismatch" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);

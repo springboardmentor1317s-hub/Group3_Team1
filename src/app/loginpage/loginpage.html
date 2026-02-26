@@ -11,6 +11,14 @@
       <label>Email Address</label>
       <input type="email" [(ngModel)]="user.email" name="email" placeholder="Enter your email" required>
 
+      <label>Role</label>
+      <select [(ngModel)]="user.role" name="role" required>
+        <option value="" disabled selected>Select role</option>
+        <option value="student">Student</option>
+        <option value="college_admin">College Admin</option>
+        <option value="super_admin">Super Admin</option>
+      </select>
+
       <label>Password</label>
       <div class="password-box">
         <input [type]="show ? 'text' : 'password'" [(ngModel)]="user.password" name="password"

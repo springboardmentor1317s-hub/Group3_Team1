@@ -16,11 +16,15 @@ export class AuthService {
     return this.http.post(`${this.API_URL}/signup`, user);
   }
 
-  login(identifier: string, password: string) {
+  login(identifier: string, password: string, role?: string) {
+    const body: any = { identifier, password };
+    if (role) {
+      body.role = role;
+    }
     return this.http
       .post<{ token: string; role: string; name: string }>(
         `${this.API_URL}/login`,
-        { identifier, password }
+        body
       )
       .pipe(
         tap((res) => {

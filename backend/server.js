@@ -9,9 +9,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Connect MongoDB
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB Connected "))
+// Connect MongoDB (use local URI if env not set)
+const mongoUri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/campus_event_hub';
+mongoose.connect(mongoUri)
+  .then(() => console.log("MongoDB Connected ", mongoUri))
   .catch((err) => console.log("DB Error", err));
 
 // Test Route
