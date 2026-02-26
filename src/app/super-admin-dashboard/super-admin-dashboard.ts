@@ -19,6 +19,3 @@ export class SuperAdminDashboard {
         this.router.navigate(['/login']);
     }
 }
- 
-
-

@@ -1,3 +1,4 @@
+
 <div class="page">
     <div class="card">
         <div class="icon">
@@ -10,8 +11,8 @@
             <label>Full Name</label>
             <input type="text"
                     placeholder="Full Name"
-                    [(ngModel)]="user.name"
-                    name="name"
+                    [(ngModel)]="user.fullName"
+                    name="fullName"
                     required>
                 <label>Email Address</label>
             <input type="email"
@@ -44,10 +45,11 @@
                     required>
 
             <button type="submit">Create Account</button>
+            
 
             <p class="link">
                 Already have an account?
-                <a routerLink="/login">Sing in</a>
+                <a routerLink="/login">Signin</a>
             </p>
 
         </form>

@@ -9,33 +9,26 @@
     <form (ngSubmit)="login()">
 
       <label>Email Address</label>
-      <input type="email"
-             [(ngModel)]="user.email"
-             name="email"
-             placeholder="Enter your email"
-             required>
+      <input type="email" [(ngModel)]="user.email" name="email" placeholder="Enter your email" required>
 
       <label>Password</label>
-        <div class="password-box">
-          <input [type]="show ? 'text' : 'password'"
-                [(ngModel)]="user.password"
-                name="password"
-                placeholder="Enter your password"
-                required>
-          <i class="fa-solid"
-            [class.fa-eye]="!show"
-            [class.fa-eye-slash]="show"
-            (click)="show = !show"></i>
-        </div>
+      <div class="password-box">
+        <input [type]="show ? 'text' : 'password'" [(ngModel)]="user.password" name="password"
+          placeholder="Enter your password" required>
+        <i class="fa-solid" [class.fa-eye]="!show" [class.fa-eye-slash]="show" (click)="show = !show"></i>
+      </div>
 
       <label>Login As</label>
-      <select [(ngModel)]="user.role" name="role">
+      <select [(ngModel)]="user.role"  name="role">   <!---(ngModelChange)="onRoleChange()" -->
         <option value="student">Student</option>
         <option value="college_admin">College Admin</option>
-        <option value="super-admin">Super Admin</option>
+        <option value="super_admin">Super Admin</option>
       </select>
 
       <button type="submit">Login</button>
+      <p class="error" *ngIf="errorMessage">
+      {{ errorMessage }}
+      </p>
 
       <p class="link">
         Don’t have an account?
