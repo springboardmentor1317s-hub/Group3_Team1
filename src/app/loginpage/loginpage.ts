@@ -24,43 +24,17 @@ export class Loginpage {
     private auth: Auth,
     private router: Router,
     private authService: AuthService
-    ) { }
+  ) { }
 
-    errorMessage = '';
+  errorMessage = '';
 
-  // onRoleChange() {
-  //   // Auto-fill removed as per request
-  //   this.user.email = '';
-  //   this.user.password = '';
-  // }
-
-  // login() {
-    // if (this.user.role === 'super_admin') {
-    //   if (this.user.email === 'super@campus.com' && this.user.password === 'super@123') {
-    //     this.auth.setRole(this.user.role);
-    //     this.router.navigate(['/super-admin-dashboard']);
-    //   } else {
-    //     alert('Invalid Super Admin Credentials');
-    //   }
-    // } else {
-    //   this.auth.setRole(this.user.role);
-
-    //   if (this.user.role === 'college_admin') {
-    //     this.router.navigate(['/admin-dashboard']);
-    //   } else {
-    //     this.router.navigate(['/student-dashboard']);
-    //   }
-    // }
-  // }
   login() {
-
     // require all fields
     if (!this.user.email || !this.user.password || !this.user.role) {
       this.errorMessage = 'Please fill in email, password and select a role.';
       return;
     }
 
-<<<<<<< HEAD
     this.errorMessage = '';
 
     // local super‑admin credentials (not stored in DB)
@@ -78,55 +52,24 @@ export class Loginpage {
     this.authService
       .login(this.user.email, this.user.password, this.user.role)
       .subscribe({
-        next: (res) => {
+        next: (res: any) => {
           console.log('Login Success', res);
-
-          const returnedRole = res.role;
-          if (returnedRole !== this.user.role) {
-            // backend may have rejected via error, but just in case
-            this.errorMessage = 'Selected role does not match account role.';
-            return;
-          }
-
-          const role = this.auth.getRole();
-          if (role === 'super_admin') {
-            this.router.navigate(['/super-admin-dashboard']);
-          } else if (role === 'college_admin') {
+          // store token and role
+          if (res.token) localStorage.setItem('token', res.token);
+          this.auth.setRole(res.role || this.user.role);
+          // navigate
+          if (res.role === 'admin' || res.role === 'college_admin' || this.user.role === 'college_admin') {
             this.router.navigate(['/admin-dashboard']);
+          } else if (res.role === 'super_admin') {
+            this.router.navigate(['/super-admin-dashboard']);
           } else {
             this.router.navigate(['/student-dashboard']);
           }
         },
         error: (err) => {
           console.log('Login Failed', err);
-          this.errorMessage =
-            err.error?.message || 'Invalid email or password';
+          this.errorMessage = err.error?.message || 'Invalid email or password';
         }
       });
   }
-=======
-  const payload: any = { identifier: this.user.email, password: this.user.password };
-
-  this.authService.login(payload).subscribe({
-    next: (res: any) => {
-      console.log('Login Success', res);
-      // store token and role
-      if (res.token) localStorage.setItem('token', res.token);
-      this.auth.setRole(res.role || this.user.role);
-      // navigate
-      if (res.role === 'admin' || res.role === 'college_admin' || this.user.role === 'college_admin') {
-        this.router.navigate(['/admin-dashboard']);
-      } else if (res.role === 'super_admin') {
-        this.router.navigate(['/super-admin-dashboard']);
-      } else {
-        this.router.navigate(['/student-dashboard']);
-      }
-    },
-    error: (err) => {
-      console.log('Login Failed', err);
-      this.errorMessage = err.error?.message || 'Invalid email or password';
-    }
-  });
-}
->>>>>>> main
 }

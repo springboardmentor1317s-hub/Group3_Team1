@@ -1,12 +1,9 @@
-import { CommonModule } from '@angular/common';
-<<<<<<< HEAD
-import { Router, RouterLink } from '@angular/router';
-
-=======
 import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+
 type DashboardTab = 'overview' | 'events' | 'analytics';
 
 interface OrganizerEvent {
@@ -32,7 +29,6 @@ interface CreateEventForm {
   description: string;
   posterDataUrl: string | null;
 }
->>>>>>> main
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -41,50 +37,6 @@ interface CreateEventForm {
   templateUrl: './admin-dashboard.html',
   styleUrls: ['./admin-dashboard.css']
 })
-<<<<<<< HEAD
-export class AdminDashboard {
-
-  // 🔹 Milestone-2 data
-  totalEvents = 4;
-  activeUsers = 1234;
-  totalRegistrations = 0;
-  pendingReviews = 0;
-
-  // 🔹 Events list (dummy – Milestone-2)
-  events = [
-    {
-      title: 'Inter-College Hackathon 2024',
-      college: 'tech-university',
-      participants: 127,
-      category: 'hackathon'
-    },
-    {
-      title: 'Cultural Fest – Harmony 2024',
-      college: 'arts-college',
-      participants: 342,
-      category: 'cultural'
-    },
-    {
-      title: 'Basketball Championship',
-      college: 'sports-university',
-      participants: 160,
-      category: 'sports'
-    },
-    {
-      title: 'Web Development Workshop',
-      college: 'tech-university',
-      participants: 65,
-      category: 'workshop'
-    }
-  ];
-
-  constructor(private router: Router) {}
-
-  // 🔹 New button action
-  goToCreateEvent() {
-    this.router.navigate(['/create-event']);
-  }
-=======
 export class AdminDashboard implements OnInit {
 
   private readonly API_URL = 'http://localhost:5000/api/events';
@@ -262,7 +214,7 @@ export class AdminDashboard implements OnInit {
     return event.id;
   }
 
-  get totalEvents(): number {
+  get totalEventsCount(): number {
     return this.events.length;
   }
 
@@ -336,6 +288,4 @@ export class AdminDashboard implements OnInit {
       posterDataUrl: null
     };
   }
-
->>>>>>> main
 }

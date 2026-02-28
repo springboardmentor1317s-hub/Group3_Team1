@@ -11,18 +11,8 @@ export class AuthService {
 
   constructor(private http: HttpClient) {}
 
-<<<<<<< HEAD
-  register(user: any) {
-    // backend uses '/signup'
-    return this.http.post(`${this.API_URL}/signup`, user);
-=======
   signup(user: any) {
     return this.http.post(`${this.API_URL}/signup`, user);
-  }
-
-  login(credentials: any) {
-    return this.http.post(`${this.API_URL}/login`, credentials);
->>>>>>> main
   }
 
   login(identifier: string, password: string, role?: string) {
