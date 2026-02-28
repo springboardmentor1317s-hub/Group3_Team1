@@ -12,6 +12,7 @@ import { AuthService } from '../auth.service';
   styleUrls: ['./registerpage.css'],
 })
 export class Registerpage {
+<<<<<<< HEAD
   user: {
     fullName: string;
     email: string;
@@ -20,6 +21,10 @@ export class Registerpage {
     password: string;
     confirmPassword: string;
   } = {
+=======
+
+  user = {
+>>>>>>> main
     fullName: '',
     email: '',
     college: '',
@@ -30,6 +35,7 @@ export class Registerpage {
 
   errorMessage = '';
 
+<<<<<<< HEAD
   constructor(private router: Router, private authService: AuthService) {}
 
   register() {
@@ -49,10 +55,42 @@ export class Registerpage {
       name: this.user.fullName,
       userId: this.user.email, // using email as ID for now
       email: this.user.email,
+=======
+  constructor(
+    private router: Router,
+    private authService: AuthService
+  ) {}
+
+  register() {
+    console.log('Registering user:', this.user);
+    
+    // Check if passwords match
+    if (this.user.password !== this.user.confirmPassword) {
+      this.errorMessage = 'Passwords do not match';
+      return;
+    }
+
+    // Check if required fields are filled
+    if (!this.user.fullName || !this.user.email || !this.user.password) {
+      this.errorMessage = 'Please fill all required fields';
+      return;
+    }
+
+    // Create userId from email (before @)
+    const userId = this.user.email.split('@')[0];
+
+    // Prepare payload for backend
+    const payload = {
+      name: this.user.fullName,
+      userId: userId,
+      email: this.user.email,
+      college: this.user.college,
+>>>>>>> main
       password: this.user.password,
       role: this.user.role
     };
 
+<<<<<<< HEAD
     this.authService.register(payload).subscribe({
       next: () => {
         this.router.navigate(['/signup-success']);
@@ -60,6 +98,19 @@ export class Registerpage {
       error: (err: any) => {
         console.error('Registration failed', err);
         this.errorMessage = err.error?.message || 'Registration failed';
+=======
+    console.log('Sending payload to backend:', payload);
+
+    this.authService.signup(payload).subscribe({
+      next: (res: any) => {
+        console.log('Registration Success:', res);
+        // Navigate to success page on successful registration
+        this.router.navigate(['/signup-success']);
+      },
+      error: (err) => {
+        console.log('Registration Failed:', err);
+        this.errorMessage = err.error?.message || 'Registration failed. Please try again.';
+>>>>>>> main
       }
     });
   }

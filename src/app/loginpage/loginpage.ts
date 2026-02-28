@@ -60,6 +60,7 @@ export class Loginpage {
       return;
     }
 
+<<<<<<< HEAD
     this.errorMessage = '';
 
     // local super‑admin credentials (not stored in DB)
@@ -103,4 +104,29 @@ export class Loginpage {
         }
       });
   }
+=======
+  const payload: any = { identifier: this.user.email, password: this.user.password };
+
+  this.authService.login(payload).subscribe({
+    next: (res: any) => {
+      console.log('Login Success', res);
+      // store token and role
+      if (res.token) localStorage.setItem('token', res.token);
+      this.auth.setRole(res.role || this.user.role);
+      // navigate
+      if (res.role === 'admin' || res.role === 'college_admin' || this.user.role === 'college_admin') {
+        this.router.navigate(['/admin-dashboard']);
+      } else if (res.role === 'super_admin') {
+        this.router.navigate(['/super-admin-dashboard']);
+      } else {
+        this.router.navigate(['/student-dashboard']);
+      }
+    },
+    error: (err) => {
+      console.log('Login Failed', err);
+      this.errorMessage = err.error?.message || 'Invalid email or password';
+    }
+  });
+}
+>>>>>>> main
 }

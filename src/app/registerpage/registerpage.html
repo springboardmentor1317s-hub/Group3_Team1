@@ -7,6 +7,10 @@
         <h1>Create Account</h1>
         <p class="subtitle">Join CampusEventHub today</p>
 
+        <div *ngIf="errorMessage" class="error-message">
+            {{ errorMessage }}
+        </div>
+
         <form (ngSubmit)="register()">
             <label>Full Name</label>
             <input type="text"

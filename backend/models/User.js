@@ -15,13 +15,21 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true   // unique email
   },
+  college: {
+    type: String,
+    required: false
+  },
   password: {
     type: String,
     required: true
   },
   role: {
     type: String,
+<<<<<<< HEAD
     enum: ["student", "college_admin", "super_admin"],
+=======
+    enum: ["admin", "student", "college_admin"],
+>>>>>>> main
     default: "student"
   }
 }, { timestamps: true });

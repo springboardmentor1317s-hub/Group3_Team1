@@ -12,6 +12,12 @@
     <label>College / University</label>
     <input type="text" name="college" [(ngModel)]="user.college" placeholder="College or University" />
 
+    <label>Role</label>
+    <select name="role" [(ngModel)]="user.role" required>
+      <option value="student">Student</option>
+      <option value="college_admin">College Admin</option>
+    </select>
+
     <label>Password</label>
     <input type="password" name="password" [(ngModel)]="user.password" placeholder="Password" required />
 
