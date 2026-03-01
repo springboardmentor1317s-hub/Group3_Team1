@@ -1,4 +1,4 @@
-<div class="page">
+<!-- <div class="page">
   <header class="topbar">
     <div class="brand" aria-label="CampusEventHub">
       <span class="brand__mark" aria-hidden="true">CE</span>
@@ -295,6 +295,359 @@
               [(ngModel)]="createForm.description"
               rows="4"
               placeholder="Description"
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="modal__footer">
+          <button type="button" class="btn btn--ghost" (click)="closeCreateModal()">Cancel</button>
+          <button type="submit" class="btn btn--primary">Save Event</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div> -->
+
+<div class="page">
+  <header class="topbar">
+    <div class="brand" aria-label="CampusEventHub">
+      <span class="brand__mark" aria-hidden="true">CE</span>
+      <span class="brand__name">CampusEventHub</span>
+    </div>
+
+    <nav class="topnav" aria-label="Admin navigation">
+      <button
+        type="button"
+        class="topnav__link"
+        [class.is-active]="activeTab === 'events'"
+        (click)="setTab('events')"
+      >
+        Events
+      </button>
+      <button
+        type="button"
+        class="topnav__link"
+        [class.is-active]="activeTab === 'overview'"
+        (click)="setTab('overview')"
+      >
+        Dashboard
+      </button>
+    </nav>
+
+    <div class="topbar__right">
+      <button type="button" class="icon-btn" aria-label="Notifications">
+        <span aria-hidden="true">&#128276;</span>
+      </button>
+
+      <div class="user" aria-label="Signed in user">
+        <div class="user__name">Sarah Wilson</div>
+        <div class="user__role">College_admin</div>
+      </div>
+
+      <a class="logout" routerLink="/login">Logout</a>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div class="hero__text">
+        <div class="hero__kicker">CAMPUS EVENT HUB</div>
+        <h1 class="hero__title">Event Organizer Dashboard</h1>
+        <p class="hero__subtitle">Manage events, registrations, and updates from one place.</p>
+      </div>
+
+      <button type="button" class="hero__cta" (click)="openCreateModal()">Create Event</button>
+    </section>
+
+    <section class="stats" aria-label="Key metrics">
+      <div class="stat-card">
+        <div class="stat-card__badge">EV</div>
+        <div class="stat-card__label">Total Events</div>
+        <div class="stat-card__value">{{ totalEvents }}</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card__badge">AC</div>
+        <div class="stat-card__label">Active Events</div>
+        <div class="stat-card__value">{{ activeEvents }}</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card__badge">RG</div>
+        <div class="stat-card__label">Total Registrations</div>
+        <div class="stat-card__value">{{ totalRegistrations }}</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-card__badge">AP</div>
+        <div class="stat-card__label">Average Participants</div>
+        <div class="stat-card__value">{{ averageParticipants }}</div>
+      </div>
+    </section>
+
+    <section class="tabs" aria-label="Dashboard sections">
+      <button type="button" class="tab" [class.is-active]="activeTab === 'overview'" (click)="setTab('overview')">
+        Overview
+      </button>
+      <button type="button" class="tab" [class.is-active]="activeTab === 'events'" (click)="setTab('events')">
+        My Events
+      </button>
+      <button type="button" class="tab" [class.is-active]="activeTab === 'analytics'" (click)="setTab('analytics')">
+        Analytics
+      </button>
+    </section>
+
+    <section class="content">
+      <div class="panel">
+        <div class="panel__header">
+          <h2 class="panel__title" *ngIf="activeTab === 'overview'">Recent Events</h2>
+          <h2 class="panel__title" *ngIf="activeTab === 'events'">My Events</h2>
+          <h2 class="panel__title" *ngIf="activeTab === 'analytics'">Analytics</h2>
+        </div>
+
+        <div class="panel__body" *ngIf="activeTab === 'analytics'">
+          <div class="analytics-grid">
+            <div class="mini-card">
+              <div class="mini-card__label">Total Registrations</div>
+              <div class="mini-card__value">{{ totalRegistrations }}</div>
+            </div>
+            <div class="mini-card">
+              <div class="mini-card__label">Average Participants</div>
+              <div class="mini-card__value">{{ averageParticipants }}</div>
+            </div>
+          </div>
+          <p class="muted">Tip: Create events to see activity here.</p>
+        </div>
+
+        <div class="panel__body" *ngIf="activeTab !== 'analytics'">
+          <div class="empty" *ngIf="events.length === 0">No recent events yet.</div>
+
+          <ul class="event-list" *ngIf="events.length > 0">
+            <li class="event-row" *ngFor="let e of events; trackBy: trackByEventId">
+              <img
+                class="event-row__poster"
+                [src]="e.posterDataUrl || 'assets/eventform.png'"
+                [alt]="e.posterDataUrl ? e.name + ' poster' : ''"
+                loading="lazy"
+              />
+              <div class="event-row__main">
+                <div class="event-row__title">{{ e.name }}</div>
+                <div class="event-row__meta">
+                  <span>{{ formatDateTime(e.dateTime) }}</span>
+                  <span class="dot" aria-hidden="true">&bull;</span>
+                  <span>{{ e.location }}</span>
+                </div>
+              </div>
+
+              <div class="event-row__right">
+                <span
+                  class="status"
+                  [class.is-active]="e.status === 'Active'"
+                  [class.is-draft]="e.status === 'Draft'"
+                  [class.is-past]="e.status === 'Past'"
+                >
+                  {{ e.status }}
+                </span>
+
+                <button
+                  *ngIf="activeTab === 'events'"
+                  type="button"
+                  class="event-row__delete"
+                  (click)="deleteEvent(e)"
+                  [attr.aria-label]="'Delete event ' + e.name"
+                  title="Delete event"
+                >
+                  Delete
+                </button>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <aside class="side" aria-label="Quick actions">
+        <button type="button" class="action" (click)="openCreateModal()">
+          <div class="action__icon">+</div>
+          <div class="action__text">
+            <div class="action__title">Create New Event</div>
+            <div class="action__subtitle">Add and publish a new event</div>
+          </div>
+        </button>
+
+        <button type="button" class="action" (click)="setTab('analytics')">
+          <div class="action__icon">R</div>
+          <div class="action__text">
+            <div class="action__title">View Registrations</div>
+            <div class="action__subtitle">Track student participation</div>
+          </div>
+        </button>
+
+        <button type="button" class="action" (click)="exportEvents()">
+          <div class="action__icon">D</div>
+          <div class="action__text">
+            <div class="action__title">Export Data</div>
+            <div class="action__subtitle">Download event details as CSV</div>
+          </div>
+        </button>
+      </aside>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" *ngIf="createModalOpen" (click)="closeCreateModal()">
+    <div
+      class="modal"
+      (click)="$event.stopPropagation()"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Create event"
+    >
+      <div
+        class="modal__hero"
+        [style.--poster-image]="createForm.posterDataUrl ? 'url(' + createForm.posterDataUrl + ')' : null"
+      >
+        <button type="button" class="modal__close" (click)="closeCreateModal()" aria-label="Close">&times;</button>
+
+        <div class="modal__heroText">
+          <h2>Create Event</h2>
+          <p>Add details about your upcoming event</p>
+        </div>
+      </div>
+
+      <form class="modal__body" (ngSubmit)="saveEvent()">
+        <div class="form-grid">
+          <div class="field field--full">
+            <label for="eventPoster">Poster Image (optional)</label>
+            <div class="poster-row">
+              <input
+                id="eventPoster"
+                class="file-input"
+                type="file"
+                accept="image/*"
+                (change)="onPosterSelected($event)"
+              />
+              <button
+                *ngIf="createForm.posterDataUrl"
+                type="button"
+                class="poster-remove"
+                (click)="removePoster()"
+              >
+                Remove
+              </button>
+            </div>
+            <div class="help">JPG/PNG recommended (max ~1.5MB). Uploading changes the header image.</div>
+            <div class="poster-preview" *ngIf="createForm.posterDataUrl as posterDataUrl">
+              <img [src]="posterDataUrl" alt="Poster preview" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="eventName">
+              <span class="field__icon">✦</span> Event Name
+              <span class="field__required">*</span>
+            </label>
+            <input
+              id="eventName"
+              type="text"
+              name="name"
+              [(ngModel)]="createForm.name"
+              placeholder="e.g. Annual Tech Fest 2025"
+              required
+            />
+          </div>
+
+          <div class="field">
+            <label for="eventLocation">
+              <span class="field__icon">📍</span> Location
+              <span class="field__required">*</span>
+            </label>
+            <input
+              id="eventLocation"
+              type="text"
+              name="location"
+              [(ngModel)]="createForm.location"
+              placeholder="e.g. Main Auditorium, Block A"
+              required
+            />
+          </div>
+
+          <div class="field">
+            <label for="eventStartDate">
+              <span class="field__icon">📅</span> Start Date
+              <span class="field__required">*</span>
+            </label>
+            <input
+              id="eventStartDate"
+              type="date"
+              name="startDate"
+              [(ngModel)]="createForm.dateTime"
+              required
+            />
+          </div>
+
+          <div class="field">
+            <label for="eventEndDate">
+              <span class="field__icon">📅</span> End Date
+              <span class="field__badge-optional">(Optional)</span>
+            </label>
+            <input
+              id="eventEndDate"
+              type="date"
+              name="endDate"
+              [(ngModel)]="createForm.endDate"
+            />
+          </div>
+
+          <div class="field">
+            <label for="eventOrganizer">
+              <span class="field__icon">👤</span> Organizer
+            </label>
+            <input
+              id="eventOrganizer"
+              type="text"
+              name="organizer"
+              [(ngModel)]="createForm.organizer"
+              placeholder="e.g. Student Council"
+            />
+          </div>
+
+          <div class="field">
+            <label for="eventTeamSize">
+              <span class="field__icon">👥</span> Team Size
+              <span class="field__badge-optional">(Optional)</span>
+            </label>
+            <input
+              id="eventTeamSize"
+              type="number"
+              name="teamSize"
+              [(ngModel)]="createForm.teamSize"
+              placeholder="e.g. 4"
+              min="1"
+            />
+          </div>
+
+          <div class="field">
+            <label for="eventContact">
+              <span class="field__icon">📞</span> Contact
+            </label>
+            <input
+              id="eventContact"
+              type="text"
+              name="contact"
+              [(ngModel)]="createForm.contact"
+              placeholder="e.g. email or phone"
+            />
+          </div>
+
+          <div class="field field--full">
+            <label for="eventDescription">
+              <span class="field__icon">📝</span> Description
+            </label>
+            <textarea
+              id="eventDescription"
+              name="description"
+              [(ngModel)]="createForm.description"
+              rows="4"
+              placeholder="Tell students what this event is about..."
             ></textarea>
           </div>
         </div>
