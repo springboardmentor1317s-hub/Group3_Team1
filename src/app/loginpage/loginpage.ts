@@ -73,6 +73,16 @@ export class Loginpage {
       console.log('Login Success', res);
       // store token and role
       if (res.token) localStorage.setItem('token', res.token);
+      const currentUser = {
+  id: res.userId || '',
+  name: res.name || 'Student',
+  userId: res.userId || '',
+  email: res.email || this.user.email,
+  role: res.role || 'student',
+  college: res.college || 'Not Set'
+};
+localStorage.setItem('currentUser', JSON.stringify(currentUser));
+localStorage.setItem('role', res.role);
       this.auth.setRole(res.role || this.user.role);
       // navigate
       if (res.role === 'admin' || res.role === 'college_admin' || this.user.role === 'college_admin') {
