@@ -3,6 +3,7 @@ import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'app-registerpage',
@@ -12,7 +13,7 @@ import { RouterModule } from '@angular/router';
 })
 export class Registerpage {
 
- user = {
+  user = {
     fullName: '',
     email: '',
     college: '',
@@ -21,15 +22,53 @@ export class Registerpage {
     confirmPassword: ''
   };
 
-  constructor(private router: Router) {}
+  errorMessage = '';
+
+  constructor(
+    private router: Router,
+    private authService: AuthService
+  ) {}
 
   register() {
-    console.log(this.user);
-    // After successful registration response from API, navigate to the success page instead of alert.
-    // Replace this with your API call; navigate on success:
-    // this.authService.register(this.user).subscribe(() => this.router.navigate(['/signup-success']));
+    console.log('Registering user:', this.user);
+    
+    // Check if passwords match
+    if (this.user.password !== this.user.confirmPassword) {
+      this.errorMessage = 'Passwords do not match';
+      return;
+    }
 
-    // For now navigate to success directly (demo):
-    this.router.navigate(['/signup-success']);
+    // Check if required fields are filled
+    if (!this.user.fullName || !this.user.email || !this.user.password) {
+      this.errorMessage = 'Please fill all required fields';
+      return;
+    }
+
+    // Create userId from email (before @)
+    const userId = this.user.email.split('@')[0];
+
+    // Prepare payload for backend
+    const payload = {
+      name: this.user.fullName,
+      userId: userId,
+      email: this.user.email,
+      college: this.user.college,
+      password: this.user.password,
+      role: this.user.role
+    };
+
+    console.log('Sending payload to backend:', payload);
+
+    this.authService.signup(payload).subscribe({
+      next: (res: any) => {
+        console.log('Registration Success:', res);
+        // Navigate to success page on successful registration
+        this.router.navigate(['/signup-success']);
+      },
+      error: (err) => {
+        console.log('Registration Failed:', err);
+        this.errorMessage = err.error?.message || 'Registration failed. Please try again.';
+      }
+    });
   }
 }

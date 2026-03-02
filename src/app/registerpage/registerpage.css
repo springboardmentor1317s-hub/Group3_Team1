@@ -15,20 +15,15 @@
   width: 420px;
   padding: 40px;
   border-radius: 22px;
-
-  /* Glass effect */
   background: rgba(255,255,255,0.18);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-
   border: 1px solid rgba(255,255,255,0.3);
   box-shadow: 0 30px 60px rgba(0,0,0,.35);
-
   text-align: center;
   animation: floatIn .9s ease;
 }
 
-/* Icon */
 .icon {
   font-size: 42px;
   background: linear-gradient(135deg,#6366f1,#ec4899);
@@ -43,7 +38,6 @@
   box-shadow: 0 12px 30px rgba(99,102,241,.45);
 }
 
-/* Headings */
 .card h1 {
   color: white;
   margin-bottom: 6px;
@@ -54,7 +48,6 @@
   margin-bottom: 25px;
 }
 
-/* Form */
 form {
   text-align: left;
 }
@@ -83,7 +76,16 @@ input:focus, select:focus {
   box-shadow: 0 0 0 3px rgba(99,102,241,.25);
 }
 
-/* Button */
+.error-message {
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 14px;
+  text-align: center;
+}
+
 button {
   width: 100%;
   margin-top: 22px;
@@ -102,7 +104,6 @@ button:hover {
   box-shadow: 0 12px 25px rgba(99,102,241,.45);
 }
 
-/* Link */
 .link {
   text-align: center;
   margin-top: 16px;
@@ -116,7 +117,6 @@ button:hover {
   text-decoration: underline;
 }
 
-/* Animation */
 @keyframes floatIn {
   from {
     opacity: 0;
@@ -128,18 +128,14 @@ button:hover {
   }
 }
 @media (max-width: 480px) {
-
   .card {
     width: 90%;
     padding: 25px;
   }
-
   h1, h2 {
     font-size: 22px;
   }
-
   button {
     padding: 12px;
   }
 }
-

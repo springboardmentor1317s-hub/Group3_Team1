@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
-import { HttpClient } from '@angular/common/http';
+import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'app-loginpage',
@@ -23,7 +23,7 @@ export class Loginpage {
   constructor(
     private auth: Auth,
     private router: Router,
-    private http: HttpClient
+    private authService: AuthService
     ) { }
 
     errorMessage = '';
@@ -66,48 +66,37 @@ export class Loginpage {
       return;
     } 
 
-  this.http.post('http://localhost:5000/api/login', this.user)
-    .subscribe({
-      next: (res: any) => {
+  const payload: any = { identifier: this.user.email, password: this.user.password };
 
-        console.log("Login Success", res);
-
-        // Save role if you want
-        this.auth.setRole(res.user.role);
-
-        // Navigate based on role
-        // if (res.user.role === 'college_admin') {
-        //   this.router.navigate(['/admin-dashboard']);
-        // } 
-        // else if(res.user.role === 'super_Admin') {
-        //   this.router.navigate(['/super_Admin-dashboard']);
-        // }
-        // else{
-          
-        //   this.router.navigate(['/student-dashboard']);
-        // }
-        
-    
-      this.auth.setRole(res.user.role);
-
-      if (this.user.role === 'college_admin') {
+  this.authService.login(payload).subscribe({
+    next: (res: any) => {
+      console.log('Login Success', res);
+      // store token and role
+      if (res.token) localStorage.setItem('token', res.token);
+      const currentUser = {
+  id: res.userId || '',
+  name: res.name || 'Student',
+  userId: res.userId || '',
+  email: res.email || this.user.email,
+  role: res.role || 'student',
+  college: res.college || 'Not Set'
+};
+localStorage.setItem('currentUser', JSON.stringify(currentUser));
+localStorage.setItem('role', res.role);
+      this.auth.setRole(res.role || this.user.role);
+      // navigate
+      if (res.role === 'admin' || res.role === 'college_admin' || this.user.role === 'college_admin') {
         this.router.navigate(['/admin-dashboard']);
+      } else if (res.role === 'super_admin') {
+        this.router.navigate(['/super-admin-dashboard']);
       } else {
         this.router.navigate(['/student-dashboard']);
       }
-   
-        
-
-      },
-
-      error: (err) => {
-
-        console.log("Login Failed", err);
-
-        this.errorMessage =
-          err.error?.message || "Invalid email or password";
-
-      }
-    });
+    },
+    error: (err) => {
+      console.log('Login Failed', err);
+      this.errorMessage = err.error?.message || 'Invalid email or password';
+    }
+  });
 }
 }

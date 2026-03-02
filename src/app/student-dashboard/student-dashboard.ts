@@ -1,6 +1,10 @@
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClientModule } from '@angular/common/http';
+import { Subscription } from 'rxjs';
+import { EventService, BackendEvent } from '../services/event.service';
+import { AuthService } from '../services/auth.service';
 
 export interface StatCard {
   title: string;
@@ -22,6 +26,9 @@ export interface Event {
   status: 'Open' | 'Registered' | 'Full' | 'Closed';
   description: string;
   registered: boolean;
+  organizer?: string;
+  contact?: string;
+  posterUrl?: string | null;
 }
 
 export interface Notification {
@@ -45,25 +52,29 @@ export interface CalendarEvent {
 @Component({
   selector: 'app-student-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, HttpClientModule],
   templateUrl: './student-dashboard.html',
   styleUrls: ['./student-dashboard.css']
 })
-export class StudentDashboardComponent implements OnInit {
+export class StudentDashboardComponent implements OnInit, OnDestroy {
   @ViewChild('profileImageInput') private profileImageInput?: ElementRef<HTMLInputElement>;
+
+  private subscriptions: Subscription[] = [];
+  isLoading = false;
+  errorMessage = '';
 
   sidebarOpen = false;
   activeTab = 'dashboard';
-  activeSubPage = ''; // For nested pages like 'edit-profile', 'settings', 'change-password'
+  activeSubPage = '';
   profileImageUrl: string | null = null;
   
-  // Student Information
-  studentName = 'John Doe';
-  studentId = 'STU2024001';
-  department = 'Computer Science';
-  email = 'john.doe@university.edu';
-  phone = '+1 234 567 8900';
-  address = '123 University Ave, City, State 12345';
+  // Student Information - Will be loaded from auth service
+  studentName = '';
+  studentId = '';
+  department = '';
+  email = '';
+  phone = '';
+  address = '';
   
   // Search Queries
   searchQuery = '';
@@ -110,220 +121,37 @@ export class StudentDashboardComponent implements OnInit {
   stats: StatCard[] = [
     {
       title: 'Upcoming Events',
-      value: 12,
+      value: 0,
       icon: 'event_upcoming',
       color: '#3b82f6',
       subtitle: 'Events this month'
     },
     {
       title: 'My Registrations',
-      value: 2,
+      value: 0,
       icon: 'assignment_turned_in',
       color: '#8b5cf6',
       subtitle: 'Active registrations'
     },
     {
       title: 'Events Attended',
-      value: 8,
+      value: 0,
       icon: 'check_circle',
       color: '#10b981',
-      subtitle: '67% attendance rate'
+      subtitle: 'Total attended'
     },
     {
       title: 'Pending Actions',
-      value: 2,
+      value: 0,
       icon: 'pending_actions',
       color: '#f59e0b',
       subtitle: 'Awaiting confirmation'
     }
   ];
 
-  notifications: Notification[] = [
-    {
-      id: 1,
-      title: 'New Event: AI Workshop',
-      message: 'Registration opens tomorrow for the AI & ML Workshop',
-      time: '2 hours ago',
-      type: 'info',
-      read: false
-    },
-    {
-      id: 2,
-      title: 'Event Reminder',
-      message: 'Tech Talk starts in 2 days. Don\'t forget to attend!',
-      time: '5 hours ago',
-      type: 'warning',
-      read: false
-    },
-    {
-      id: 3,
-      title: 'Registration Confirmed',
-      message: 'Your registration for Cultural Fest 2026 is confirmed',
-      time: '1 day ago',
-      type: 'success',
-      read: false
-    }
-  ];
+  notifications: Notification[] = [];
 
-  upcomingEvents: Event[] = [
-    {
-      id: 1,
-      title: 'Tech Talk: AI & Machine Learning',
-      date: '2026-02-18',
-      time: '2:00 PM',
-      location: 'Auditorium Hall A',
-      category: 'Technology',
-      attendees: 245,
-      maxAttendees: 300,
-      status: 'Registered',
-      description: 'Learn about the latest trends in AI and ML from industry experts',
-      registered: true
-    },
-    {
-      id: 2,
-      title: 'Cultural Fest 2026',
-      date: '2026-02-22',
-      time: '10:00 AM',
-      location: 'Main Campus Ground',
-      category: 'Cultural',
-      attendees: 890,
-      maxAttendees: 1000,
-      status: 'Open',
-      description: 'Annual cultural festival with performances, competitions, and food stalls',
-      registered: false
-    },
-    {
-      id: 3,
-      title: 'Web Development Workshop',
-      date: '2026-02-25',
-      time: '3:00 PM',
-      location: 'Computer Lab 2',
-      category: 'Workshop',
-      attendees: 50,
-      maxAttendees: 50,
-      status: 'Full',
-      description: 'Hands-on workshop on modern web development with React and Node.js',
-      registered: true
-    },
-    {
-      id: 4,
-      title: 'Career Guidance Seminar',
-      date: '2026-03-01',
-      time: '11:00 AM',
-      location: 'Conference Hall',
-      category: 'Career',
-      attendees: 180,
-      maxAttendees: 200,
-      status: 'Open',
-      description: 'Get career advice from alumni and industry professionals',
-      registered: false
-    },
-    {
-      id: 5,
-      title: 'Annual Sports Meet',
-      date: '2026-03-05',
-      time: '8:00 AM',
-      location: 'Sports Complex',
-      category: 'Sports',
-      attendees: 450,
-      maxAttendees: 500,
-      status: 'Open',
-      description: 'Inter-department sports competition with various events',
-      registered: false
-    },
-    {
-      id: 6,
-      title: 'Hackathon 2026',
-      date: '2026-03-10',
-      time: '9:00 AM',
-      location: 'Innovation Center',
-      category: 'Technology',
-      attendees: 95,
-      maxAttendees: 100,
-      status: 'Open',
-      description: '24-hour coding competition with exciting prizes',
-      registered: false
-    },
-    {
-      id: 7,
-      title: 'Leadership Development Seminar',
-      date: '2026-03-12',
-      time: '2:00 PM',
-      location: 'Main Auditorium',
-      category: 'Seminar',
-      attendees: 150,
-      maxAttendees: 250,
-      status: 'Open',
-      description: 'Develop leadership skills and learn from successful leaders in various industries',
-      registered: false
-    },
-    {
-      id: 8,
-      title: 'Entrepreneurship Seminar',
-      date: '2026-03-15',
-      time: '10:00 AM',
-      location: 'Business School Hall',
-      category: 'Seminar',
-      attendees: 120,
-      maxAttendees: 200,
-      status: 'Open',
-      description: 'Learn how to start your own business from successful entrepreneurs',
-      registered: false
-    },
-    {
-      id: 9,
-      title: 'Digital Marketing Seminar',
-      date: '2026-03-18',
-      time: '3:00 PM',
-      location: 'Seminar Room 3',
-      category: 'Seminar',
-      attendees: 90,
-      maxAttendees: 150,
-      status: 'Open',
-      description: 'Master digital marketing strategies and social media marketing techniques',
-      registered: false
-    },
-    {
-      id: 10,
-      title: 'Data Science & Analytics Seminar',
-      date: '2026-03-20',
-      time: '1:00 PM',
-      location: 'Tech Building Room 101',
-      category: 'Seminar',
-      attendees: 140,
-      maxAttendees: 180,
-      status: 'Open',
-      description: 'Explore data science tools, techniques, and real-world applications',
-      registered: false
-    },
-    {
-      id: 11,
-      title: 'Mental Health Awareness Seminar',
-      date: '2026-03-22',
-      time: '11:00 AM',
-      location: 'Student Wellness Center',
-      category: 'Seminar',
-      attendees: 85,
-      maxAttendees: 150,
-      status: 'Open',
-      description: 'Understanding mental health, stress management, and wellness strategies',
-      registered: false
-    },
-    {
-      id: 12,
-      title: 'Cybersecurity Best Practices Seminar',
-      date: '2026-03-25',
-      time: '4:00 PM',
-      location: 'IT Center Auditorium',
-      category: 'Seminar',
-      attendees: 110,
-      maxAttendees: 160,
-      status: 'Open',
-      description: 'Learn about cybersecurity threats and how to protect yourself online',
-      registered: false
-    }
-  ];
-
+  upcomingEvents: Event[] = [];
   myRegistrations: Event[] = [];
   calendarEvents: CalendarEvent[] = [];
   eventCategories = ['All', 'Technology', 'Cultural', 'Workshop', 'Career', 'Sports', 'Seminar'];
@@ -337,55 +165,210 @@ export class StudentDashboardComponent implements OnInit {
 
   // Event History
   historyFilter: 'all' | 'attended' | 'missed' = 'all';
-  eventHistory: any[] = [
-    {
-      event: {
-        id: 101,
-        title: 'Python Programming Workshop',
-        date: '2026-01-15',
-        time: '2:00 PM',
-        location: 'Computer Lab 1',
-        category: 'Workshop',
-        description: 'Comprehensive Python programming workshop for beginners'
-      },
-      attended: true,
-      rating: 5
-    },
-    {
-      event: {
-        id: 102,
-        title: 'Annual Tech Symposium',
-        date: '2026-01-20',
-        time: '10:00 AM',
-        location: 'Main Auditorium',
-        category: 'Technology',
-        description: 'Annual technology symposium featuring industry leaders'
-      },
-      attended: true,
-      rating: 4
-    },
-    {
-      event: {
-        id: 103,
-        title: 'Career Fair 2026',
-        date: '2026-01-25',
-        time: '9:00 AM',
-        location: 'Exhibition Hall',
-        category: 'Career',
-        description: 'Meet top employers and explore career opportunities'
-      },
-      attended: false,
-      rating: null
-    }
-  ];
+  eventHistory: any[] = [];
 
-  constructor() {}
+  constructor(
+    private eventService: EventService,
+    private authService: AuthService
+  ) {}
 
   ngOnInit(): void {
-    this.myRegistrations = this.upcomingEvents.filter(event => event.registered);
+    // Load user info from auth service
+    const currentUser = this.authService.currentUserValue;
+    if (currentUser) {
+      this.studentName = currentUser.name || 'Student';
+      this.studentId = currentUser.userId || '';
+      this.email = currentUser.email || '';
+      this.department = currentUser.college || 'Not Set';
+      // Phone and address would need to be added to User model in backend
+      this.phone = 'Not Set';
+      this.address = 'Not Set';
+    } else {
+      // If no user logged in, redirect to login
+      console.warn('No user logged in');
+      // Uncomment below to force login
+      // window.location.href = '/login';
+    }
+
+    // Fetch events from backend
+    this.loadEvents();
+    
+    // Subscribe to registrations to generate notifications
+    const regSub = this.eventService.registrations$.subscribe((registrations: string[]) => {
+      this.updateRegistrations();
+      this.generateNotifications();
+    });
+    this.subscriptions.push(regSub);
+
     this.generateCalendar();
     this.updateMonthYear();
-    this.loadCalendarEvents();
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.forEach(sub => sub.unsubscribe());
+  }
+
+  // Load events from MongoDB
+  loadEvents(): void {
+    this.isLoading = true;
+    this.errorMessage = '';
+    
+    const eventSub = this.eventService.fetchEvents().subscribe({
+      next: (backendEvents: BackendEvent[]) => {
+        // Convert backend events to frontend format
+        this.upcomingEvents = backendEvents
+          .filter((e: BackendEvent) => e.status === 'Active')
+          .map((e: BackendEvent) => this.eventService.convertToFrontendEvent(e));
+        
+        // Load past events for history
+        this.loadEventHistory(backendEvents);
+        
+        // Update all stats
+        this.updateAllStats();
+        
+        // Update registrations
+        this.updateRegistrations();
+        
+        // Generate notifications for registered events
+        this.generateNotifications();
+        
+        // Load calendar events
+        this.loadCalendarEvents();
+        
+        this.isLoading = false;
+      },
+      error: (error: any) => {
+        console.error('Error loading events:', error);
+        this.errorMessage = 'Failed to load events. Please try again later.';
+        this.isLoading = false;
+      }
+    });
+    
+    this.subscriptions.push(eventSub);
+  }
+
+  // Load event history from past events
+  loadEventHistory(backendEvents: BackendEvent[]): void {
+    const pastEvents = backendEvents.filter((e: BackendEvent) => e.status === 'Past');
+    const registeredEventIds = this.eventService.getCurrentRegistrations();
+    
+    this.eventHistory = pastEvents.map((e: BackendEvent) => {
+      const frontendEvent = this.eventService.convertToFrontendEvent(e);
+      const wasRegistered = registeredEventIds.includes(e.id);
+      
+      return {
+        event: {
+          id: frontendEvent.id,
+          title: frontendEvent.title,
+          date: frontendEvent.date,
+          time: frontendEvent.time,
+          location: frontendEvent.location,
+          category: frontendEvent.category,
+          description: frontendEvent.description
+        },
+        attended: wasRegistered, // If they were registered, assume they attended
+        rating: wasRegistered ? Math.floor(Math.random() * 2) + 4 : null // Random rating 4-5 for attended events
+      };
+    });
+  }
+
+  // Update all statistics from real data
+  updateAllStats(): void {
+    // Upcoming Events
+    this.stats[0].value = this.upcomingEvents.length;
+    
+    // My Registrations
+    const registeredCount = this.upcomingEvents.filter(e => e.registered).length;
+    this.stats[1].value = registeredCount;
+    
+    // Events Attended (from history)
+    const attendedCount = this.eventHistory.filter(item => item.attended).length;
+    this.stats[2].value = attendedCount;
+    if (this.eventHistory.length > 0) {
+      const percentage = Math.round((attendedCount / this.eventHistory.length) * 100);
+      this.stats[2].subtitle = `${percentage}% attendance rate`;
+    } else {
+      this.stats[2].subtitle = 'No past events';
+    }
+    
+    // Pending Actions (events happening in next 7 days that user is registered for)
+    const today = new Date();
+    const nextWeek = new Date();
+    nextWeek.setDate(today.getDate() + 7);
+    
+    const pendingEvents = this.upcomingEvents.filter(event => {
+      if (!event.registered) return false;
+      const eventDate = new Date(event.date);
+      return eventDate >= today ;
+    });
+    this.stats[3].value = pendingEvents.length;
+    this.stats[3].subtitle = pendingEvents.length === 0 ? 'All clear' : 'Events this week';
+  }
+
+  // Generate notifications for registered events
+  generateNotifications(): void {
+    this.notifications = [];
+    let notificationId = 1;
+    
+    // Get registered events
+    const registeredEvents = this.upcomingEvents.filter(e => e.registered);
+    
+    // Create notification for each registered event
+    registeredEvents.forEach(event => {
+      const eventDate = new Date(event.date);
+      const today = new Date();
+      const daysUntil = Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      
+      let message = '';
+      let type: 'info' | 'warning' | 'success' = 'info';
+      let time = '';
+      
+      if (daysUntil <= 0) {
+        message = `${event.title} is happening today at ${event.time}!`;
+        type = 'warning';
+        time = 'Today';
+      } else if (daysUntil === 1) {
+        message = `${event.title} is tomorrow at ${event.time}. Don't forget to attend!`;
+        type = 'warning';
+        time = 'Tomorrow';
+      } else if (daysUntil <= 3) {
+        message = `${event.title} is in ${daysUntil} days at ${event.time}`;
+        type = 'info';
+        time = `${daysUntil} days away`;
+      } else if (daysUntil <= 7) {
+        message = `Upcoming: ${event.title} on ${event.date} at ${event.time}`;
+        type = 'info';
+        time = `${daysUntil} days away`;
+      } else {
+        message = `You're registered for ${event.title} on ${event.date}`;
+        type = 'success';
+        time = `${daysUntil} days away`;
+      }
+      
+      this.notifications.push({
+        id: notificationId++,
+        title: `Event Reminder: ${event.title}`,
+        message: message,
+        time: time,
+        type: type,
+        read: false
+      });
+    });
+    
+    // Sort notifications by urgency (warnings first, then info, then success)
+    this.notifications.sort((a, b) => {
+      const order = { warning: 0, info: 1, success: 2 };
+      return order[a.type] - order[b.type];
+    });
+    
+    // Update notification badge
+    this.updateNotificationBadge();
+  }
+
+  updateRegistrations(): void {
+    this.myRegistrations = this.upcomingEvents.filter(event => event.registered);
+    this.updateAllStats();
+    this.generateNotifications();
   }
 
   // Navigation Methods
@@ -401,8 +384,7 @@ export class StudentDashboardComponent implements OnInit {
     }
   }
 
-  
-// Enhanced Global Search Method with Smart Navigation
+  // Enhanced Global Search Method with Smart Navigation
   performGlobalSearch(): void {
     if (!this.globalSearchQuery.trim()) {
       return;
@@ -411,7 +393,7 @@ export class StudentDashboardComponent implements OnInit {
     const searchTerm = this.globalSearchQuery.toLowerCase().trim();
     
     // Smart Navigation - Check for page keywords first
-    const pageKeywords = {
+    const pageKeywords: { [key: string]: string[] } = {
       'dashboard': ['dashboard', 'home', 'main'],
       'events': ['events', 'browse events', 'all events', 'event'],
       'registrations': ['registrations', 'my registrations', 'registered', 'registration'],
@@ -425,27 +407,23 @@ export class StudentDashboardComponent implements OnInit {
     // Check if search matches a page keyword
     for (const [page, keywords] of Object.entries(pageKeywords)) {
       if (keywords.some(keyword => searchTerm.includes(keyword))) {
-        // Navigate to that page
         this.setActiveTab(page);
-        this.globalSearchQuery = ''; // Clear search after navigation
-        this.searchQuery = ''; // Clear event search too
+        this.globalSearchQuery = '';
+        this.searchQuery = '';
         return;
       }
     }
     
     // If no page match, search within events
-    // Navigate to events tab and apply search filter
     this.activeTab = 'events';
     this.activeSubPage = '';
     this.searchQuery = this.globalSearchQuery;
     this.selectedCategory = 'All';
     
-    // Close sidebar on mobile
     if (window.innerWidth < 1024) {
       this.sidebarOpen = false;
     }
     
-    // Focus on search input after navigation
     setTimeout(() => {
       const searchInput = document.querySelector('.search-box input') as HTMLInputElement;
       if (searchInput) {
@@ -457,7 +435,6 @@ export class StudentDashboardComponent implements OnInit {
   // Profile Methods
   openEditProfile(): void {
     this.activeSubPage = 'edit-profile';
-    // Pre-fill form with current data
     this.editProfileForm = {
       name: this.studentName,
       email: this.email,
@@ -468,7 +445,6 @@ export class StudentDashboardComponent implements OnInit {
   }
 
   saveProfile(): void {
-    // Update student information
     this.studentName = this.editProfileForm.name;
     this.email = this.editProfileForm.email;
     this.phone = this.editProfileForm.phone;
@@ -482,7 +458,6 @@ export class StudentDashboardComponent implements OnInit {
     this.activeSubPage = '';
   }
 
-  // Settings Methods
   openSettings(): void {
     this.activeSubPage = 'settings';
   }
@@ -496,7 +471,6 @@ export class StudentDashboardComponent implements OnInit {
     this.activeSubPage = '';
   }
 
-  // Change Password Methods
   openChangePassword(): void {
     this.activeSubPage = 'change-password';
   }
@@ -512,7 +486,6 @@ export class StudentDashboardComponent implements OnInit {
       return;
     }
     
-    // Here you would call your API to change password
     alert('Password changed successfully!');
     this.changePasswordForm = {
       currentPassword: '',
@@ -536,35 +509,40 @@ export class StudentDashboardComponent implements OnInit {
     if (event.status === 'Full') return;
     
     event.registered = !event.registered;
-    event.status = event.registered ? 'Registered' : 'Open';
     
     if (event.registered) {
-      this.myRegistrations.push(event);
-      this.stats[1].value++;
+      // Register in service
+      this.eventService.registerForEvent(event.id.toString());
+      event.status = 'Registered';
       alert(`Successfully registered for: ${event.title}`);
     } else {
-      this.myRegistrations = this.myRegistrations.filter(e => e.id !== event.id);
-      this.stats[1].value--;
+      // Unregister in service
+      this.eventService.unregisterFromEvent(event.id.toString());
+      event.status = 'Open';
       alert(`Registration cancelled for: ${event.title}`);
     }
+    
+    this.updateRegistrations();
   }
 
   cancelRegistration(event: Event): void {
     if (confirm(`Are you sure you want to cancel your registration for "${event.title}"?`)) {
       event.registered = false;
       event.status = 'Open';
-      this.myRegistrations = this.myRegistrations.filter(e => e.id !== event.id);
-      this.stats[1].value--;
+      this.eventService.unregisterFromEvent(event.id.toString());
       
-      // Also remove from calendar if added
+      // Remove from calendar if added
       this.calendarEvents = this.calendarEvents.filter(ce => ce.eventId !== event.id);
       
+      this.updateRegistrations();
       alert('Registration cancelled successfully!');
     }
   }
 
   viewEventDetails(event: Event): void {
-    alert(`Event Details:\n\nTitle: ${event.title}\nDate: ${event.date}\nTime: ${event.time}\nLocation: ${event.location}\nDescription: ${event.description}\nAttendees: ${event.attendees}/${event.maxAttendees}`);
+    const organizer = event.organizer ? `\nOrganizer: ${event.organizer}` : '';
+    const contact = event.contact ? `\nContact: ${event.contact}` : '';
+    alert(`Event Details:\n\nTitle: ${event.title}\nDate: ${event.date}\nTime: ${event.time}\nLocation: ${event.location}${organizer}${contact}\nDescription: ${event.description}\nAttendees: ${event.attendees}/${event.maxAttendees}`);
   }
 
   // Add to Calendar Methods
@@ -578,13 +556,11 @@ export class StudentDashboardComponent implements OnInit {
       addedToCalendar: true
     };
     
-    // Check if already added
     const exists = this.calendarEvents.find(ce => ce.eventId === event.id);
     if (!exists) {
       this.calendarEvents.push(calendarEvent);
     }
     
-    // Create .ics file for download
     this.downloadICSFile(event);
     
     alert(
@@ -610,25 +586,42 @@ export class StudentDashboardComponent implements OnInit {
   }
 
   downloadICSFile(event: Event): void {
-    const startDate = new Date(event.date + ' ' + event.time);
+    // Parse the date string properly
+    const [year, month, day] = event.date.split('-').map(num => parseInt(num));
+    const [timeStr, period] = event.time.split(' ');
+    const [hours, minutes] = timeStr.split(':').map(num => parseInt(num));
+    
+    // Convert to 24-hour format
+    let hour24 = hours;
+    if (period === 'PM' && hours !== 12) {
+      hour24 = hours + 12;
+    } else if (period === 'AM' && hours === 12) {
+      hour24 = 0;
+    }
+    
+    // Create date in local timezone
+    const startDate = new Date(year, month - 1, day, hour24, minutes, 0);
     const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // 2 hours later
     
     const icsContent = `BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//CampusEventHub//Event//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
 BEGIN:VEVENT
 UID:${event.id}@campuseventhub.com
 DTSTAMP:${this.formatICSDate(new Date())}
 DTSTART:${this.formatICSDate(startDate)}
 DTEND:${this.formatICSDate(endDate)}
 SUMMARY:${event.title}
-DESCRIPTION:${event.description}
+DESCRIPTION:${event.description.replace(/\n/g, '\\n')}
 LOCATION:${event.location}
 STATUS:CONFIRMED
+SEQUENCE:0
 END:VEVENT
 END:VCALENDAR`;
 
-    const blob = new Blob([icsContent], { type: 'text/calendar' });
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -650,24 +643,24 @@ END:VCALENDAR`;
   }
 
   loadCalendarEvents(): void {
-    // Load events that were added to calendar
     this.myRegistrations.forEach(event => {
-      this.calendarEvents.push({
-        eventId: event.id,
-        title: event.title,
-        date: event.date,
-        time: event.time,
-        location: event.location,
-        addedToCalendar: true
-      });
+      const exists = this.calendarEvents.find(ce => ce.eventId === event.id);
+      if (!exists) {
+        this.calendarEvents.push({
+          eventId: event.id,
+          title: event.title,
+          date: event.date,
+          time: event.time,
+          location: event.location,
+          addedToCalendar: true
+        });
+      }
     });
   }
 
   // Search and Filter Methods
   filterByCategory(category: string): void {
     this.selectedCategory = category;
-    // Clear search query when selecting a category
-    // This ensures category filters work independently
     this.searchQuery = '';
     this.globalSearchQuery = '';
   }
@@ -675,12 +668,10 @@ END:VCALENDAR`;
   getFilteredEvents(): Event[] {
     let filtered = this.upcomingEvents;
     
-    // First apply category filter
     if (this.selectedCategory !== 'All') {
       filtered = filtered.filter(event => event.category === this.selectedCategory);
     }
     
-    // Then apply search filter if search query exists
     if (this.searchQuery && this.searchQuery.trim()) {
       filtered = filtered.filter(event => 
         event.title.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
@@ -754,7 +745,13 @@ END:VCALENDAR`;
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
       
-      const dateStr = date.toISOString().split('T')[0];
+      // const dateStr = date.toISOString().split('T')[0];
+      const year = date.getFullYear();
+      const monthNumber = date.getMonth(); 
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+
       const dayEvents = this.upcomingEvents.filter(event => event.date === dateStr);
       
       const isToday = date.getTime() === today.getTime();
@@ -762,7 +759,8 @@ END:VCALENDAR`;
       this.calendarDays.push({
         date: date.getDate(),
         fullDate: dateStr,
-        isCurrentMonth: date.getMonth() === month,
+        // isCurrentMonth: date.getMonth() === month,
+        isCurrentMonth: monthNumber === this.currentDate.getMonth(),
         isToday: isToday,
         events: dayEvents
       });
@@ -817,14 +815,11 @@ END:VCALENDAR`;
     return months[date.getMonth()];
   }
 
-  
   // Logout Methods
   handleLogout(): void {
-    // Clear local storage
+    this.authService.logout();
     localStorage.clear();
     sessionStorage.clear();
-    
-    // Redirect to login page
     window.location.href = '/login';
   }
 
@@ -832,6 +827,3 @@ END:VCALENDAR`;
     this.activeTab = 'dashboard';
   }
 }
-
-
-

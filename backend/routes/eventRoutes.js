@@ -1,19 +1,3 @@
-// const express = require("express");
-// const router = express.Router();
-// const Event = require("../models/Event");
-
-// // Create Event
-// router.post("/events", async (req, res) => {
-//   try {
-//     const newEvent = new Event(req.body);
-//     await newEvent.save();
-//     res.status(201).json({ message: "Event Saved Successfully" });
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// });
-
-// module.exports = router;
 const express = require("express");
 const router = express.Router();
 const Event = require("../models/Event");
