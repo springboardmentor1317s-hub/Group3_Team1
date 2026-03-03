@@ -14,8 +14,8 @@ app.use(express.json({ limit: '10mb' }));
 
 // Routes (will be mounted after DB connects)
 app.use('/api', authRoutes);
-app.use('/api', eventRoutes);
 app.use('/api', debugRoutes);
+app.use("/api/events", eventRoutes);
 
 // Test Route
 app.get('/', (req, res) => {
@@ -31,3 +31,4 @@ mongoose.connect(process.env.MONGO_URI)
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   })
   .catch((err) => console.log('DB Error', err));
+
