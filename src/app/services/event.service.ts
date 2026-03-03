@@ -4,9 +4,6 @@ import { Observable, BehaviorSubject } from 'rxjs';
 import { tap, map } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 
-// Configure your backend API URL here
-const API_URL = 'http://localhost:5000/api';
-
 export interface BackendEvent {
   id: string;
   name: string;
@@ -19,19 +16,17 @@ export interface BackendEvent {
   status: 'Active' | 'Draft' | 'Past';
   registrations: number;
   participants: number;
-}
-
-export interface EventRegistration {
-  eventId: string;
-  userId: string;
-  registeredAt: Date;
+  maxAttendees?: number;
+  attendeeIds?: string[];
+  registered?: boolean;
+  collegeName?: string;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class EventService {
-  private apiUrl = API_URL;
+  private apiUrl = 'http://localhost:5000/api';
   private eventsSubject = new BehaviorSubject<BackendEvent[]>([]);
   public events$ = this.eventsSubject.asObservable();
 
@@ -45,57 +40,76 @@ export class EventService {
     this.loadRegistrations();
   }
 
-  // Fetch all events from backend
   fetchEvents(): Observable<BackendEvent[]> {
-    return this.http.get<BackendEvent[]>(`${this.apiUrl}/events`)
-      .pipe(
-        tap(events => {
-          this.eventsSubject.next(events);
-        })
-      );
-  }
-
-  // Get single event by ID
-  getEventById(id: string): Observable<BackendEvent | undefined> {
-    return this.events$.pipe(
-      map(events => events.find(e => e.id === id))
+    const headers = this.authService.getAuthHeaders();
+    return this.http.get<BackendEvent[]>(`${this.apiUrl}/events`, { headers }).pipe(
+      tap((events) => {
+        this.eventsSubject.next(events);
+        const registeredIds = events
+          .filter((event) => event.registered === true)
+          .map((event) => String(event.id));
+        this.saveRegistrations(registeredIds);
+      })
     );
   }
 
-  // Create new event
+  getEventById(id: string): Observable<BackendEvent | undefined> {
+    return this.events$.pipe(map((events) => events.find((e) => e.id === id)));
+  }
+
   createEvent(event: Partial<BackendEvent>): Observable<BackendEvent> {
     const headers = this.authService.getAuthHeaders();
-    return this.http.post<BackendEvent>(`${this.apiUrl}/events`, event, { headers })
-      .pipe(
-        tap(newEvent => {
-          const currentEvents = this.eventsSubject.value;
-          this.eventsSubject.next([newEvent, ...currentEvents]);
-        })
-      );
+    return this.http.post<BackendEvent>(`${this.apiUrl}/events`, event, { headers }).pipe(
+      tap((newEvent) => {
+        const currentEvents = this.eventsSubject.value;
+        this.eventsSubject.next([newEvent, ...currentEvents]);
+      })
+    );
   }
 
-  // Delete event
   deleteEvent(id: string): Observable<void> {
     const headers = this.authService.getAuthHeaders();
-    return this.http.delete<void>(`${this.apiUrl}/events/${id}`, { headers })
-      .pipe(
-        tap(() => {
-          const currentEvents = this.eventsSubject.value;
-          this.eventsSubject.next(currentEvents.filter(e => e.id !== id));
-        })
-      );
+    return this.http.delete<void>(`${this.apiUrl}/events/${id}`, { headers }).pipe(
+      tap(() => {
+        const currentEvents = this.eventsSubject.value;
+        this.eventsSubject.next(currentEvents.filter((e) => e.id !== id));
+      })
+    );
   }
 
-  // Local registration management (store in localStorage)
+  toggleRegistration(eventId: string): Observable<BackendEvent> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.post<BackendEvent>(`${this.apiUrl}/events/toggle/${eventId}`, {}, { headers }).pipe(
+      tap((updatedEvent) => {
+        const id = String(updatedEvent.id);
+        const current = this.registrationsSubject.value;
+        const next = updatedEvent.registered
+          ? Array.from(new Set([...current, id]))
+          : current.filter((eventIdValue) => eventIdValue !== id);
+        this.saveRegistrations(next);
+
+        const events = this.eventsSubject.value;
+        const idx = events.findIndex((e) => String(e.id) === id);
+        if (idx > -1) {
+          const clone = [...events];
+          clone[idx] = updatedEvent;
+          this.eventsSubject.next(clone);
+        }
+      })
+    );
+  }
+
   private loadRegistrations(): void {
     const stored = localStorage.getItem('eventRegistrations');
-    if (stored) {
-      try {
-        const registrations = JSON.parse(stored);
-        this.registrationsSubject.next(registrations);
-      } catch (e) {
-        console.error('Error loading registrations:', e);
+    if (!stored) return;
+
+    try {
+      const registrations = JSON.parse(stored);
+      if (Array.isArray(registrations)) {
+        this.registrationsSubject.next(registrations.map((id) => String(id)));
       }
+    } catch (e) {
+      console.error('Error loading registrations:', e);
     }
   }
 
@@ -107,15 +121,13 @@ export class EventService {
   registerForEvent(eventId: string): void {
     const currentRegistrations = this.registrationsSubject.value;
     if (!currentRegistrations.includes(eventId)) {
-      const updated = [...currentRegistrations, eventId];
-      this.saveRegistrations(updated);
+      this.saveRegistrations([...currentRegistrations, eventId]);
     }
   }
 
   unregisterFromEvent(eventId: string): void {
     const currentRegistrations = this.registrationsSubject.value;
-    const updated = currentRegistrations.filter(id => id !== eventId);
-    this.saveRegistrations(updated);
+    this.saveRegistrations(currentRegistrations.filter((id) => id !== eventId));
   }
 
   isRegisteredForEvent(eventId: string): boolean {
@@ -124,9 +136,9 @@ export class EventService {
 
   getRegisteredEvents(): Observable<BackendEvent[]> {
     return this.events$.pipe(
-      map(events => {
+      map((events) => {
         const registeredIds = this.registrationsSubject.value;
-        return events.filter(e => registeredIds.includes(e.id));
+        return events.filter((e) => registeredIds.includes(e.id));
       })
     );
   }
@@ -135,69 +147,43 @@ export class EventService {
     return this.registrationsSubject.value;
   }
 
-  // Convert backend event to frontend Event format
   convertToFrontendEvent(backendEvent: BackendEvent): any {
-    // Parse dateTime - handle both formats: "2026-03-01" or "2026-03-01T14:00:00"
-    let dateTime: Date;
-    let dateStr: string;
-    let timeStr: string;
-    
- 
-  if (backendEvent.dateTime.includes('T')) {
-  const [datePart, timePart] = backendEvent.dateTime.split('T');
-  const [year, month, day] = datePart.split('-').map(Number);
-  const [hour, minute] = timePart.split(':').map(Number);
-  dateTime = new Date(year, month - 1, day, hour, minute);
-  dateStr = datePart;
-  timeStr = dateTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-} else {
-  const [year, month, day] = backendEvent.dateTime.split('-').map(Number);
-  dateTime = new Date(year, month - 1, day, 12, 0); // noon to avoid timezone drift
-  dateStr = backendEvent.dateTime;
-  timeStr = '12:00 PM';
-}
+    const dateObj = backendEvent.dateTime ? new Date(backendEvent.dateTime) : null;
+    const isRegistered = backendEvent.registered === true;
+    const isFull = (backendEvent.registrations || 0) >= (backendEvent.maxAttendees || backendEvent.participants || 100);
 
-
-    // Determine category from name/description
-    const category = this.determineCategory(backendEvent.name, backendEvent.description);
-    
-    // Determine status
-    const isRegistered = this.isRegisteredForEvent(backendEvent.id);
-    let status: 'Open' | 'Registered' | 'Full' | 'Closed';
-    
+    let status: 'Open' | 'Registered' | 'Full' | 'Closed' = 'Open';
     if (backendEvent.status === 'Past') {
       status = 'Closed';
     } else if (isRegistered) {
       status = 'Registered';
-    } else if (backendEvent.registrations >= backendEvent.participants && backendEvent.participants > 0) {
+    } else if (isFull) {
       status = 'Full';
-    } else {
-      status = 'Open';
     }
 
     return {
-      id: parseInt(backendEvent.id.slice(-6), 16) || Math.floor(Math.random() * 10000),
+      id: backendEvent.id,
       title: backendEvent.name,
-      date: dateStr,
-      time: timeStr,
+      date: dateObj ? dateObj.toISOString().split('T')[0] : '',
+      time: dateObj ? dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
       location: backendEvent.location,
-      category: category,
-      attendees: backendEvent.registrations,
-      maxAttendees: backendEvent.participants || 100,
-      status: status,
+      category: this.determineCategory(backendEvent.name, backendEvent.description || ''),
+      attendees: backendEvent.registrations || 0,
+      maxAttendees: backendEvent.maxAttendees || backendEvent.participants || 100,
+      status,
       description: backendEvent.description,
       registered: isRegistered,
       organizer: backendEvent.organizer,
       contact: backendEvent.contact,
-      posterUrl: backendEvent.posterDataUrl
+      posterUrl: backendEvent.posterDataUrl,
+      college: backendEvent.collegeName
     };
   }
 
   private determineCategory(name: string, description: string): string {
-    const text = (name + ' ' + description).toLowerCase();
-    
-    if (text.includes('tech') || text.includes('coding') || text.includes('hackathon') || 
-        text.includes('ai') || text.includes('ml') || text.includes('programming')) {
+    const text = `${name} ${description}`.toLowerCase();
+
+    if (text.includes('tech') || text.includes('coding') || text.includes('hackathon') || text.includes('ai') || text.includes('ml') || text.includes('programming')) {
       return 'Technology';
     }
     if (text.includes('workshop') || text.includes('training')) {
@@ -209,14 +195,13 @@ export class EventService {
     if (text.includes('sports') || text.includes('game') || text.includes('tournament')) {
       return 'Sports';
     }
-    if (text.includes('cultural') || text.includes('fest') || text.includes('music') || 
-        text.includes('dance') || text.includes('art')) {
+    if (text.includes('cultural') || text.includes('fest') || text.includes('music') || text.includes('dance') || text.includes('art')) {
       return 'Cultural';
     }
     if (text.includes('seminar') || text.includes('conference') || text.includes('talk')) {
       return 'Seminar';
     }
-    
+
     return 'Seminar';
   }
 }
