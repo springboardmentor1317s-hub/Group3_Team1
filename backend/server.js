@@ -14,9 +14,9 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 app.use('/api', authRoutes);
-app.use('/api', eventRoutes);
 app.use('/api', debugRoutes);
 app.use('/api/superadmin', superAdminRoutes); 
+app.use("/api/events", eventRoutes);
 
 app.get('/', (req, res) => {
   res.send('Backend Running Successfully');

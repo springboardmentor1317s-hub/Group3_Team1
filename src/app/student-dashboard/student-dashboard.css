@@ -1,10 +1,101 @@
-﻿ @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+ @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+.filter-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.1); /* Semi-transparent background */
+  padding: 15px 20px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.filter-item {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: white;
+  flex: 1;
+}
+
+.filter-item .material-icons {
+  font-size: 20px;
+  margin-right: 10px;
+  color: #3b82f6; /* Adjust color to match your theme */
+}
+
+.filter-item input, 
+.filter-item select {
+  background: transparent;
+  border: none;
+  color: rgb(0, 0, 0);
+  width: 100%;
+  outline: none;
+  font-size: 14px;
+}
+
+/* Customizing Select dropdown */
+.select-item {
+  position: relative;
+  cursor: pointer;
+}
+
+.select-item select {
+  appearance: none;
+  cursor: pointer;
+}
+
+.select-item .arrow {
+  position: absolute;
+  right: 10px;
+  pointer-events: none;
+  margin: 0;
+}
+
+/* Specific Widths */
+.search-item { flex: 2; }
+
+/* Clear Button */
+.clear-filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid #ef4444;
+  padding: 8px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.clear-filter-btn:hover {
+  background: #ef4444;
+  color: white;
+}
+
+.clear-filter-btn .material-icons {
+  font-size: 18px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 1024px) {
+  .filter-bar-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 .dashboard-container {
@@ -634,6 +725,30 @@
   color: #fff;
   margin-bottom: 0.5rem;
 }
+
+.filter-container {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    select, input[type="date"], button {
+      padding: 5px 10px;
+      font-size: 16px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      cursor: pointer;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
 
 .notification-message {
   font-size: 0.9rem;
@@ -1727,7 +1842,7 @@ input:checked + .toggle-slider:before {
 }
 
 .password-requirements li:before {
-  content: 'âœ“';
+  content: '✓';
   position: absolute;
   left: 0;
   color: #3b82f6;
@@ -2261,3 +2376,26 @@ input:checked + .toggle-slider:before {
 .mt-2 { margin-top: 1rem; }
 .mt-3 { margin-top: 1.5rem; }
 .mt-4 { margin-top: 2rem; }
+
+.apply-filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border: 1px solid #10b981;
+  padding: 8px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.apply-filter-btn:hover {
+  background: #10b981;
+  color: white;
+}
+
+.apply-filter-btn .material-icons {
+  font-size: 18px;
+}

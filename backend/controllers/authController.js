@@ -1,7 +1,47 @@
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const Event = require("../models/Event");
 
+
+
+exports.toggleRegistration = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    // IMPORTANT: Make sure this matches the ID type stored in your frontend studentId
+    const studentIdentifier = req.user.userId || req.user.id; 
+
+    const event = await Event.findById(eventId);
+    if (!event) return res.status(404).json({ message: "Event not found" });
+
+    const isRegistered = event.attendeeIds.includes(studentIdentifier);
+
+    if (isRegistered) {
+      // Unregister: Filter out the ID
+      event.attendeeIds = event.attendeeIds.filter(id => id !== studentIdentifier);
+    } else {
+      // Register: Check if full, then push
+      if (event.maxAttendees && event.attendeeIds.length >= event.maxAttendees) {
+        return res.status(400).json({ message: "Event is full" });
+      }
+      event.attendeeIds.push(studentIdentifier);
+    }
+
+    // Keep the numeric count in sync with the array length
+    event.registrations = event.attendeeIds.length;
+
+    await event.save();
+    res.json({ 
+      message: isRegistered ? "Unregistered" : "Registered", 
+      registered: !isRegistered,
+      count: event.registrations 
+    });
+
+  } catch (error) {
+    console.error("Toggle Error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
 
 // ================= SIGNUP =================
 exports.signup = async (req, res) => {

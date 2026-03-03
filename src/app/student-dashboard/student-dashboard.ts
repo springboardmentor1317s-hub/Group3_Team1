@@ -79,6 +79,10 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
   // Search Queries
   searchQuery = '';
   globalSearchQuery = '';
+  selectedDate = '';
+  appliedSearchQuery = '';
+  appliedSelectedCategory = 'All';
+  appliedSelectedDate = '';
   
   // Edit Profile Form
   editProfileForm = {
@@ -419,6 +423,8 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
     this.activeSubPage = '';
     this.searchQuery = this.globalSearchQuery;
     this.selectedCategory = 'All';
+    this.selectedDate = '';
+    this.applyFilters();
     
     if (window.innerWidth < 1024) {
       this.sidebarOpen = false;
@@ -506,36 +512,55 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
 
   // Event Registration Methods
   registerForEvent(event: Event): void {
-    if (event.status === 'Full') return;
-    
-    event.registered = !event.registered;
-    
-    if (event.registered) {
-      // Register in service
-      this.eventService.registerForEvent(event.id.toString());
-      event.status = 'Registered';
-      alert(`Successfully registered for: ${event.title}`);
-    } else {
-      // Unregister in service
-      this.eventService.unregisterFromEvent(event.id.toString());
-      event.status = 'Open';
-      alert(`Registration cancelled for: ${event.title}`);
-    }
-    
-    this.updateRegistrations();
+    if (event.status === 'Full' && !event.registered) return;
+
+    this.eventService.toggleRegistration(String(event.id)).subscribe({
+      next: (updatedBackendEvent) => {
+        const updatedEvent = this.eventService.convertToFrontendEvent(updatedBackendEvent);
+
+        event.registered = updatedEvent.registered;
+        event.status = updatedEvent.status;
+        event.attendees = updatedEvent.attendees;
+        event.maxAttendees = updatedEvent.maxAttendees;
+
+        this.updateRegistrations();
+
+        if (event.registered) {
+          alert(`Successfully registered for: ${event.title}`);
+        } else {
+          alert(`Registration cancelled for: ${event.title}`);
+        }
+      },
+      error: (error) => {
+        console.error('Registration toggle failed:', error);
+        alert(error?.error?.message || 'Could not update registration. Please try again.');
+      }
+    });
   }
 
   cancelRegistration(event: Event): void {
+    if (!event.registered) return;
+
     if (confirm(`Are you sure you want to cancel your registration for "${event.title}"?`)) {
-      event.registered = false;
-      event.status = 'Open';
-      this.eventService.unregisterFromEvent(event.id.toString());
-      
-      // Remove from calendar if added
-      this.calendarEvents = this.calendarEvents.filter(ce => ce.eventId !== event.id);
-      
-      this.updateRegistrations();
-      alert('Registration cancelled successfully!');
+      this.eventService.toggleRegistration(String(event.id)).subscribe({
+        next: (updatedBackendEvent) => {
+          const updatedEvent = this.eventService.convertToFrontendEvent(updatedBackendEvent);
+
+          event.registered = updatedEvent.registered;
+          event.status = updatedEvent.status;
+          event.attendees = updatedEvent.attendees;
+
+          // Remove from calendar if added
+          this.calendarEvents = this.calendarEvents.filter((ce) => ce.eventId !== event.id);
+
+          this.updateRegistrations();
+          alert('Registration cancelled successfully!');
+        },
+        error: (error) => {
+          console.error('Cancellation failed:', error);
+          alert(error?.error?.message || 'Could not cancel registration. Please try again.');
+        }
+      });
     }
   }
 
@@ -661,25 +686,42 @@ END:VCALENDAR`;
   // Search and Filter Methods
   filterByCategory(category: string): void {
     this.selectedCategory = category;
+  }
+
+  applyFilters(): void {
+    this.appliedSearchQuery = this.searchQuery.trim();
+    this.appliedSelectedCategory = this.selectedCategory;
+    this.appliedSelectedDate = this.selectedDate;
+  }
+
+  clearFilters(): void {
     this.searchQuery = '';
+    this.selectedCategory = 'All';
+    this.selectedDate = '';
     this.globalSearchQuery = '';
+    this.applyFilters();
   }
 
   getFilteredEvents(): Event[] {
     let filtered = this.upcomingEvents;
     
-    if (this.selectedCategory !== 'All') {
-      filtered = filtered.filter(event => event.category === this.selectedCategory);
+    if (this.appliedSelectedCategory !== 'All') {
+      filtered = filtered.filter(event => event.category === this.appliedSelectedCategory);
     }
     
-    if (this.searchQuery && this.searchQuery.trim()) {
+    if (this.appliedSearchQuery) {
+      const query = this.appliedSearchQuery.toLowerCase();
       filtered = filtered.filter(event => 
-        event.title.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        event.category.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-        event.description.toLowerCase().includes(this.searchQuery.toLowerCase())
+        event.title.toLowerCase().includes(query) ||
+        event.category.toLowerCase().includes(query) ||
+        event.description.toLowerCase().includes(query)
       );
     }
     
+
+    if (this.appliedSelectedDate) {
+      filtered = filtered.filter(event => event.date === this.appliedSelectedDate);
+    }
     return filtered;
   }
 
@@ -827,3 +869,5 @@ END:VCALENDAR`;
     this.activeTab = 'dashboard';
   }
 }
+
+

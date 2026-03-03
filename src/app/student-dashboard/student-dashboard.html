@@ -222,33 +222,66 @@
       </section>
     </div>
 
-    <!-- BROWSE EVENTS TAB -->
+    <!--  EVENTS TAB -->
     <div class="content-wrapper" *ngIf="activeTab === 'events'">
-      <section class="events-section">
-        <h2 class="section-title">Browse Events</h2>
-        
-        <!-- Search and Filter -->
-        <div class="filter-header">
-          <div class="search-box">
-            <span class="material-icons">search</span>
-            <input 
-              type="text" 
-              placeholder="Search events..." 
-              [(ngModel)]="searchQuery"
-            >
-          </div>
-          
-          <div class="category-filters">
-            <button 
-              *ngFor="let category of eventCategories"
-              class="category-filter"
-              [class.active]="selectedCategory === category"
-              (click)="filterByCategory(category)"
-            >
-              {{ category }}
-            </button>
-          </div>
-        </div>
+  <section class="events-section">
+    <h2 class="section-title">Browse Events</h2>
+    
+    <div class="filter-bar-container">
+      <div class="filter-item search-item">
+        <span class="material-icons">search</span>
+        <input type="text" placeholder="Search events..." [(ngModel)]="searchQuery">
+      </div>
+      
+      <div class="filter-item select-item">
+        <span class="material-icons">category</span>
+        <select [(ngModel)]="selectedCategory" (change)="filterByCategory(selectedCategory)">
+          <option *ngFor="let category of eventCategories" [value]="category">
+            {{ category }}
+          </option>
+        </select>
+        <span class="material-icons arrow">expand_more</span>
+      </div>
+
+      <!-- <div class="filter-item date-item">
+        <span class="material-icons">calendar_today</span>
+        <input type="text" placeholder="dd-mm-yyyy" [(ngModel)]="selectedDate" onfocus="(this.type='date')" onblur="(this.type='text')">
+        <span class="material-icons calendar-icon">calendar_month</span>
+      </div> -->
+
+      <div class="filter-item date-item">
+        <span class="material-icons">calendar_today</span>
+        <input type="text" placeholder="dd-mm-yyyy" [(ngModel)]="selectedDate" onfocus="(this.type='date')" onblur="(this.type='text')">
+        <span
+          class="material-icons calendar-icon"
+          role="button"
+          tabindex="0"
+          onclick="this.previousElementSibling.type='date'; this.previousElementSibling.focus(); if (this.previousElementSibling.showPicker) this.previousElementSibling.showPicker();"
+          onkeydown="if (event.key === 'Enter' || event.key === ' ') { this.click(); event.preventDefault(); }"
+        >calendar_month</span>
+      </div>
+
+
+      <!-- <div class="filter-item select-item">
+        <span class="material-icons">College</span> -->
+        <!-- <select >
+          <option value="">Technology</option>
+          <option value="CS">Seminar</option>
+          <option value="IT">Information Technology</option>
+        </select> -->
+        <!-- <span class="material-icons arrow">expand_more</span>
+      </div> -->
+
+      <button class="clear-filter-btn" (click)="clearFilters()">
+        <span class="material-icons">refresh</span>
+        Clear
+      </button>
+
+      <button class="apply-filter-btn" (click)="applyFilters()">
+        <span class="material-icons">done</span>
+        Apply
+      </button>
+    </div>
 
         <!-- All Events -->
         <div class="events-grid">
@@ -394,7 +427,7 @@
     </div>
 
     <!-- CALENDAR TAB -->
-    <div class="content-wrapper" *ngIf="activeTab === 'calendar'">
+    <!-- <div class="content-wrapper" *ngIf="activeTab === 'calendar'">
       <section class="calendar-section">
         <h2 class="section-title">Event Calendar</h2>
 
@@ -430,6 +463,26 @@
               <span *ngIf="day.events.length > 2" class="more-events">
                 +{{ day.events.length - 2 }} more
               </span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div> -->
+
+    <div class="content-wrapper" *ngIf="activeTab === 'calendar'">
+      <section class="calendar-section">
+        <h2 class="section-title">Event Calendar</h2>
+        <div class="calendar-header">
+          <button class="calendar-nav-btn" (click)="previousMonth()"><span class="material-icons">chevron_left</span></button>
+          <div class="calendar-month-year">{{ currentMonthYear }}</div>
+          <button class="calendar-nav-btn" (click)="nextMonth()"><span class="material-icons">chevron_right</span></button>
+        </div>
+        <div class="calendar-grid">
+          <div *ngFor="let day of weekDays" class="calendar-day-header">{{ day }}</div>
+          <div *ngFor="let day of calendarDays" class="calendar-day" [class.other-month]="!day.isCurrentMonth" [class.today]="day.isToday" [class.has-events]="day.events.length > 0">
+            <div class="day-number">{{ day.date }}</div>
+            <div class="day-events" *ngIf="day.events.length > 0">
+              <span *ngFor="let event of day.events.slice(0, 2)" class="calendar-event-dot" [style.background]="getCategoryColor(event.category)"></span>
             </div>
           </div>
         </div>
@@ -1037,3 +1090,7 @@
 
   </main>
 </div>
+
+
+
+

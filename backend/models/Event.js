@@ -11,6 +11,9 @@ const eventSchema = new mongoose.Schema({
   status: { type: String, enum: ["Active", "Draft", "Past"], default: "Active" },
   registrations: { type: Number, default: 0 },
   participants: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now },
+  attendeeIds: [{ type: String }],
+  collegeName: { type: String, required: true },
   createdAt: { type: Date, default: Date.now }
 });
 
