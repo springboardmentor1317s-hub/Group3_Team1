@@ -85,7 +85,7 @@ router.post("/toggle/:id", protect, async (req, res) => {
     }
 
     event.registrations = event.attendeeIds.length;
-    await event.save();
+    await event.save({ validateBeforeSave: false });
 
     res.json(toClient(event, studentIdentifier));
   } catch (error) {
