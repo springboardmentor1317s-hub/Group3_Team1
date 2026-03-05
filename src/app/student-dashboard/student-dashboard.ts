@@ -270,7 +270,7 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
           category: frontendEvent.category,
           description: frontendEvent.description
         },
-        attended: wasRegistered, // If they were registered, assume they attended
+        attended: wasRegistered ? Math.random() > 0.3 : false,// If they were registered, assume they attended
         rating: wasRegistered ? Math.floor(Math.random() * 2) + 4 : null // Random rating 4-5 for attended events
       };
     });
@@ -511,32 +511,62 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
   }
 
   // Event Registration Methods
+  // registerForEvent(event: Event): void {
+  //   if (event.status === 'Full' && !event.registered) return;
+
+  //   this.eventService.toggleRegistration(String(event.id)).subscribe({
+  //     next: (updatedBackendEvent) => {
+  //       const updatedEvent = this.eventService.convertToFrontendEvent(updatedBackendEvent);
+
+  //       event.registered = updatedEvent.registered;
+  //       event.status = updatedEvent.status;
+  //       event.attendees = updatedEvent.attendees;
+  //       event.maxAttendees = updatedEvent.maxAttendees;
+       
+  //       this.updateRegistrations();
+        
+  //       if (updatedEvent.registered) {
+  //         alert(`Successfully registered for: ${event.title}`);
+  //       } else {
+  //         alert(`Registration cancelled for: ${event.title}`);
+  //       }
+  //     },
+  //     error: (error) => {
+  //       console.error('Registration toggle failed:', error);
+  //       alert(error?.error?.message || 'Could not update registration. Please try again.');
+  //     }
+  //   });
+  // }
   registerForEvent(event: Event): void {
-    if (event.status === 'Full' && !event.registered) return;
 
-    this.eventService.toggleRegistration(String(event.id)).subscribe({
-      next: (updatedBackendEvent) => {
-        const updatedEvent = this.eventService.convertToFrontendEvent(updatedBackendEvent);
+  if (event.status === 'Full' && !event.registered) return;
 
-        event.registered = updatedEvent.registered;
-        event.status = updatedEvent.status;
-        event.attendees = updatedEvent.attendees;
-        event.maxAttendees = updatedEvent.maxAttendees;
+  // 🔹 Immediately update UI
+  event.registered = !event.registered;
+  event.status = event.registered ? 'Registered' : 'Open';
 
-        this.updateRegistrations();
-
-        if (event.registered) {
-          alert(`Successfully registered for: ${event.title}`);
-        } else {
-          alert(`Registration cancelled for: ${event.title}`);
-        }
-      },
-      error: (error) => {
-        console.error('Registration toggle failed:', error);
-        alert(error?.error?.message || 'Could not update registration. Please try again.');
-      }
-    });
+  // 🔹 Show alert immediately
+  if (event.registered) {
+    alert(`Successfully registered for: ${event.title}`);
+  } else {
+    alert(`Registration cancelled for: ${event.title}`);
   }
+
+  // 🔹 Call backend API
+  this.eventService.toggleRegistration(String(event.id)).subscribe({
+    next: (updatedBackendEvent) => {
+      const updatedEvent = this.eventService.convertToFrontendEvent(updatedBackendEvent);
+
+      event.attendees = updatedEvent.attendees;
+      event.maxAttendees = updatedEvent.maxAttendees;
+    },
+    error: (error) => {
+      console.error('Registration toggle failed:', error);
+      alert(error?.error?.message || 'Could not update registration.');
+    }
+  });
+
+}
 
   cancelRegistration(event: Event): void {
     if (!event.registered) return;

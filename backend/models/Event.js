@@ -13,7 +13,7 @@ const eventSchema = new mongoose.Schema({
   participants: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
   attendeeIds: [{ type: String }],
-  collegeName: { type: String, required: true },
+  // collegeName: { type: String, required: true },
   createdAt: { type: Date, default: Date.now }
 });
 
