@@ -1,0 +1,33 @@
+<div class="pending-page">
+  <div class="bg-orb orb-1" aria-hidden="true"></div>
+  <div class="bg-orb orb-2" aria-hidden="true"></div>
+  <div class="bg-grid" aria-hidden="true"></div>
+
+  <section class="pending-card" role="status" aria-live="polite">
+    <div class="status-pill" [class.is-rejected]="status === 'rejected'">
+      {{ status === 'pending' ? 'Verification In Progress' : 'Request Rejected' }}
+    </div>
+
+    <div class="icon-wrap" [class.is-rejected]="status === 'rejected'">
+      <span *ngIf="status === 'pending'">!</span>
+      <span *ngIf="status === 'rejected'">x</span>
+    </div>
+
+    <h1 *ngIf="status === 'pending'">Account Under Verification</h1>
+    <h1 *ngIf="status === 'rejected'">Admin Request Rejected</h1>
+
+    <p class="lead" *ngIf="status === 'pending'">
+      Your college admin account is currently under review by the Super Admin. You will be able to sign in once it is approved.
+    </p>
+    <p class="lead" *ngIf="status === 'rejected'">
+      Your request for a college admin account has been rejected by the Super Admin.
+    </p>
+
+    <div class="reason-box" *ngIf="status === 'rejected'">
+      <h3>Rejection Reason</h3>
+      <p>{{ reason || 'No reason was provided.' }}</p>
+    </div>
+
+    <button type="button" (click)="goToLogin()">Back To Login</button>
+  </section>
+</div>

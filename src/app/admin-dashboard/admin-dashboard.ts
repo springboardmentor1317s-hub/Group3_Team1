@@ -331,7 +331,7 @@ interface CreateEventForm {
 })
 export class AdminDashboard implements OnInit {
 
-  private readonly API_URL = 'http://localhost:5000/api/events';
+  private readonly API_URL = '/api/events';
   constructor(private readonly http: HttpClient) {}
   activeTab: DashboardTab = 'overview';
   createModalOpen = false;

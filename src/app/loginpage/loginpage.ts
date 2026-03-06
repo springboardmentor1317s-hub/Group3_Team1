@@ -71,6 +71,7 @@ export class Loginpage {
   this.authService.login(payload).subscribe({
     next: (res: any) => {
       console.log('Login Success', res);
+
       // store token and role
       if (res.token) localStorage.setItem('token', res.token);
       const currentUser = {
@@ -95,6 +96,14 @@ localStorage.setItem('role', res.role);
     },
     error: (err) => {
       console.log('Login Failed', err);
+      if (err?.status === 403 && err?.error?.approvalStatus) {
+        const status = err.error.approvalStatus;
+        const reason = err.error.rejectionReason || '';
+        this.router.navigate(['/admin-approval-pending'], {
+          queryParams: { status, reason }
+        });
+        return;
+      }
       this.errorMessage = err.error?.message || 'Invalid email or password';
     }
   });

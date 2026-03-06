@@ -1,0 +1,222 @@
+.pending-page {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 15% 20%, rgba(36, 99, 235, 0.2), transparent 35%),
+    radial-gradient(circle at 85% 80%, rgba(14, 116, 144, 0.18), transparent 35%),
+    linear-gradient(135deg, #0b1220 0%, #111827 45%, #0f172a 100%);
+}
+
+.bg-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(12px);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.orb-1 {
+  width: 340px;
+  height: 340px;
+  top: -80px;
+  left: -90px;
+  background: linear-gradient(140deg, #1d4ed8, #06b6d4);
+  animation: orbFloatOne 14s ease-in-out infinite;
+}
+
+.orb-2 {
+  width: 300px;
+  height: 300px;
+  right: -80px;
+  bottom: -80px;
+  background: linear-gradient(140deg, #0891b2, #2563eb);
+  animation: orbFloatTwo 16s ease-in-out infinite;
+}
+
+.bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(circle at center, black 40%, transparent 100%);
+  pointer-events: none;
+  animation: gridDrift 18s linear infinite;
+}
+
+.pending-card {
+  position: relative;
+  z-index: 1;
+  width: min(640px, 100%);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.9), rgba(241, 245, 249, 0.82));
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 24px;
+  box-shadow:
+    0 28px 60px rgba(2, 6, 23, 0.42),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(10px);
+  padding: 36px;
+  text-align: center;
+  animation: cardRiseIn 560ms ease-out both;
+}
+
+.status-pill {
+  display: inline-block;
+  margin-bottom: 18px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #155e75;
+  background: #ccfbf1;
+  border: 1px solid #99f6e4;
+}
+
+.status-pill.is-rejected {
+  color: #991b1b;
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+
+.icon-wrap {
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 800;
+  color: #0f766e;
+  background: #ccfbf1;
+  border: 2px solid #5eead4;
+}
+
+.icon-wrap.is-rejected {
+  color: #b91c1c;
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.pending-card h1 {
+  margin: 0 0 10px;
+  font-size: 34px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.lead {
+  margin: 0 auto 24px;
+  max-width: 560px;
+  color: #334155;
+  line-height: 1.65;
+  font-size: 16px;
+}
+
+.pending-card button {
+  border: none;
+  background: linear-gradient(135deg, #0f766e, #0369a1);
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 11px 20px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(3, 105, 161, 0.33);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pending-card button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(3, 105, 161, 0.38);
+}
+
+.reason-box {
+  text-align: left;
+  border: 1px solid #fca5a5;
+  background: #fff1f2;
+  border-radius: 14px;
+  padding: 14px;
+  margin: 0 0 24px;
+}
+
+.reason-box h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: #9f1239;
+  font-weight: 700;
+}
+
+.reason-box p {
+  margin: 0;
+  color: #881337;
+  line-height: 1.55;
+}
+
+@media (max-width: 640px) {
+  .pending-card {
+    padding: 26px 20px;
+    border-radius: 18px;
+  }
+
+  .pending-card h1 {
+    font-size: 28px;
+  }
+
+  .lead {
+    font-size: 15px;
+  }
+}
+
+@keyframes orbFloatOne {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(24px, 16px, 0) scale(1.06);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes orbFloatTwo {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-22px, -18px, 0) scale(1.05);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes gridDrift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(28px, 28px, 0);
+  }
+}
+
+@keyframes cardRiseIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

@@ -30,7 +30,7 @@
       <div class="icon blue"><i class="fa-solid fa-user-shield"></i></div>
       <h4>Total Admins</h4>
       <h2>{{ totalAdmins }}</h2>
-      <span class="green">this month</span>
+      <span class="green">Approved Admins</span>
     </div>
 
     <div class="card">
@@ -129,6 +129,80 @@
       </div>
     </div>
 
+  </div>
+
+  <div class="approval-section">
+    <div class="approval-header">
+      <h3>College Admin Review Requests</h3>
+    </div>
+    <div class="approval-controls">
+      <div class="approval-summary">
+        <div class="summary-chip pending">Pending: {{ pendingCount }}</div>
+        <div class="summary-chip approved">Approved: {{ approvedCount }}</div>
+        <div class="summary-chip rejected">Rejected: {{ rejectedCount }}</div>
+      </div>
+      <div class="approval-tools">
+        <select [(ngModel)]="statusFilter" aria-label="Filter by status">
+          <option value="all">All</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
+        <input
+          type="text"
+          [(ngModel)]="searchTerm"
+          placeholder="Search name, email, userId..."
+          aria-label="Search requests"
+        />
+      </div>
+    </div>
+
+    <div class="approval-empty" *ngIf="filteredAdminApprovalRequests.length === 0">
+      No admin signup requests found.
+    </div>
+
+    <div class="approval-list" *ngIf="filteredAdminApprovalRequests.length > 0">
+      <div class="approval-item" *ngFor="let request of filteredAdminApprovalRequests">
+        <div class="approval-grid">
+          <p><strong>Name:</strong> {{ request.name }}</p>
+          <p><strong>User ID:</strong> {{ request.userId }}</p>
+          <p><strong>Email:</strong> {{ request.email }}</p>
+          <p><strong>College:</strong> {{ request.college || 'Not provided' }}</p>
+          <p><strong>Role:</strong> {{ request.role }}</p>
+          <p><strong>Submitted:</strong> {{ request.createdAt | date:'medium' }}</p>
+          <p>
+            <strong>Status:</strong>
+            <span class="status-chip" [class.pending]="request.status === 'pending'"
+              [class.approved]="request.status === 'approved'"
+              [class.rejected]="request.status === 'rejected'">
+              {{ request.status }}
+            </span>
+          </p>
+          <p *ngIf="request.status === 'rejected'">
+            <strong>Rejection Reason:</strong> {{ request.rejectionReason || 'No reason provided' }}
+          </p>
+        </div>
+
+        <div class="approval-actions" *ngIf="request.status === 'pending'">
+          <button class="approve-btn" (click)="approveRequest(request)">Approve</button>
+          <button class="reject-btn" (click)="showRejectReasonBox(request.id)">Reject</button>
+        </div>
+
+        <div class="reject-box" *ngIf="request.status === 'pending' && showRejectBoxById[request.id]">
+          <label for="reason-{{ request.id }}">Rejection Reason</label>
+          <textarea
+            id="reason-{{ request.id }}"
+            [(ngModel)]="rejectInputById[request.id]"
+            rows="3"
+            placeholder="Enter valid reason for rejection"
+          ></textarea>
+          <div class="reject-actions">
+            <button class="reject-btn" (click)="rejectRequest(request)">Submit Rejection</button>
+            <button class="cancel-btn" (click)="cancelReject(request.id)">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
 </div>

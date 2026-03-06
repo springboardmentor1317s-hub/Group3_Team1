@@ -63,6 +63,8 @@ exports.signup = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const normalizedRole = (role || "").toLowerCase();
+    const isCollegeAdmin = normalizedRole === "college_admin" || normalizedRole === "admin";
 
     const user = await User.create({
       name,
@@ -70,7 +72,10 @@ exports.signup = async (req, res) => {
       email,
       college,
       password: hashedPassword,
-      role
+      role,
+      adminApprovalStatus: isCollegeAdmin ? "pending" : "approved",
+      adminRejectionReason: "",
+      adminReviewedAt: null
     });
 
     res.status(201).json({ message: "User registered successfully" });
@@ -102,6 +107,25 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
+    const normalizedRole = (user.role || "").toLowerCase();
+    const isCollegeAdmin = normalizedRole === "college_admin" || normalizedRole === "admin";
+    const approvalStatus = user.adminApprovalStatus || "pending";
+
+    if (isCollegeAdmin && approvalStatus === "pending") {
+      return res.status(403).json({
+        message: "Your account is pending Super Admin approval. Please try again later.",
+        approvalStatus: "pending"
+      });
+    }
+
+    if (isCollegeAdmin && approvalStatus === "rejected") {
+      return res.status(403).json({
+        message: "Your college admin request was rejected by Super Admin.",
+        approvalStatus: "rejected",
+        rejectionReason: user.adminRejectionReason || "No reason provided."
+      });
+    }
+
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
@@ -112,9 +136,11 @@ exports.login = async (req, res) => {
       token,
       role: user.role,
       name: user.name,
-      userId: user.userId,     
-    email: user.email,        
-    college: user.college 
+      userId: user.userId,
+      email: user.email,
+      college: user.college,
+      adminApprovalStatus: user.adminApprovalStatus || "approved",
+      adminRejectionReason: user.adminRejectionReason || ""
     });
 
   } catch (error) {

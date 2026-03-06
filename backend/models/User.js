@@ -27,6 +27,22 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ["admin", "student", "college_admin"],
     default: "student"
+  },
+  adminApprovalStatus: {
+    type: String,
+    enum: ["pending", "approved", "rejected"],
+    default: function () {
+      const role = (this.role || "").toLowerCase();
+      return role === "college_admin" || role === "admin" ? "pending" : "approved";
+    }
+  },
+  adminRejectionReason: {
+    type: String,
+    default: ""
+  },
+  adminReviewedAt: {
+    type: Date,
+    default: null
   }
 }, { timestamps: true });
 

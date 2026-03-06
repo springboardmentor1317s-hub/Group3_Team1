@@ -26,7 +26,7 @@ export interface BackendEvent {
   providedIn: 'root'
 })
 export class EventService {
-  private apiUrl = 'http://localhost:5000/api';
+  private apiUrl = '/api';
   private eventsSubject = new BehaviorSubject<BackendEvent[]>([]);
   public events$ = this.eventsSubject.asObservable();
 

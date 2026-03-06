@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../auth.service';
+import { AdminApprovalService } from '../services/admin-approval.service';
 
 @Component({
   selector: 'app-registerpage',
@@ -26,7 +27,8 @@ export class Registerpage {
 
   constructor(
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private adminApprovalService: AdminApprovalService
   ) {}
 
   register() {
@@ -62,7 +64,19 @@ export class Registerpage {
     this.authService.signup(payload).subscribe({
       next: (res: any) => {
         console.log('Registration Success:', res);
-        // Navigate to success page on successful registration
+        if (this.user.role === 'college_admin') {
+          this.adminApprovalService.saveRequest({
+            name: payload.name,
+            userId: payload.userId,
+            email: payload.email,
+            college: payload.college,
+            role: 'college_admin'
+          });
+          this.router.navigate(['/admin-approval-pending']);
+          return;
+        }
+
+        // Keep existing success page for students.
         this.router.navigate(['/signup-success']);
       },
       error: (err) => {

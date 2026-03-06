@@ -7,6 +7,7 @@ import { AdminDashboard } from './admin-dashboard/admin-dashboard';
 import { SuperAdminDashboard } from './super-admin-dashboard/super-admin-dashboard';
 import { SignupSuccessComponent } from './signup-success/signup-success.component';
 import { roleGuard } from './role/role';
+import { AdminApprovalPendingComponent } from './admin-approval-pending/admin-approval-pending.component';
 
 
 
@@ -16,6 +17,7 @@ export const routes: Routes = [
   { path: 'register', component: Registerpage },
   { path: 'login', component: Loginpage },
   { path: 'signup-success', component: SignupSuccessComponent },
+  { path: 'admin-approval-pending', component: AdminApprovalPendingComponent },
 
   {
     path: 'student-dashboard',
