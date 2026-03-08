@@ -83,6 +83,7 @@ export class Loginpage {
   college: res.college || 'Not Set'
 };
 localStorage.setItem('currentUser', JSON.stringify(currentUser));
+localStorage.setItem('userName', currentUser.name)
 localStorage.setItem('role', res.role);
       this.auth.setRole(res.role || this.user.role);
       // navigate
