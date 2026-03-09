@@ -290,6 +290,26 @@
           </div>
 
           <div class="field">
+            <label for="eventCategory">
+              <span class="field__icon">🏷</span> Event Category
+            </label>
+
+            <select
+              id="eventCategory"
+              name="category"
+              [(ngModel)]="createForm.category"
+            >
+              <option value="">Select Category</option>
+              <option value="Technology">Technology</option>
+              <option value="Cultural">Cultural</option>
+              <option value="Workshop">Workshop</option>
+              <option value="Career">Career</option>
+              <option value="Sports">Sports</option>
+              <option value="Seminar">Seminar</option>
+            </select>
+          </div>
+
+          <div class="field">
             <label for="eventOrganizer">
               <span class="field__icon">👤</span> Organizer
             </label>

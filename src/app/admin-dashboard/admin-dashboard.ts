@@ -29,6 +29,7 @@ interface CreateEventForm {
   description: string;
   teamSize: number | null;
   posterDataUrl: string | null;
+  category: string;
 }
 
 @Component({
@@ -118,8 +119,13 @@ export class AdminDashboard implements OnInit {
 
   saveEvent(): void {
     const name = this.createForm.name.trim();
-    if (!name || !this.createForm.dateTime.trim() || !this.createForm.location.trim()) {
-      alert('Please fill Event Name, Date, and Location.');
+    if (
+      !name ||
+      !this.createForm.category ||
+      !this.createForm.dateTime.trim() ||
+      !this.createForm.location.trim()
+    ) {
+      alert('Please fill Event Name, Category, Date, and Location.');
       return;
     }
 
@@ -133,6 +139,7 @@ export class AdminDashboard implements OnInit {
       description: this.createForm.description.trim(),
       teamSize: this.createForm.teamSize ?? null,
       posterDataUrl: this.createForm.posterDataUrl,
+      category: this.createForm.category,
       status: this.isPastEventDate(this.createForm.dateTime) ? 'Past' : 'Active',
       registrations: 0,
       participants: 0
@@ -293,7 +300,8 @@ export class AdminDashboard implements OnInit {
       contact: '',
       description: '',
       teamSize: null,
-      posterDataUrl: null
+      posterDataUrl: null,
+      category: ''
     };
   }
 
