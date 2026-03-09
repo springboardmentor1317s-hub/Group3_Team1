@@ -7,6 +7,7 @@ const eventSchema = new mongoose.Schema({
   organizer: { type: String, default: "" },
   contact: { type: String, default: "" },
   description: { type: String, default: "" },
+  category: { type: String, required: true },
   posterDataUrl: { type: String, default: null },
   status: { type: String, enum: ["Active", "Draft", "Past"], default: "Active" },
   registrations: { type: Number, default: 0 },
