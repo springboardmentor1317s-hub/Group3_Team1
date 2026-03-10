@@ -1,4 +1,4 @@
-﻿ @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+﻿﻿ @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 
 * {
@@ -122,8 +122,9 @@
   left: 0;
   top: 0;
   border-right: 1px solid rgba(255,255,255,0.2);
-  z-index: 1000;
+  z-index: 1001;
   transition: transform 0.3s ease;
+  touch-action: pan-y;
 }
 
 .sidebar-overlay {
@@ -134,10 +135,12 @@
   z-index: 999;
   opacity: 0;
   transition: opacity 0.3s ease;
+  pointer-events: none;
 }
 
 .sidebar-overlay.active {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .sidebar-header {
@@ -193,6 +196,12 @@
   transition: all 0.3s ease;
   text-decoration: none;
   position: relative;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.nav-item:active {
+  transform: scale(0.98);
 }
 
 .nav-item .material-icons {
@@ -222,6 +231,22 @@
 .nav-item.active {
   background: #3b82f6;
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+/* Logout button in sidebar */
+.logout-nav-item {
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.1);
+  border-left: 3px solid #ef4444;
+}
+
+.logout-nav-item:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #dc2626 !important;
+}
+
+.logout-nav-item .material-icons {
+  color: #ef4444;
 }
 
 .sidebar-footer {
@@ -1152,21 +1177,28 @@
   border-radius: 20px;
   padding: 2rem;
   border: 1px solid rgba(255,255,255,0.1);
+  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
 }
 
 .calendar-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid rgba(255,255,255,0.1);
+  flex-wrap: nowrap;
+  gap: 1rem;
 }
 
 .calendar-month-year {
   font-size: 1.5rem;
   font-weight: 700;
   color: #fff;
+  text-align: center;
+  flex: 1;
 }
 
 .calendar-nav-btn {
@@ -1181,6 +1213,7 @@
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
+  flex-shrink: 0;
 }
 
 .calendar-nav-btn:hover {
@@ -1195,34 +1228,191 @@
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 0.5rem;
+  gap: 3px;
+  width: 100%;
 }
 
 .calendar-day-header {
   text-align: center;
   font-weight: 600;
   color: rgba(255,255,255,0.8);
-  padding: 0.75rem;
-  font-size: 0.9rem;
+  padding: 0.5rem;
+  font-size: 0.85rem;
 }
 
 .calendar-day {
-  aspect-ratio: 1;
-  border-radius: 10px;
-  padding: 0.5rem;
+  border-radius: 6px;
+  padding: 4px;
   background: rgba(255,255,255,0.05);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 80px;
+  min-height: 40px;
+  height: auto;
   border: 1px solid rgba(255,255,255,0.1);
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* Responsive Calendar - Tablet */
+@media (max-width: 900px) {
+  .calendar-section {
+    padding: 1.25rem;
+    border-radius: 15px;
+  }
+  
+  .calendar-grid {
+    gap: 0.35rem;
+  }
+  
+  .calendar-day {
+    min-height: 45px;
+    padding: 0.25rem;
+    border-radius: 6px;
+  }
+  
+  .day-number {
+    font-size: 0.8rem;
+  }
+  
+  .calendar-day-header {
+    padding: 0.4rem;
+    font-size: 0.75rem;
+  }
+  
+  .calendar-event-dot {
+    width: 5px;
+    height: 5px;
+  }
+  
+  .calendar-header {
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    gap: 0.5rem;
+  }
+  
+  .calendar-month-year {
+    font-size: 1.25rem;
+  }
+  
+  .calendar-nav-btn {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .calendar-nav-btn .material-icons {
+    font-size: 1.25rem;
+  }
+}
+
+/* Responsive Calendar - Mobile */
+@media (max-width: 600px) {
+  .calendar-section {
+    padding: 1rem;
+    border-radius: 12px;
+  }
+  
+  .calendar-grid {
+    gap: 0.25rem;
+  }
+  
+  .calendar-day {
+    min-height: 40px;
+    padding: 0.2rem;
+    border-radius: 5px;
+  }
+  
+  .day-number {
+    font-size: 0.7rem;
+    font-weight: 600;
+  }
+  
+  .calendar-day-header {
+    padding: 0.3rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+  }
+  
+  .calendar-header {
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    gap: 0.35rem;
+  }
+  
+  .calendar-month-year {
+    font-size: 1.1rem;
+  }
+  
+  .calendar-nav-btn {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .calendar-nav-btn .material-icons {
+    font-size: 1.1rem;
+  }
+  
+  .day-events {
+    display: none;
+  }
+  
+  .calendar-day.has-events::after {
+    content: '';
+    display: block;
+    width: 5px;
+    height: 5px;
+    background: #3b82f6;
+    border-radius: 50%;
+    margin: 2px auto 0;
+  }
+  
+  .calendar-event-dot {
+    display: none;
+  }
+}
+
+/* Responsive Calendar - Small Mobile */
+@media (max-width: 400px) {
+  .calendar-section {
+    padding: 0.75rem;
+    border-radius: 10px;
+  }
+  
+  .calendar-day {
+    min-height: 35px;
+    border-radius: 4px;
+  }
+  
+  .day-number {
+    font-size: 0.6rem;
+  }
+  
+  .calendar-day-header {
+    padding: 0.2rem;
+    font-size: 0.55rem;
+  }
+  
+  .calendar-month-year {
+    font-size: 1rem;
+  }
+  
+  .calendar-nav-btn {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .calendar-nav-btn .material-icons {
+    font-size: 1rem;
+  }
 }
 
 .calendar-day:hover {
-  background: rgba(255,255,255,0.1);
-  transform: scale(1.05);
+  background: rgba(255,255,255,0.15);
+  transform: scale(1);
+  z-index: 10;
+  box-shadow: 0 1px 4px rgba(59, 130, 246, 0.2);
 }
 
 .calendar-day.other-month {
@@ -1230,14 +1420,41 @@
 }
 
 .calendar-day.today {
-  background: rgba(59, 130, 246, 0.3);
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6) !important;
+  border: 2px solid #fff !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5), 0 4px 15px rgba(59, 130, 246, 0.5);
+  transform: scale(1.05);
+  z-index: 5;
+}
+
+.calendar-day.today .day-number {
+  color: #fff !important;
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.calendar-day.today::before {
+  content: 'Today';
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.5rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.9);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .calendar-day.has-events {
-  border: 2px solid #3b82f6;
-  background: rgba(59, 130, 246, 0.1);
+  border: 2px solid #10b981;
+  background: rgba(16, 185, 129, 0.2);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+
+.calendar-day.has-events:hover {
+  border-color: #10b981;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.5), 0 4px 15px rgba(16, 185, 129, 0.4);
 }
 
 .day-number {
@@ -2332,6 +2549,132 @@ input:checked + .toggle-slider:before {
     justify-content: center;
     gap: 0.75rem;
     padding: 1rem;
+  }
+  
+  /* Logout Page Responsive */
+  .logout-container {
+    padding: 0.5rem;
+  }
+  
+  .logout-card {
+    padding: 1.5rem;
+    border-radius: 15px;
+  }
+  
+  .logout-icon {
+    width: 70px;
+    height: 70px;
+    margin-bottom: 1rem;
+  }
+  
+  .logout-icon .material-icons {
+    font-size: 2.5rem;
+  }
+  
+  .logout-title {
+    font-size: 1.5rem;
+  }
+  
+  .logout-message {
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+  }
+  
+  .logout-info {
+    padding: 1rem;
+  }
+  
+  .info-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+  
+  .info-item .material-icons {
+    font-size: 1.5rem;
+  }
+  
+  .logout-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .logout-stat-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+  
+  .logout-stat-item .material-icons {
+    font-size: 1.75rem;
+  }
+  
+  .logout-stat-value {
+    font-size: 1.5rem;
+  }
+  
+  .logout-warning {
+    flex-direction: column;
+    text-align: center;
+    padding: 1rem;
+  }
+  
+  .logout-warning .material-icons {
+    font-size: 1.5rem;
+  }
+  
+  .logout-warning p {
+    text-align: center;
+  }
+  
+  .logout-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .logout-cancel-btn,
+  .logout-confirm-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.875rem 1.5rem;
+    font-size: 0.95rem;
+  }
+  
+  .logout-activity-summary {
+    padding: 1.5rem;
+    border-radius: 15px;
+  }
+  
+  .summary-title {
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  
+  .summary-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .summary-card {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.75rem;
+  }
+  
+  .summary-icon {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .summary-icon .material-icons {
+    font-size: 1.5rem;
+  }
+  
+  .summary-value {
+    font-size: 1.5rem;
+  }
+  
+  .summary-note {
+    font-size: 0.9rem;
   }
 }
 
