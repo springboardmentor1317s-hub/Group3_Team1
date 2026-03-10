@@ -26,6 +26,15 @@
   padding: 40px;
 }
 
+.hero-logo {
+  width: 150px;
+  max-width: 38vw;
+  margin-bottom: 18px;
+  height: auto;
+  object-fit: contain;
+  border-radius: 50%;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.24);
+}
 
 .hero h1 {
   font-size: 48px;
@@ -223,6 +232,9 @@ footer {
   -webkit-text-fill-color: transparent;
 }
 @media (max-width: 768px) {
+  .hero-logo {
+    width: 110px;
+  }
 
   .hero h1 {
     font-size: 34px;
