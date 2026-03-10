@@ -7,7 +7,7 @@ const authRoutes = require('./routes/authRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const debugRoutes = require('./routes/debugRoutes');
 const superAdminRoutes = require('./routes/superAdminRoutes'); 
-
+const registrationRoutes = require('./routes/registrationRoutes');
 const app = express();
 
 app.use(cors());
@@ -17,6 +17,7 @@ app.use('/api', authRoutes);
 app.use('/api', debugRoutes);
 app.use('/api/superadmin', superAdminRoutes); 
 app.use("/api/events", eventRoutes);
+app.use('/api/registrations', registrationRoutes);
 
 app.get('/', (req, res) => {
   res.send('Backend Running Successfully');
