@@ -12,6 +12,7 @@ export interface BackendEvent {
   organizer: string;
   contact: string;
   description: string;
+  category?: string;
   posterDataUrl: string | null;
   status: 'Active' | 'Draft' | 'Past';
   registrations: number;
@@ -167,7 +168,7 @@ export class EventService {
       date: dateObj ? dateObj.toISOString().split('T')[0] : '',
       time: dateObj ? dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
       location: backendEvent.location,
-      category: this.determineCategory(backendEvent.name, backendEvent.description || ''),
+      category: backendEvent.category || this.determineCategory(backendEvent.name, backendEvent.description || ''),
       attendees: backendEvent.registrations || 0,
       maxAttendees: backendEvent.maxAttendees || backendEvent.participants || 100,
       status,
