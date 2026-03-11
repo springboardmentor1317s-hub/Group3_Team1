@@ -26,8 +26,8 @@
       </select>
 
       <button type="submit">Login</button>
-      <p class="error" *ngIf="errorMessage">
-      {{ errorMessage }}
+      <p class="error" *ngIf="errorMessage" role="alert" aria-live="assertive">
+        {{ errorMessage }}
       </p>
 
       <p class="link">

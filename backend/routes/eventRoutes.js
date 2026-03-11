@@ -16,6 +16,7 @@ function toClient(eventDoc, currentUserId = null) {
     organizer: obj.organizer,
     contact: obj.contact,
     description: obj.description,
+    category: obj.category,
     posterDataUrl: obj.posterDataUrl ?? null,
     status: obj.status,
     participants: obj.participants ?? 0,
