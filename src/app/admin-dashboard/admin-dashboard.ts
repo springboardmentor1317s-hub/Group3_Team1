@@ -13,6 +13,7 @@ interface OrganizerEvent {
   organizer: string;
   contact: string;
   description: string;
+  category?: string;
   status: 'Active' | 'Draft' | 'Past';
   registrations: number;
   participants: number;
