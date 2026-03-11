@@ -46,7 +46,7 @@
     <!-- Header -->
     <header class="header">
       <button class="menu-btn" (click)="toggleSidebar()">
-        <span class="material-icons">menu</span>
+        <span class="material-icons">{{ sidebarOpen ? 'close' : 'menu' }}</span>
       </button>
       <div class="header-title">
         {{ activeSubPage === 'edit-profile' ? 'Edit Profile' : 
