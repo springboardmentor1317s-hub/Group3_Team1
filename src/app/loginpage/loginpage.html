@@ -1,4 +1,13 @@
 <div class="page">
+
+  <!-- Popup Modal -->
+  <div class="popup-overlay" *ngIf="popup.visible" (click)="closePopup()">
+    <div class="popup-box" (click)="$event.stopPropagation()">
+      <div class="popup-icon">⚠️</div>
+      <p class="popup-message">{{ popup.message }}</p>
+      <button class="popup-btn" (click)="closePopup()">OK</button>
+    </div>
+  </div>
   <div class="card">
 
     <div class="icon">👤</div>
@@ -26,9 +35,6 @@
       </select>
 
       <button type="submit">Login</button>
-      <p class="error" *ngIf="errorMessage">
-      {{ errorMessage }}
-      </p>
 
       <p class="link">
         Don’t have an account?

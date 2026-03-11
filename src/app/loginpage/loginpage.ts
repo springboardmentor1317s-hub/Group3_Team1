@@ -14,6 +14,7 @@ import { AuthService } from '../auth.service';
 })
 export class Loginpage {
   show = false;
+  popup: { visible: boolean; message: string } = { visible: false, message: '' };
   user = {
     email: '',
     password: '',
@@ -52,6 +53,14 @@ export class Loginpage {
     //   }
     // }
   // }
+  showPopup(message: string) {
+    this.popup = { visible: true, message };
+  }
+
+  closePopup() {
+    this.popup.visible = false;
+  }
+
   login() {
 
   this.errorMessage = '';
@@ -61,7 +70,7 @@ export class Loginpage {
           this.auth.setRole('super_admin');
           this.router.navigate(['/super-admin-dashboard']);
       } else {
-        alert('Invalid Super Admin Credentials');
+        this.showPopup('Invalid Super Admin credentials.');
       }
       return;
     } 
@@ -71,6 +80,19 @@ export class Loginpage {
   this.authService.login(payload).subscribe({
     next: (res: any) => {
       console.log('Login Success', res);
+
+      // Role mismatch check
+      const returnedRole = (res.role || '').toLowerCase();
+      const selectedRole = this.user.role.toLowerCase();
+      const roleMatch =
+        returnedRole === selectedRole ||
+        (returnedRole === 'admin' && selectedRole === 'college_admin') ||
+        (returnedRole === 'college_admin' && selectedRole === 'admin');
+
+      if (!roleMatch) {
+        this.showPopup('Wrong role selected. Please choose the correct role for your account.');
+        return;
+      }
 
       // store token and role
       if (res.token) localStorage.setItem('token', res.token);
@@ -105,7 +127,14 @@ localStorage.setItem('role', res.role);
         });
         return;
       }
-      this.errorMessage = err.error?.message || 'Invalid email or password';
+      const msg = err.error?.message || '';
+      if (msg === 'User not found') {
+        this.showPopup('No account found with this email address.');
+      } else if (msg === 'Invalid credentials') {
+        this.showPopup('Incorrect password. Please try again.');
+      } else {
+        this.showPopup(msg || 'Login failed. Please try again.');
+      }
     }
   });
 }
