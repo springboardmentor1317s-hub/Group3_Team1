@@ -274,3 +274,34 @@ exports.rejectRegistration = async (req, res) => {
     });
   }
 };
+
+// Student cancel registration
+exports.cancelRegistration = async (req, res) => {
+  try {
+    const { studentId, eventId } = req.params;
+    if (!studentId || !eventId) {
+      return res.status(400).json({
+        error: "studentId and eventId are required"
+      });
+    }
+
+    const deleted = await Registration.findOneAndDelete({
+      studentId: String(studentId),
+      eventId: String(eventId)
+    });
+
+    if (!deleted) {
+      return res.status(404).json({
+        error: "Registration not found"
+      });
+    }
+
+    res.json({ message: "Registration cancelled", registration: deleted });
+  } catch (error) {
+    console.error("❌ Cancel registration error:", error);
+    res.status(500).json({
+      error: "Could not cancel registration. Please try again.",
+      details: error.message
+    });
+  }
+};

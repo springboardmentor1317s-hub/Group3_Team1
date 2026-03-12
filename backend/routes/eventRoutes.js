@@ -1,12 +1,19 @@
 const express = require("express");
 const router = express.Router();
 const Event = require("../models/Event");
+const Registration = require("../models/Registration");
 const jwt = require("jsonwebtoken");
 const protect = require("../middleware/authMiddleware");
 
-function toClient(eventDoc, currentUserId = null) {
+function toClient(eventDoc, options = {}) {
   const obj = eventDoc.toObject({ versionKey: false });
   const attendeeIds = obj.attendeeIds ?? [];
+  const registrationsCount = typeof options.registrationsCount === "number"
+    ? options.registrationsCount
+    : attendeeIds.length;
+  const isRegistered = typeof options.registered === "boolean"
+    ? options.registered
+    : false;
 
   return {
     id: obj._id.toString(),
@@ -20,13 +27,11 @@ function toClient(eventDoc, currentUserId = null) {
     posterDataUrl: obj.posterDataUrl ?? null,
     status: obj.status,
     participants: obj.participants ?? 0,
-    registrations: attendeeIds.length,
+    registrations: registrationsCount,
     maxAttendees: obj.maxAttendees || 100,
     collegeName: obj.collegeName,
     attendeeIds,
-    registered: currentUserId
-      ? attendeeIds.some((id) => String(id) === String(currentUserId))
-      : false
+    registered: isRegistered
   };
 }
 
@@ -47,7 +52,46 @@ router.get("/", async (req, res) => {
   try {
     const currentUserId = getUserIdFromRequest(req);
     const events = await Event.find().sort({ createdAt: -1 });
-    res.json(events.map((event) => toClient(event, currentUserId)));
+
+    const eventIds = events.map((event) => String(event._id));
+
+    const registrationCounts = await Registration.aggregate([
+      {
+        $match: {
+          eventId: { $in: eventIds },
+          status: { $ne: "REJECTED" }
+        }
+      },
+      {
+        $group: {
+          _id: "$eventId",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const countMap = new Map(
+      registrationCounts.map((row) => [String(row._id), row.count])
+    );
+
+    let registeredSet = new Set();
+    if (currentUserId) {
+      const userRegs = await Registration.find({
+        studentId: String(currentUserId),
+        eventId: { $in: eventIds },
+        status: { $ne: "REJECTED" }
+      }).select("eventId");
+      registeredSet = new Set(userRegs.map((r) => String(r.eventId)));
+    }
+
+    res.json(
+      events.map((event) =>
+        toClient(event, {
+          registrationsCount: countMap.get(String(event._id)) || 0,
+          registered: registeredSet.has(String(event._id))
+        })
+      )
+    );
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
