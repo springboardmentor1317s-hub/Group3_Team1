@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, NgForm } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 type DashboardTab = 'overview' | 'events' | 'analytics' | 'registrations';
@@ -13,6 +13,7 @@ interface OrganizerEvent {
   organizer: string;
   contact: string;
   description: string;
+  category?: string;
   status: 'Active' | 'Draft' | 'Past';
   registrations: number;
   participants: number;
@@ -80,6 +81,7 @@ export class AdminDashboard implements OnInit {
   showToast = false;
   toastMessage = '';
   toastType: 'success' | 'error' = 'success';
+  isSavingEvent = false;
   createForm: CreateEventForm = this.getEmptyCreateForm();
 
   ngOnInit(): void {
@@ -350,46 +352,53 @@ export class AdminDashboard implements OnInit {
     }, 3000);
   }
 
-  saveEvent(): void {
+  saveEvent(form?: NgForm): void {
+    if (this.isSavingEvent) return;
+
+    form?.control.markAllAsTouched();
+
     const name = this.createForm.name.trim();
-    if (
-      !name ||
-      !this.createForm.category ||
-      !this.createForm.dateTime.trim() ||
-      !this.createForm.location.trim()
-    ) {
-      alert('Please fill Event Name, Category, Date, and Location.');
+    const category = this.createForm.category.trim();
+    const dateTime = this.createForm.dateTime.trim();
+    const location = this.createForm.location.trim();
+
+    if (!name || !category || !dateTime || !location || form?.invalid) {
+      this.showErrorToast('Please fill all required fields before saving the event.');
       return;
     }
 
     const payload = {
       name,
-      dateTime: this.createForm.dateTime,
+      dateTime,
       endDate: this.createForm.endDate.trim() || null,
-      location: this.createForm.location.trim(),
+      location,
       organizer: this.createForm.organizer.trim(),
       contact: this.createForm.contact.trim(),
       description: this.createForm.description.trim(),
       teamSize: this.createForm.teamSize ?? null,
       posterDataUrl: this.createForm.posterDataUrl,
-      category: this.createForm.category,
-      status: this.isPastEventDate(this.createForm.dateTime) ? 'Past' : 'Active',
+      category,
+      status: this.isPastEventDate(dateTime) ? 'Past' : 'Active',
       registrations: 0,
       participants: 0
     };
 
+    this.isSavingEvent = true;
     this.http.post<OrganizerEvent>(this.API_URL, payload).subscribe({
       next: (savedEvent) => {
         this.events = [savedEvent, ...this.events];
-
         this.createModalOpen = false;
         this.resetCreateForm();
         this.activeTab = 'events';
+        form?.resetForm(this.getEmptyCreateForm());
+        this.showSuccessToast('Event saved successfully!');
+        this.isSavingEvent = false;
       },
       error: (err) => {
         console.error('Error saving event', err);
         const message = err?.error?.error ?? err?.error?.message ?? 'Could not save event. Please try again.';
-        alert(message);
+        this.showErrorToast(message);
+        this.isSavingEvent = false;
       }
     });
   }

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectorRef, Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
@@ -14,7 +14,7 @@ import { AuthService } from '../auth.service';
 })
 export class Loginpage {
   show = false;
-  popup: { visible: boolean; message: string } = { visible: false, message: '' };
+  errorMessage = '';
   user = {
     email: '',
     password: '',
@@ -24,10 +24,9 @@ export class Loginpage {
   constructor(
     private auth: Auth,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
     ) { }
-
-    errorMessage = '';
 
   // onRoleChange() {
   //   // Auto-fill removed as per request
@@ -70,7 +69,8 @@ export class Loginpage {
           this.auth.setRole('super_admin');
           this.router.navigate(['/super-admin-dashboard']);
       } else {
-        this.showPopup('Invalid Super Admin credentials.');
+        this.errorMessage = 'Invalid credentials';
+        this.cdr.detectChanges();
       }
       return;
     } 
@@ -81,16 +81,11 @@ export class Loginpage {
     next: (res: any) => {
       console.log('Login Success', res);
 
-      // Role mismatch check
-      const returnedRole = (res.role || '').toLowerCase();
-      const selectedRole = this.user.role.toLowerCase();
-      const roleMatch =
-        returnedRole === selectedRole ||
-        (returnedRole === 'admin' && selectedRole === 'college_admin') ||
-        (returnedRole === 'college_admin' && selectedRole === 'admin');
-
-      if (!roleMatch) {
-        this.showPopup('Wrong role selected. Please choose the correct role for your account.');
+      const actualRole = String(res.role || '').toLowerCase();
+      const selectedRole = String(this.user.role || '').toLowerCase();
+      if (actualRole && selectedRole && actualRole !== selectedRole) {
+        this.errorMessage = `Account role is ${actualRole.replace('_', ' ')}. Please select the correct role.`;
+        this.cdr.detectChanges();
         return;
       }
 
@@ -109,7 +104,7 @@ localStorage.setItem('userName', currentUser.name)
 localStorage.setItem('role', res.role);
       this.auth.setRole(res.role || this.user.role);
       // navigate
-      if (res.role === 'admin' || res.role === 'college_admin' || this.user.role === 'college_admin') {
+      if (res.role === 'admin' || res.role === 'college_admin') {
         this.router.navigate(['/admin-dashboard']);
       } else if (res.role === 'super_admin') {
         this.router.navigate(['/super-admin-dashboard']);
@@ -127,14 +122,8 @@ localStorage.setItem('role', res.role);
         });
         return;
       }
-      const msg = err.error?.message || '';
-      if (msg === 'User not found') {
-        this.showPopup('No account found with this email address.');
-      } else if (msg === 'Invalid credentials') {
-        this.showPopup('Incorrect password. Please try again.');
-      } else {
-        this.showPopup(msg || 'Login failed. Please try again.');
-      }
+      this.errorMessage = err?.error?.message || 'Invalid credentials';
+      this.cdr.detectChanges();
     }
   });
 }

@@ -46,7 +46,7 @@
     <!-- Header -->
     <header class="header">
       <button class="menu-btn" (click)="toggleSidebar()">
-        <span class="material-icons">menu</span>
+        <span class="material-icons">{{ sidebarOpen ? 'close' : 'menu' }}</span>
       </button>
       <div class="header-title">
         {{ activeSubPage === 'edit-profile' ? 'Edit Profile' : 
@@ -205,13 +205,11 @@
                 <span>{{ event.attendees }}/{{ event.maxAttendees }}</span>
               </div>
               <button 
-                class="register-btn" 
-                [class.registered]="event.registered"
-                [class.full]="event.status === 'Full'"
-                [disabled]="event.status === 'Full' && !event.registered"
-                (click)="registerForEvent(event)"
+                 *ngIf="getRegistrationButtonConfig(event) as btnConfig"
+                  [ngClass]="['register-btn', btnConfig.class]"
+                  (click)="registerForEvent(event)"
               >
-                {{ event.registered ? 'Registered ✓' : event.status === 'Full' ? 'Full' : 'Register' }}
+                {{ btnConfig.text }}
               </button>
               <button class="register-btn calendar-inline-btn" (click)="addToCalendar(event)">
                 <span class="material-icons">event</span>
@@ -284,7 +282,7 @@
                 class="event-status"
                 [style.background]="getStatusColor(event.status)"
               >
-                {{ event.status }}
+                {{ getEventStatusText(event) }}
               </span>
             </div>
 
@@ -312,13 +310,11 @@
                 <span>{{ event.attendees }}/{{ event.maxAttendees }}</span>
               </div>
               <button 
-                class="register-btn" 
-                [class.registered]="event.registered"
-                [class.full]="event.status === 'Full'"
-                [disabled]="event.status === 'Full' && !event.registered"
-                (click)="registerForEvent(event)"
-              >
-                {{ event.registered ? 'Registered ✓' : event.status === 'Full' ? 'Full' : 'Register' }}
+                 *ngIf="getRegistrationButtonConfig(event) as btnConfig"
+                  [ngClass]="['register-btn', btnConfig.class]"
+                  (click)="registerForEvent(event)"
+                >
+                {{ btnConfig.text }}
               </button>
               <button class="register-btn calendar-inline-btn" (click)="addToCalendar(event)">
                 <span class="material-icons">event</span>
