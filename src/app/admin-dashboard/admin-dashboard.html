@@ -338,8 +338,16 @@
         </div>
       </div>
 
-      <form class="modal__body" (ngSubmit)="saveEvent()">
-        <div class="form-grid">
+      <form #createEventForm="ngForm" class="create-event-form" (ngSubmit)="saveEvent(createEventForm)" novalidate>
+        <div class="create-form-actions">
+          <button type="button" class="btn btn--ghost" (click)="closeCreateModal()">Cancel</button>
+          <button type="submit" class="btn btn--primary" [disabled]="isSavingEvent">
+            {{ isSavingEvent ? 'Saving...' : 'Save Event' }}
+          </button>
+        </div>
+
+        <div class="modal__body create-event-body">
+          <div class="form-grid">
           <div class="field field--full">
             <label for="eventPoster">Poster Image (optional)</label>
             <div class="poster-row">
@@ -431,6 +439,7 @@
               id="eventCategory"
               name="category"
               [(ngModel)]="createForm.category"
+              required
             >
               <option value="">Select Category</option>
               <option value="Technology">Technology</option>
@@ -495,11 +504,12 @@
               placeholder="Tell students what this event is about..."
             ></textarea>
           </div>
+          </div>
         </div>
 
         <div class="modal__footer">
           <button type="button" class="btn btn--ghost" (click)="closeCreateModal()">Cancel</button>
-          <button type="submit" class="btn btn--primary">Save Event</button>
+          <div class="modal__footerNote">Required fields must be filled before saving.</div>
         </div>
       </form>
     </div>
@@ -673,7 +683,10 @@
       [class.toast-error]="toastType === 'error'"
     >
       <span class="toast-icon">{{ toastType === 'success' ? '✓' : '✗' }}</span>
-      <span class="toast-message">{{ toastMessage }}</span>
+      <div class="toast-copy">
+        <span class="toast-title">{{ toastType === 'success' ? 'Success' : 'Action needed' }}</span>
+        <span class="toast-message">{{ toastMessage }}</span>
+      </div>
     </div>
   </div>
 </div>
