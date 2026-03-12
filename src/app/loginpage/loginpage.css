@@ -106,6 +106,17 @@ button:hover {
   cursor: pointer;
 }
 
+.error {
+  margin-top: 12px;
+  color: #fee2e2;
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  text-align: center;
+}
+
 /* Animation */
 @keyframes fadeIn {
   from {
