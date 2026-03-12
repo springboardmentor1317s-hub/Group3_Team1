@@ -1,4 +1,3 @@
-
 *{
   box-sizing: border-box;
 }
@@ -6,5 +5,148 @@
 img {
   max-width: 100%;
   height: auto;
+}
+
+.app-logo-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  isolation: isolate;
+}
+
+.app-logo-badge::before {
+  content: "";
+  position: absolute;
+  inset: 6%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255, 247, 208, 0.95) 0%, rgba(255, 226, 126, 0.62) 26%, rgba(255, 187, 64, 0.26) 48%, rgba(255, 187, 64, 0) 67%),
+    radial-gradient(circle, rgba(180, 226, 255, 0.52) 20%, rgba(108, 178, 255, 0.2) 50%, rgba(108, 178, 255, 0) 74%);
+  filter: blur(9px);
+  transform: scale(1.04);
+  z-index: 0;
+  animation: appLogoGlow 3.2s ease-in-out infinite;
+}
+
+.app-logo-image {
+  position: relative;
+  z-index: 1;
+  object-fit: contain;
+  filter:
+    drop-shadow(0 0 6px rgba(255, 234, 156, 0.62))
+    drop-shadow(0 0 12px rgba(255, 196, 74, 0.34))
+    drop-shadow(0 0 10px rgba(136, 199, 255, 0.3))
+    drop-shadow(0 8px 16px rgba(0, 0, 0, 0.24));
+}
+
+.app-logo-badge--74 {
+  width: 74px;
+  height: 74px;
+}
+
+.app-logo-badge--78 {
+  width: 78px;
+  height: 78px;
+  flex-shrink: 0;
+}
+
+.app-logo-image--66 {
+  width: 66px;
+  height: 66px;
+}
+
+.student-sidebar-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  text-align: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.student-sidebar-logo-text {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.student-sidebar-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  min-width: 40px;
+  min-height: 40px;
+  flex-shrink: 0;
+}
+
+.sidebar:not(.open) .student-sidebar-close-btn {
+  display: none;
+}
+
+.sidebar.open .student-sidebar-close-btn {
+  display: flex;
+}
+
+.student-sidebar-close-btn:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+.student-sidebar-close-btn .material-icons {
+  font-size: 1.5rem;
+}
+
+.filter-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 15px 20px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.filter-item {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: white;
+  flex: 1;
+}
+
+.filter-item .material-icons {
+  font-size: 20px;
+  margin-right: 10px;
+  color: #3b82f6;
+}
+
+@keyframes appLogoGlow {
+  0%, 100% {
+    opacity: 0.86;
+    transform: scale(1.03);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.09);
+  }
 }
 

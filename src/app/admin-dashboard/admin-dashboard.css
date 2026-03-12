@@ -43,16 +43,9 @@
 }
 
 .brand__mark {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 900;
-  color: #ffffff;
-  background: linear-gradient(135deg, #4f46e5, #8b5cf6);
-  box-shadow: 0 10px 20px rgba(79, 70, 229, 0.25);
+}
+
+.brand__logo {
 }
 
 .brand__name {
