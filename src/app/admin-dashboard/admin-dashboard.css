@@ -538,6 +538,13 @@
   flex-direction: column;
 }
 
+.create-event-form {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .reject-modal .modal__body,
 .reject-modal .modal__hero,
 .reject-modal .info-block,
@@ -563,8 +570,8 @@
 
 .modal__hero {
   position: relative;
-  height: 170px;
-  padding: 22px 24px;
+  min-height: 210px;
+  padding: 28px 28px 24px;
   display: flex;
   align-items: flex-end;
   background-image:
@@ -595,7 +602,7 @@
 .modal__heroText h2 {
   margin: 0;
   color: #ffffff;
-  font-size: 40px;
+  font-size: 46px;
   letter-spacing: -0.02em;
 }
 
@@ -615,6 +622,19 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px 18px;
+}
+
+.create-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px 0;
+  flex: 0 0 auto;
+}
+
+.create-event-body {
+  padding-top: 20px;
+  overflow: auto;
 }
 
 .field {
@@ -703,9 +723,20 @@
 
 .modal__footer {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   gap: 12px;
   padding: 16px 24px 22px;
+}
+
+.modal__footerNote {
+  color: #7c2d12;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .btn {
@@ -1221,72 +1252,93 @@
 /* Toast Notification */
 .toast-container {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 100;
+  top: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
   pointer-events: none;
 }
 
 .toast {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 24px;
-  border-radius: 12px;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: min(560px, calc(100vw - 32px));
+  max-width: min(680px, calc(100vw - 32px));
+  padding: 18px 22px;
+  border-radius: 18px;
   background: rgba(15, 23, 42, 0.95);
   color: #ffffff;
   font-weight: 600;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
-  animation: slideInRight 0.3s ease, slideOutRight 0.3s ease 2.7s forwards;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.4);
+  animation: toastDropIn 0.3s ease, toastFadeOut 0.3s ease 3.7s forwards;
   pointer-events: auto;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .toast-success {
   border-color: rgba(16, 185, 129, 0.5);
-  background: rgba(16, 185, 129, 0.1);
+  background: linear-gradient(135deg, rgba(6, 95, 70, 0.96), rgba(16, 185, 129, 0.92));
 }
 
 .toast-error {
-  border-color: rgba(239, 68, 68, 0.5);
-  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(251, 191, 36, 0.8);
+  background: linear-gradient(135deg, rgba(146, 64, 14, 0.98), rgba(245, 158, 11, 0.94));
 }
 
 .toast-icon {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 900;
+  line-height: 1;
+  margin-top: 2px;
 }
 
 .toast-success .toast-icon {
-  color: #10b981;
+  color: #d1fae5;
 }
 
 .toast-error .toast-icon {
-  color: #ef4444;
+  color: #fef3c7;
+}
+
+.toast-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.toast-title {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.86);
 }
 
 .toast-message {
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1.4;
+  color: #ffffff;
 }
 
-@keyframes slideInRight {
+@keyframes toastDropIn {
   from {
-    transform: translateX(400px);
+    transform: translateY(-18px);
     opacity: 0;
   }
   to {
-    transform: translateX(0);
+    transform: translateY(0);
     opacity: 1;
   }
 }
 
-@keyframes slideOutRight {
+@keyframes toastFadeOut {
   from {
-    transform: translateX(0);
+    transform: translateY(0);
     opacity: 1;
   }
   to {
-    transform: translateX(400px);
+    transform: translateY(-12px);
     opacity: 0;
   }
 }
@@ -1348,7 +1400,26 @@
     grid-template-columns: 1fr;
   }
 
+  .create-form-actions,
+  .modal__footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .modal__footerNote {
+    text-align: center;
+  }
+
+  .toast {
+    min-width: min(100vw - 24px, 560px);
+  }
+
   .modal__heroText h2 {
     font-size: 34px;
+  }
+
+  .modal__hero {
+    min-height: 180px;
+    padding: 24px 22px 20px;
   }
 }

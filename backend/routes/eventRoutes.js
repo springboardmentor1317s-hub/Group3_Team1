@@ -56,11 +56,21 @@ router.get("/", async (req, res) => {
 // Create Event
 router.post("/", async (req, res) => {
   try {
+    const name = String(req.body?.name ?? "").trim();
+    const dateTime = String(req.body?.dateTime ?? "").trim();
+    const location = String(req.body?.location ?? "").trim();
+    const category = String(req.body?.category ?? "").trim();
+
+    if (!name || !dateTime || !location || !category) {
+      return res.status(400).json({ error: "Name, date, location, and category are required." });
+    }
+
     const newEvent = new Event(req.body);
     const created = await newEvent.save();
     res.status(201).json(toClient(created));
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    const statusCode = error.name === "ValidationError" ? 400 : 500;
+    res.status(statusCode).json({ error: error.message });
   }
 });
 
