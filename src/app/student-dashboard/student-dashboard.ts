@@ -1191,5 +1191,3 @@ getEventStatusColor(event: Event): string {
     this.activeTab = 'dashboard';
   }
 }
-
-
