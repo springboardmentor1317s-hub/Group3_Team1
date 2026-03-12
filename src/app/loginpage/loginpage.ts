@@ -52,13 +52,6 @@ export class Loginpage {
     //   }
     // }
   // }
-  showPopup(message: string) {
-    this.popup = { visible: true, message };
-  }
-
-  closePopup() {
-    this.popup.visible = false;
-  }
 
   login() {
 
