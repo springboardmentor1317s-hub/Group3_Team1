@@ -3142,3 +3142,34 @@ input:checked + .toggle-slider:before {
 .no-events-illustration {
   animation: fadeInUp 0.8s ease-out, float 3s ease-in-out 1s infinite;
 }
+
+.register-btn.btn-approved {
+  background-color: #10b981 !important;
+  color: white;
+}
+
+.register-btn.btn-rejected {
+  background-color: #ef4444 !important;
+  color: white;
+}
+
+.register-btn.btn-pending {
+  background-color: #f59e0b !important;
+  color: white;
+}
+
+.register-btn.btn-register {
+  background-color: #3b82f6 !important;
+  color: white;
+}
+
+.register-btn.btn-full {
+  background-color: #6b7280 !important;
+  color: white;
+}
+
+.register-btn.btn-closed {
+  background-color: #4b5563 !important;
+  color: white;
+  cursor: not-allowed;
+}

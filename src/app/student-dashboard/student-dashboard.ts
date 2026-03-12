@@ -363,12 +363,31 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
     }
   }
 
+  // private updatePendingActionsCount(): void {
+  //   const pendingCount = this.studentRegistrations.filter(r => r.status === 'PENDING').length;
+  //   this.stats[3].value = pendingCount;
+  //   this.stats[3].subtitle = pendingCount === 0 ? 'All clear' : pendingCount === 1 ? '1 pending approval' : `${pendingCount} pending approvals`;
+  // }
   private updatePendingActionsCount(): void {
-    const pendingCount = this.studentRegistrations.filter(r => r.status === 'PENDING').length;
-    this.stats[3].value = pendingCount;
-    this.stats[3].subtitle = pendingCount === 0 ? 'All clear' : pendingCount === 1 ? '1 pending approval' : `${pendingCount} pending approvals`;
-  }
-
+  // Count approved registrations for future events ONLY
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const approvedFutureCount = this.studentRegistrations.filter(r => {
+    if (r.status !== 'APPROVED') return false;
+    
+    // Find the event
+    const event = this.upcomingEvents.find(e => String(e.id) === r.eventId);
+    if (!event) return false;
+    
+    // Check if event date is in the future
+    const eventDate = new Date(event.date);
+    return eventDate >= today;
+  }).length;
+  
+  this.stats[3].value = approvedFutureCount;
+  this.stats[3].subtitle = approvedFutureCount === 0 ? 'All clear' : approvedFutureCount === 1 ? '1 upcoming event' : `${approvedFutureCount} upcoming events`;
+}
   // NEW: Get registration status for an event
   getRegistrationStatus(eventId: number): 'PENDING' | 'APPROVED' | 'REJECTED' | null {
     const reg = this.studentRegistrations.find(r => r.eventId === String(eventId));
@@ -381,6 +400,46 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
     return reg?.rejectionReason || null;
   }
 
+  getRegistrationButtonConfig(event: Event): { text: string; class: string } {
+      const eventDate = new Date(event.date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  if (eventDate < today) {
+    return {
+      text: 'Closed',
+      class: 'btn-closed'
+    };
+  }
+  const status = this.getRegistrationStatus(event.id);
+  
+  if (status === 'APPROVED') {
+    return {
+      text: 'Registered ✓',
+      class: 'btn-approved'
+    };
+  } else if (status === 'REJECTED') {
+    return {
+      text: 'Rejected ✗',
+      class: 'btn-rejected'
+    };
+  } else if (status === 'PENDING') {
+    return {
+      text: 'Pending Approval',
+      class: 'btn-pending'
+    };
+  } else if (event.status === 'Full') {
+    return {
+      text: 'Full',
+      class: 'btn-full'
+    };
+  } else {
+    return {
+      text: 'Register',
+      class: 'btn-register'
+    };
+  }
+}
   // ===== EXISTING METHODS (UPDATED) =====
 
   loadEvents(): void {
@@ -516,72 +575,136 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
 
   // ===== UPDATED: REGISTRATION METHOD =====
   
-  registerForEvent(event: Event): void {
-    if (event.status === 'Full' && !event.registered) return;
+  // registerForEvent(event: Event): void {
+  //   if (event.status === 'Full' && !event.registered) return;
 
-    if (event.registered) {
-      // If already registered, just toggle off (old behavior)
-      event.registered = false;
-      event.status = 'Open';
-      alert(`Registration cancelled for: ${event.title}`);
+  //   if (event.registered) {
+  //     // If already registered, just toggle off (old behavior)
+  //     event.registered = false;
+  //     event.status = 'Open';
+  //     alert(`Registration cancelled for: ${event.title}`);
       
-      this.eventService.toggleRegistration(String(event.id)).subscribe({
-        next: (updatedBackendEvent) => {
-          const updatedEvent = this.eventService.convertToFrontendEvent(updatedBackendEvent);
-          event.attendees = updatedEvent.attendees;
-          event.maxAttendees = updatedEvent.maxAttendees;
-        },
-        error: (error) => {
-          console.error('Registration toggle failed:', error);
-          event.registered = true;
-          event.status = 'Registered';
-          alert(error?.error?.message || 'Could not cancel registration.');
-        }
-      });
-      return;
-    }
+  //     this.eventService.toggleRegistration(String(event.id)).subscribe({
+  //       next: (updatedBackendEvent) => {
+  //         const updatedEvent = this.eventService.convertToFrontendEvent(updatedBackendEvent);
+  //         event.attendees = updatedEvent.attendees;
+  //         event.maxAttendees = updatedEvent.maxAttendees;
+  //       },
+  //       error: (error) => {
+  //         console.error('Registration toggle failed:', error);
+  //         event.registered = true;
+  //         event.status = 'Registered';
+  //         alert(error?.error?.message || 'Could not cancel registration.');
+  //       }
+  //     });
+  //     return;
+  //   }
 
-    // NEW: Create registration request via API
-    const currentUser = this.authService.currentUserValue;
-    if (!currentUser) {
-      alert('Please log in to register for events.');
-      return;
-    }
-
-    const registrationPayload = {
-      eventId: String(event.id),
-      eventName: event.title,
-      studentId: currentUser.userId,
-      studentName: currentUser.name,
-      email: currentUser.email,
-      college: currentUser.college
-    };
-
-    this.http.post<EventRegistration>(this.REGISTRATION_API_URL, registrationPayload)
-      .subscribe({
-        next: (registration) => {
-          alert(
-            `Registration submitted for: ${event.title}\n\n` +
-            `Status: PENDING\n\n` +
-            `Your registration has been sent to the college admin for approval. ` +
-            `You will be notified once it's reviewed.`
-          );
-          
-          // Immediately fetch updated registrations
-          this.fetchStudentRegistrations().subscribe({
-            next: (registrations) => {
-              this.processRegistrationUpdates(registrations);
-            }
-          });
-        },
-        error: (error) => {
-          console.error('Registration failed:', error);
-          const message = error?.error?.error || error?.error?.message || 'Could not create registration. Please try again.';
-          alert(message);
-        }
-      });
+  registerForEvent(event: Event): void {
+     // Check if event is closed (date has passed)
+  const eventDate = new Date(event.date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  if (eventDate < today) {
+    alert(`This event has ended and registrations are closed.\n\nEvent Date: ${event.date}\n\nYou cannot register for past events.`);
+    return;
   }
 
+ 
+  const status = this.getRegistrationStatus(event.id);
+  
+  // If approved, show message
+  if (status === 'APPROVED') {
+    alert(`You are already registered for "${event.title}" and your registration has been approved!`);
+    return;
+  }
+  
+  // If rejected, show rejection reason
+  if (status === 'REJECTED') {
+    const reason = this.getRejectionReason(event.id);
+    alert(
+      `Your registration for "${event.title}" was rejected.\n\n` +
+      `${reason ? 'Reason: ' + reason : 'Please contact admin for more details.'}\n\n`
+    );
+    return;
+  }
+  
+  // If pending, show pending message
+  if (status === 'PENDING') {
+    alert(`Your registration for "${event.title}" is pending approval from the college admin.`);
+    return;
+  }
+  
+  if (event.status === 'Full' && !event.registered) {
+    alert('This event is full!');
+    return;
+  }
+
+  if (event.registered) {
+    // If already registered, just toggle off (old behavior)
+    event.registered = false;
+    event.status = 'Open';
+    alert(`Registration cancelled for: ${event.title}`);
+    
+    this.eventService.toggleRegistration(String(event.id)).subscribe({
+      next: (updatedBackendEvent) => {
+        const updatedEvent = this.eventService.convertToFrontendEvent(updatedBackendEvent);
+        event.attendees = updatedEvent.attendees;
+        event.maxAttendees = updatedEvent.maxAttendees;
+      },
+      error: (error) => {
+        console.error('Registration toggle failed:', error);
+        event.registered = true;
+        event.status = 'Registered';
+        alert(error?.error?.message || 'Could not cancel registration.');
+      }
+    });
+    return;
+  }
+    
+  const currentUser = this.authService.currentUserValue;
+  if (!currentUser) {
+    alert('Please log in to register for events.');
+    return;
+  }
+
+  const registrationPayload = {
+    eventId: String(event.id),
+    eventName: event.title,
+    studentId: currentUser.userId,
+    studentName: currentUser.name,
+    email: currentUser.email,
+    college: currentUser.college
+  };
+
+  this.http.post<EventRegistration>(this.REGISTRATION_API_URL, registrationPayload)
+    .subscribe({
+      next: (registration) => {
+        alert(
+          `Registration submitted for: ${event.title}\n\n` +
+          `Status: PENDING\n\n` +
+          `Your registration has been sent to the college admin for approval. ` +
+          `You will be notified once it's reviewed.`
+        );
+        
+        this.fetchStudentRegistrations().subscribe({
+          next: (registrations) => {
+            this.processRegistrationUpdates(registrations);
+          }
+        });
+      },
+      error: (error) => {
+        console.error('Registration failed:', error);
+        const message = error?.error?.error || error?.error?.message || 'Could not create registration. Please try again.';
+        alert(message);
+      }
+    });
+}
+
+
+  
+    
   // ===== NAVIGATION METHODS =====
 
   toggleSidebar(): void {
@@ -916,11 +1039,35 @@ END:VCALENDAR`;
       'Open': '#10b981',
       'Registered': '#3b82f6',
       'Full': '#ef4444',
-      'Closed': '#6b7280'
+      'Closed': '#4b5563 '
     };
     return colors[status] || '#6b7280';
   }
 
+  getEventStatusText(event: Event): string {
+  const eventDate = new Date(event.date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  if (eventDate < today) {
+    return 'Closed';
+  }
+  
+  return event.status;
+}
+
+getEventStatusColor(event: Event): string {
+  
+  const eventDate = new Date(event.date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  if (eventDate < today) {
+    return '#4b5563 '; // Gray color for closed
+  }
+  
+  return this.getStatusColor(event.status);
+}
   formatDate(dateString: string): string {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
