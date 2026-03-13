@@ -9,6 +9,35 @@
   box-sizing: border-box;
 }
 
+.filter-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.1); /* Semi-transparent background */
+  padding: 15px 20px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.filter-item {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: white;
+  flex: 1;
+}
+
+.filter-item .material-icons {
+  font-size: 20px;
+  margin-right: 10px;
+  color: #3b82f6; /* Adjust color to match your theme */
+}
+
 .filter-item input, 
 .filter-item select {
   background: transparent;
