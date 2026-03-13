@@ -3,7 +3,7 @@ import { Component, ElementRef, OnInit, ViewChild, OnDestroy } from '@angular/co
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
-import { Subscription, interval } from 'rxjs';
+import { Subscription, interval, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { EventService, BackendEvent } from '../services/event.service';
 import { AuthService } from '../services/auth.service';
@@ -270,7 +270,7 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
   private fetchStudentRegistrations() {
     const currentUser = this.authService.currentUserValue;
     if (!currentUser) {
-      return this.http.get<EventRegistration[]>(`${this.REGISTRATION_API_URL}/empty`);
+      return of([] as EventRegistration[]);
     }
 
     return this.http.get<EventRegistration[]>(
@@ -300,6 +300,7 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
     );
 
     this.studentRegistrations = registrations;
+    this.updateRegistrations();
     this.updatePendingActionsCount();
   }
 
@@ -369,24 +370,13 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
   //   this.stats[3].subtitle = pendingCount === 0 ? 'All clear' : pendingCount === 1 ? '1 pending approval' : `${pendingCount} pending approvals`;
   // }
   private updatePendingActionsCount(): void {
-  // Count approved registrations for future events ONLY
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  const approvedFutureCount = this.studentRegistrations.filter(r => {
-    if (r.status !== 'APPROVED') return false;
-    
-    // Find the event
-    const event = this.upcomingEvents.find(e => String(e.id) === r.eventId);
-    if (!event) return false;
-    
-    // Check if event date is in the future
-    const eventDate = new Date(event.date);
-    return eventDate >= today;
-  }).length;
-  
-  this.stats[3].value = approvedFutureCount;
-  this.stats[3].subtitle = approvedFutureCount === 0 ? 'All clear' : approvedFutureCount === 1 ? '1 upcoming event' : `${approvedFutureCount} upcoming events`;
+  const pendingCount = this.studentRegistrations.filter(r => r.status === 'PENDING').length;
+  this.stats[3].value = pendingCount;
+  this.stats[3].subtitle = pendingCount === 0
+    ? 'All clear'
+    : pendingCount === 1
+      ? '1 pending approval'
+      : `${pendingCount} pending approvals`;
 }
   // NEW: Get registration status for an event
   getRegistrationStatus(eventId: number): 'PENDING' | 'APPROVED' | 'REJECTED' | null {
@@ -472,11 +462,15 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
 
   loadEventHistory(backendEvents: BackendEvent[]): void {
     const pastEvents = backendEvents.filter((e: BackendEvent) => e.status === 'Past');
-    const registeredEventIds = this.eventService.getCurrentRegistrations();
+    const registeredEventIds = new Set(
+      this.studentRegistrations
+        .filter((reg) => reg.status === 'APPROVED')
+        .map((reg) => String(reg.eventId))
+    );
     
     this.eventHistory = pastEvents.map((e: BackendEvent) => {
       const frontendEvent = this.eventService.convertToFrontendEvent(e);
-      const wasRegistered = registeredEventIds.includes(e.id);
+      const wasRegistered = registeredEventIds.has(String(e.id));
       
       return {
         event: {
@@ -488,17 +482,31 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
           category: frontendEvent.category,
           description: frontendEvent.description
         },
-        attended: wasRegistered ? Math.random() > 0.3 : false,
-        rating: wasRegistered ? Math.floor(Math.random() * 2) + 4 : null
+        attended: wasRegistered,
+        rating: null
       };
     });
   }
 
   updateAllStats(): void {
     this.stats[0].value = this.upcomingEvents.length;
-    
-    const registeredCount = this.upcomingEvents.filter(e => e.registered).length;
-    this.stats[1].value = registeredCount;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const activeRegistrationIds = new Set(
+      this.studentRegistrations
+        .filter((reg) => reg.status !== 'REJECTED')
+        .map((reg) => String(reg.eventId))
+    );
+
+    const activeRegistrationsCount = this.upcomingEvents.filter((event) => {
+      if (!activeRegistrationIds.has(String(event.id))) return false;
+      const eventDate = new Date(event.date);
+      return eventDate >= today;
+    }).length;
+
+    this.stats[1].value = activeRegistrationsCount;
     
     const attendedCount = this.eventHistory.filter(item => item.attended).length;
     this.stats[2].value = attendedCount;
@@ -513,8 +521,11 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
   }
 
   generateNotifications(): void {
-    this.notifications = [];
-    let notificationId = 1;
+    const approvalNotifications = this.notifications.filter(
+      (n) => n.title.includes('Registration Approved') || n.title.includes('Registration Rejected')
+    );
+    this.notifications = [...approvalNotifications];
+    let notificationId = this.notifications.length + 1;
     
     const registeredEvents = this.upcomingEvents.filter(e => e.registered);
     
@@ -568,7 +579,12 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
   }
 
   updateRegistrations(): void {
-    this.myRegistrations = this.upcomingEvents.filter(event => event.registered);
+    const activeRegistrationIds = new Set(
+      this.studentRegistrations
+        .filter((reg) => reg.status !== 'REJECTED')
+        .map((reg) => String(reg.eventId))
+    );
+    this.myRegistrations = this.upcomingEvents.filter((event) => activeRegistrationIds.has(String(event.id)));
     this.updateAllStats();
     this.generateNotifications();
   }
@@ -841,16 +857,28 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
   // ===== EVENT METHODS =====
 
   cancelRegistration(event: Event): void {
-    if (!event.registered) return;
+    const hasRegistration = this.studentRegistrations.some(
+      (reg) => String(reg.eventId) === String(event.id)
+    );
+    if (!hasRegistration) return;
 
     if (confirm(`Are you sure you want to cancel your registration for "${event.title}"?`)) {
-      this.eventService.toggleRegistration(String(event.id)).subscribe({
-        next: (updatedBackendEvent) => {
-          const updatedEvent = this.eventService.convertToFrontendEvent(updatedBackendEvent);
+      const currentUser = this.authService.currentUserValue;
+      if (!currentUser) {
+        alert('Please log in to cancel registration.');
+        return;
+      }
 
-          event.registered = updatedEvent.registered;
-          event.status = updatedEvent.status;
-          event.attendees = updatedEvent.attendees;
+      this.http.delete<{ message: string }>(
+        `${this.REGISTRATION_API_URL}/student/${currentUser.userId}/event/${event.id}`
+      ).subscribe({
+        next: () => {
+          this.studentRegistrations = this.studentRegistrations.filter(
+            (reg) => String(reg.eventId) !== String(event.id)
+          );
+
+          event.registered = false;
+          event.status = 'Open';
 
           this.calendarEvents = this.calendarEvents.filter((ce) => ce.eventId !== event.id);
 
