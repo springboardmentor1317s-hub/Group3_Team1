@@ -1,8 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { forkJoin } from 'rxjs';
+
 type DashboardTab = 'overview' | 'events' | 'analytics' | 'registrations';
 
 interface OrganizerEvent {
@@ -60,7 +62,13 @@ export class AdminDashboard implements OnInit {
 
   private readonly API_URL = '/api/events';
   private readonly REGISTRATIONS_API_URL = '/api/registrations';
-  constructor(private readonly http: HttpClient) {}
+
+  // ✅ Inject ChangeDetectorRef to manually trigger UI update after async data loads
+  constructor(
+    private readonly http: HttpClient,
+    private readonly cdr: ChangeDetectorRef
+  ) {}
+
   userName: string = '';
   activeTab: DashboardTab = 'overview';
   createModalOpen = false;
@@ -84,11 +92,40 @@ export class AdminDashboard implements OnInit {
   isSavingEvent = false;
   createForm: CreateEventForm = this.getEmptyCreateForm();
 
+  // ✅ Loading state so the template can show a spinner instead of 0
+  isLoading = true;
+
   ngOnInit(): void {
     const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
     this.userName = user.name || 'User';
-    this.fetchEvents();
-    this.fetchRegistrations();
+
+    // ✅ Use forkJoin to fire BOTH requests in parallel and wait for BOTH to complete
+    //    before updating any state. This ensures the stats are never shown as 0.
+    this.isLoading = true;
+    forkJoin({
+      events: this.http.get<OrganizerEvent[]>(this.API_URL),
+      registrations: this.http.get<Registration[]>(this.REGISTRATIONS_API_URL)
+    }).subscribe({
+      next: ({ events, registrations }) => {
+        this.events = events;
+        this.refreshEventStatuses();
+
+        this.registrations = registrations;
+        this.applyRegistrationFilters();
+
+        this.isLoading = false;
+
+        // ✅ Tell Angular to re-check this component's bindings right now,
+        //    so totalEvents / activeEvents / totalRegistrations / averageParticipants
+        //    reflect real data on first paint instead of showing 0.
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error loading dashboard data', err);
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   setTab(tab: DashboardTab): void {
@@ -140,11 +177,13 @@ export class AdminDashboard implements OnInit {
     this.createForm.posterDataUrl = null;
   }
 
+  // ✅ fetchEvents / fetchRegistrations kept for standalone refresh use (e.g. after create/delete)
   fetchEvents(): void {
     this.http.get<OrganizerEvent[]>(this.API_URL).subscribe({
       next: (data) => {
         this.events = data;
         this.refreshEventStatuses();
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Error fetching events', err);
@@ -157,6 +196,7 @@ export class AdminDashboard implements OnInit {
       next: (data) => {
         this.registrations = data;
         this.applyRegistrationFilters();
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Error fetching registrations', err);
@@ -236,7 +276,6 @@ export class AdminDashboard implements OnInit {
     this.selectedRegistration = registration;
     this.rejectionReason = '';
     this.rejectModalOpen = true;
-    // Focus the textarea after modal opens
     setTimeout(() => {
       const textarea = document.getElementById('rejectionReason') as HTMLTextAreaElement;
       if (textarea) {
@@ -289,7 +328,7 @@ export class AdminDashboard implements OnInit {
     const reg = this.selectedRegistration;
     const reason = this.rejectionReason.trim();
 
-    this.http.patch<Registration>(`${this.REGISTRATIONS_API_URL}/${reg.id}/reject`, { 
+    this.http.patch<Registration>(`${this.REGISTRATIONS_API_URL}/${reg.id}/reject`, {
       reason: reason
     }).subscribe({
       next: (updated) => {
@@ -558,5 +597,4 @@ export class AdminDashboard implements OnInit {
       category: ''
     };
   }
-
 }

@@ -15,6 +15,9 @@ router.get('/', registrationController.getAllRegistrations);
 // Student dashboard
 router.get('/student/:studentId', registrationController.getStudentRegistrations);
 
+// Student cancel registration
+router.delete('/student/:studentId/event/:eventId', registrationController.cancelRegistration);
+
 
 // Admin approve
 router.patch('/:id/approve', registrationController.approveRegistration);
