@@ -1,4 +1,3 @@
-
 <div class="page">
   <header class="topbar">
     <div class="brand" aria-label="CampusEventHub">
@@ -64,25 +63,25 @@
       <div class="stat-card">
         <div class="stat-card__badge">EV</div>
         <div class="stat-card__label">Total Events</div>
-        <div class="stat-card__value">{{ totalEvents }}</div>
+        <div class="stat-card__value">{{ isLoading ? '…' : totalEvents }}</div>
       </div>
 
       <div class="stat-card">
         <div class="stat-card__badge">AC</div>
         <div class="stat-card__label">Active Events</div>
-        <div class="stat-card__value">{{ activeEvents }}</div>
+        <div class="stat-card__value">{{ isLoading ? '…' : activeEvents }}</div>
       </div>
 
       <div class="stat-card">
         <div class="stat-card__badge">RG</div>
         <div class="stat-card__label">Total Registrations</div>
-        <div class="stat-card__value">{{ totalRegistrations }}</div>
+        <div class="stat-card__value">{{ isLoading ? '…' : totalRegistrations }}</div>
       </div>
 
       <div class="stat-card">
         <div class="stat-card__badge">AP</div>
         <div class="stat-card__label">Average Participants</div>
-        <div class="stat-card__value">{{ averageParticipants }}</div>
+        <div class="stat-card__value">{{ isLoading ? '…' : averageParticipants }}</div>
       </div>
     </section>
 
