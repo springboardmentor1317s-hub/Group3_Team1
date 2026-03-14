@@ -1,13 +1,13 @@
 <div class="page">
   <div class="card">
-
-    <div class="icon">👤</div>
+    <div class="icon">
+      <img class="icon-img" src="assets/icon login.png" alt="Login icon">
+    </div>
 
     <h2>Welcome Back</h2>
-    <p class="subtitle">Login to CampusEventHub</p>
+    <p class="subtitle">Login to your account</p>
 
     <form (ngSubmit)="login()">
-
       <label>Email Address</label>
       <input type="email" [(ngModel)]="user.email" name="email" placeholder="Enter your email" required>
 
@@ -19,11 +19,19 @@
       </div>
 
       <label>Login As</label>
-      <select [(ngModel)]="user.role"  name="role">   <!---(ngModelChange)="onRoleChange()" -->
+      <select [(ngModel)]="user.role" name="role">
         <option value="student">Student</option>
         <option value="college_admin">College Admin</option>
         <option value="super_admin">Super Admin</option>
       </select>
+
+      <div class="form-row">
+        <label class="checkbox">
+          <input type="checkbox" name="remember">
+          <span>Remember me</span>
+        </label>
+        <a class="forgot" routerLink="/forgot">Forgot password?</a>
+      </div>
 
       <button type="submit">Login</button>
       <p class="error" *ngIf="errorMessage" role="alert" aria-live="assertive">
@@ -31,10 +39,9 @@
       </p>
 
       <p class="link">
-        Don’t have an account?
+        Don't have an account?
         <a routerLink="/register">Create Account</a>
       </p>
-
     </form>
   </div>
 </div>

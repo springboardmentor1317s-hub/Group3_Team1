@@ -1,34 +1,3 @@
-// const mongoose = require('mongoose');
-
-// const registrationSchema = new mongoose.Schema({
-
-//   eventId: String,
-
-//   eventName: String,
-
-//   studentId: String,
-
-//   studentName: String,
-
-//   email: String,
-
-//   college: String,
-
-//   status: {
-//     type: String,
-//     enum: ['PENDING','APPROVED','REJECTED'],
-//     default: 'PENDING'
-//   },
-
-//   rejectionReason: {
-//     type: String,
-//     default: ''
-//   }
-
-// }, { timestamps: true });
-
-// module.exports = mongoose.model('Registration', registrationSchema);
-
 const mongoose = require('mongoose');
 
 const registrationSchema = new mongoose.Schema({

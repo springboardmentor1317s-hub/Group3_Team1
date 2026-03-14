@@ -1,5 +1,172 @@
+Main Header
+.main-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(248, 250, 252, 0.95) 100%);
+  backdrop-filter: blur(25px) saturate(1.2);
+  -webkit-backdrop-filter: blur(25px) saturate(1.2);
+  z-index: 1000;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  padding: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.header-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  height: 80px;
+  gap: 3rem;
+}
+
+@media (max-width: 768px) {
+  .header-container {
+    gap: 1rem;
+    padding: 0 16px;
+  }
+  
+  .main-nav {
+    display: none;
+  }
+  
+  .auth-links {
+    gap: 8px;
+  }
+  
+  .nav-btn {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+  }
+}
+
+.logo {
+  font-size: 2.4rem;
+  font-weight: 100;
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 25%, #a855f7 50%, #ec4899 75%, #f59e0b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: #1e293b !important;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 
+    0 2px 4px rgba(0,0,0,0.1),
+    0 0 20px rgba(59, 130, 246, 0.3),
+    0 0 40px rgba(168, 85, 247, 0.2);
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
+  flex-shrink: 0;
+  letter-spacing: -0.03em;
+  font-family: 'Georgia', serif;
+  position: relative;
+}
+
+.logo::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.8) 50%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.logo:hover::before {
+  opacity: 1;
+}
+
+.main-nav {
+  display: flex;
+  gap: 2rem;
+  flex: 1;
+}
+
+.nav-link {
+  color: #1f2937;
+  text-decoration: none;
+  font-weight: 600;
+  padding: 12px 20px;
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  font-size: 0.95rem;
+  letter-spacing: 0.025em;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.nav-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(99,102,241,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.nav-link:hover::before {
+  left: 100%;
+}
+
+.nav-link:hover {
+  background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(168,85,247,0.12));
+  color: #6366f1;
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(99,102,241,0.2);
+  text-shadow: none;
+}
+
+.auth-links {
+  display: flex;
+  gap: 12px;
+}
+
+.nav-btn {
+  padding: 10px 20px;
+  border-radius: 25px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  border: 2px solid;
+}
+
+.login {
+  color: #6b7280;
+  border-color: #d1d5db;
+  background: transparent;
+}
+
+.login:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+}
+
+.register {
+  color: white;
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+  border-color: transparent;
+  box-shadow: 0 4px 15px rgba(99,102,241,0.4);
+}
+
+.register:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 
+    0 12px 35px rgba(99,102,241,0.5),
+    0 0 0 1px rgba(255,255,255,0.3) inset;
+}
+
 .home {
   font-family: Arial, sans-serif;
+  padding-top: 80px; /* Updated header height */
 }
 
 /* Hero */
@@ -12,7 +179,7 @@
       rgba(79,70,229,0.7),
       rgba(139,92,246,0.7)
     ),
-    url('../../assets/party-bg.jpg');
+    url('../../assets/homepage.png');
 
   background-size: cover;
   background-position: center;
@@ -61,6 +228,15 @@
     drop-shadow(0 0 28px rgba(255, 196, 74, 0.34))
     drop-shadow(0 0 20px rgba(136, 199, 255, 0.3))
     drop-shadow(0 16px 28px rgba(0, 0, 0, 0.24));
+}
+
+.hero-image {
+  width: min(720px, 90%);
+  height: auto;
+  margin: 8px 0 12px;
+  border-radius: 18px;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.22);
 }
 
 .hero h1 {
@@ -333,3 +509,18 @@ footer {
     grid-template-columns: 1fr;
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
