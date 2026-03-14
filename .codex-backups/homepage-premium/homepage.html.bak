@@ -1,0 +1,245 @@
+﻿<div class="home">
+  <header class="landing-header">
+    <div class="header-row">
+      <a routerLink="/" class="brand-block" aria-label="Campus EventHub home">
+        <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub logo">
+        <div class="brand-copy">
+          <span class="brand-name">
+            <span class="brand-campus">Campus</span>
+            <span class="brand-eventhub">Event Hub</span>
+          </span>
+        </div>
+      </a>
+
+      <nav class="nav-links" aria-label="Primary navigation">
+        <a href="#" class="nav-link" [class.active]="activeSection === 'home'" (click)="setActiveSection('home')">Home</a>
+        <a href="#events" class="nav-link" [class.active]="activeSection === 'events'" (click)="setActiveSection('events')">Events</a>
+        <a href="#colleges" class="nav-link" [class.active]="activeSection === 'colleges'" (click)="setActiveSection('colleges')">Colleges</a>
+        <a href="#about" class="nav-link" [class.active]="activeSection === 'about'" (click)="setActiveSection('about')">About</a>
+        <a href="#contacts" class="nav-link" [class.active]="activeSection === 'contacts'" (click)="setActiveSection('contacts')">Contacts</a>
+      </nav>
+
+      <div class="nav-actions">
+        <a routerLink="/login" class="header-btn header-btn-secondary">Login</a>
+        <a routerLink="/register" class="header-btn header-btn-primary">Register</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-shell">
+      <div class="hero-copy">
+        <p class="hero-kicker">Nationwide event platform</p>
+        <h1 class="hero-title">Discover &amp; Join Exciting Events</h1>
+        <p class="hero-text">
+          Explore hackathons, sports competitions, cultural festivals and workshops organized by colleges across the country.
+        </p>
+
+        <div class="hero-actions">
+          <a href="#events" class="btn primary">Explore Events</a>
+          <a routerLink="/register" class="btn secondary">Create Event</a>
+        </div>
+      </div>
+
+      <div class="hero-visual" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <section class="stats-panel">
+    <div class="stat-item">
+      <h2>{{ platformStats.collegesConnected }}+</h2>
+      <p>Colleges Connected</p>
+    </div>
+    <div class="stat-item">
+      <h2>{{ platformStats.studentsParticipated }}+</h2>
+      <p>Students Participated</p>
+    </div>
+    <div class="stat-item">
+      <h2>{{ platformStats.eventsHosted }}+</h2>
+      <p>Events Hosted</p>
+    </div>
+    <div class="stat-item">
+      <h2>{{ platformStats.totalActiveAdmins }}+</h2>
+      <p>Total Active Admin in this platform</p>
+    </div>
+  </section>
+
+  <section class="featured-events" id="events">
+    <div class="section-heading">
+      <p class="section-kicker">Live event highlights</p>
+      <h2>Featured Events</h2>
+    </div>
+
+    <div class="event-grid" *ngIf="featuredEvents.length; else featuredEventsState">
+      <article
+        class="event-card"
+        *ngFor="let event of featuredEvents; let index = index"
+        [ngClass]="{
+          'event-card-pink': index % 3 === 0,
+          'event-card-peach': index % 3 === 1,
+          'event-card-blue': index % 3 === 2
+        }"
+      >
+        <div class="event-card-top">
+          <div class="event-poster" [class.event-poster-empty]="!event.imageUrl">
+            <img *ngIf="event.imageUrl; else eventBadgeFallback" [src]="event.imageUrl" [alt]="event.title + ' poster'">
+            <ng-template #eventBadgeFallback>
+              <div class="event-badge">{{ event.categoryLabel }}</div>
+            </ng-template>
+          </div>
+
+          <div class="event-headline">
+            <h3>{{ event.title }}</h3>
+            <p class="event-location">{{ event.location }}</p>
+          </div>
+        </div>
+
+        <div class="event-content">
+          <p class="event-date">{{ event.dateLabel }}</p>
+          <p class="event-meta">Live event updates, registrations and event access available through the platform. If you need more details, create an account and go to the dashboard or login to continue.</p>
+        </div>
+
+        <div class="event-card-bottom">
+          <span class="event-chip">Featured</span>
+          <a routerLink="/register" class="event-link">View Details</a>
+        </div>
+      </article>
+    </div>
+
+    <ng-template #featuredEventsState>
+      <div class="event-state-card" *ngIf="featuredEventsLoading; else featuredEventsMessage">
+        Loading featured events...
+      </div>
+      <ng-template #featuredEventsMessage>
+        <div class="event-state-card">
+          {{ featuredEventsError || 'No featured events available yet.' }}
+        </div>
+      </ng-template>
+    </ng-template>
+  </section>
+
+  <section class="registered-colleges-section" id="colleges">
+    <div class="section-heading">
+      <p class="section-kicker">Registered colleges</p>
+      <h2>College Admins Across Campuses</h2>
+    </div>
+
+    <div
+      class="college-showcase"
+      [class.is-dragging]="isDraggingColleges"
+      *ngIf="registeredColleges.length; else collegesState"
+      (mouseenter)="pauseCollegeRotation()"
+      (mouseleave)="resumeCollegeRotation()"
+      (pointerdown)="onCollegePointerDown($event)"
+      (pointermove)="onCollegePointerMove($event)"
+      (pointerup)="onCollegePointerUp()"
+      (pointercancel)="onCollegePointerUp()"
+      (pointerleave)="onCollegePointerUp()"
+    >
+      <div class="college-stage">
+        <article
+          class="college-card"
+          *ngFor="let college of registeredColleges; let index = index"
+          [ngStyle]="getCollegeCardStyle(index)"
+        >
+          <div class="college-badge">{{ college.badge }}</div>
+          <div class="college-copy">
+            <h3>{{ college.name }}</h3>
+            <p>Verified college admin registered on the platform.</p>
+          </div>
+        </article>
+      </div>
+    </div>
+
+    <ng-template #collegesState>
+      <div class="event-state-card">
+        {{ collegesLoading ? 'Loading registered colleges...' : 'No approved college admins available yet.' }}
+      </div>
+    </ng-template>
+  </section>
+
+  <section id="about" class="about-strip">
+    <div class="about-shell">
+      <div class="about-copy">
+        <p class="section-kicker">About CampusEventHub</p>
+        <h2>A nationwide event ecosystem where colleges across India can register, create events, and connect with students at scale.</h2>
+        <p class="about-lead">
+          CampusEventHub is a centralized digital platform built for colleges, administrators, event organizers, and students. It brings event discovery, registration, approval, and management into one place so institutions can promote activities more effectively and students can find opportunities faster.
+        </p>
+        <p class="about-body">
+          The platform is not limited to inter-college participation alone. Any college across India can join the platform, create events, manage registrations, and build a wider academic and activity network through hackathons, sports competitions, cultural festivals, workshops, seminars, and other nationwide engagements.
+        </p>
+      </div>
+
+      <div class="about-visuals">
+        <figure class="about-image-card about-image-card-primary">
+          <img src="assets/about-section-1.jpeg" alt="Students collaborating through CampusEventHub">
+        </figure>
+        <figure class="about-image-card about-image-card-secondary">
+          <img src="assets/about-section-2.jpeg" alt="College event participation and engagement">
+        </figure>
+      </div>
+    </div>
+
+    <div class="about-highlights">
+      <article class="about-feature">
+        <span class="about-feature-number">01</span>
+        <h3>Discover Events Nationwide</h3>
+        <p>Students can explore hackathons, coding competitions, sports tournaments, cultural fests, workshops, and seminars from colleges across India in one place.</p>
+      </article>
+
+      <article class="about-feature">
+        <span class="about-feature-number">02</span>
+        <h3>Easy Registration and Participation</h3>
+        <p>The platform simplifies registration so students can reserve participation slots, stay updated, and access event details without manual processes.</p>
+      </article>
+
+      <article class="about-feature">
+        <span class="about-feature-number">03</span>
+        <h3>Event Creation for Colleges</h3>
+        <p>College admins and organizers can publish event details, categories, dates, venues, and posters to promote activities to a wider national audience.</p>
+      </article>
+
+      <article class="about-feature">
+        <span class="about-feature-number">04</span>
+        <h3>Management Dashboard and Secure Access</h3>
+        <p>Role-based dashboards help admins manage registrations, monitor participation, approve requests, and maintain secure access across the platform.</p>
+      </article>
+    </div>
+
+    <div class="about-vision-card">
+      <p class="section-kicker">Our vision</p>
+      <h3>To build a connected academic event network where colleges across India can collaborate, students can showcase talent, and opportunities become easier to access for everyone.</h3>
+      <p>
+        CampusEventHub encourages innovation, creativity, knowledge sharing, and community interaction by making event participation more organized, transparent, and engaging.
+      </p>
+    </div>
+  </section>
+
+  <footer id="contacts" class="footer-section">
+    <div class="footer-shell">
+      <div class="footer-brand">
+        <p class="section-kicker">Contact us</p>
+        <h3>CampusEventHub Support</h3>
+        <p>For platform help, event assistance, and admin support, reach out to our team.</p>
+      </div>
+
+      <div class="footer-contact-grid">
+        <div class="footer-contact-card">
+          <span class="footer-contact-label">Email</span>
+          <p class="footer-email-line">helpdesk@campuseventhub.in</p>
+        </div>
+        <div class="footer-contact-card">
+          <span class="footer-contact-label">Helpline</span>
+          <p>+91 1800-102-8014</p>
+        </div>
+        <div class="footer-contact-card">
+          <span class="footer-contact-label">Office Address</span>
+          <p>CampusEventHub Operations Office, New Delhi, India</p>
+        </div>
+      </div>
+    </div>
+
+    <p class="footer-copy">© 2026 CampusEventHub · All Rights Reserved</p>
+  </footer>
+</div>

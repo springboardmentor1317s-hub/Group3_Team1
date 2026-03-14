@@ -14,6 +14,7 @@ export interface StatCard {
   icon: string;
   color: string;
   subtitle: string;
+  variant?: 'primary' | 'success' | 'warning';
 }
 
 export interface Event {
@@ -31,6 +32,7 @@ export interface Event {
   organizer?: string;
   contact?: string;
   posterUrl?: string | null;
+  college?: string;
 }
 
 export interface Notification {
@@ -77,13 +79,14 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
 
   private subscriptions: Subscription[] = [];
   private readonly REGISTRATION_API_URL = '/api/registrations';
+  readonly dashboardCoverUrl = '/assets/student-dashboard-cover.png';
   
   isLoading = false;
   errorMessage = '';
 
   sidebarOpen = false;
-  activeTab = 'dashboard';
-  activeSubPage = '';
+  activeTab: string = 'dashboard';
+  activeSubPage: string = '';
   profileImageUrl: string | null = null;
   
   // Student Information
@@ -98,9 +101,11 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
   searchQuery = '';
   globalSearchQuery = '';
   selectedDate = '';
+  selectedCollege = 'All Colleges';
   appliedSearchQuery = '';
   appliedSelectedCategory = 'All';
   appliedSelectedDate = '';
+  appliedSelectedCollege = 'All Colleges';
   
   // NEW: Registration tracking
   private studentRegistrations: EventRegistration[] = [];
@@ -145,36 +150,14 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
     { id: 'logout', label: 'Logout', icon: 'logout' }
   ];
 
-  stats: StatCard[] = [
-    {
-      title: 'Upcoming Events',
-      value: 0,
-      icon: 'event_upcoming',
-      color: '#3b82f6',
-      subtitle: 'Events this month'
-    },
-    {
-      title: 'My Registrations',
-      value: 0,
-      icon: 'assignment_turned_in',
-      color: '#8b5cf6',
-      subtitle: 'Active registrations'
-    },
-    {
-      title: 'Events Attended',
-      value: 0,
-      icon: 'check_circle',
-      color: '#10b981',
-      subtitle: 'Total attended'
-    },
-    {
-      title: 'Pending Actions',
-      value: 0,
-      icon: 'pending_actions',
-      color: '#f59e0b',
-      subtitle: 'Awaiting confirmation'
-    }
+
+referenceStats = [
+    { icon: 'event', count: '12', title: 'Upcoming Events' },
+    { icon: 'assignment', count: '3', title: 'My Registrations' },
+    { icon: 'celebration', count: '8', title: 'Participated Events' },
+    { icon: 'pending_actions', count: '2', title: 'Pending Approval' }
   ];
+
 
   notifications: Notification[] = [];
 
@@ -301,7 +284,6 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
 
     this.studentRegistrations = registrations;
     this.updateRegistrations();
-    this.updatePendingActionsCount();
   }
 
   private addApprovalNotification(registration: EventRegistration): void {
@@ -369,15 +351,7 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
   //   this.stats[3].value = pendingCount;
   //   this.stats[3].subtitle = pendingCount === 0 ? 'All clear' : pendingCount === 1 ? '1 pending approval' : `${pendingCount} pending approvals`;
   // }
-  private updatePendingActionsCount(): void {
-  const pendingCount = this.studentRegistrations.filter(r => r.status === 'PENDING').length;
-  this.stats[3].value = pendingCount;
-  this.stats[3].subtitle = pendingCount === 0
-    ? 'All clear'
-    : pendingCount === 1
-      ? '1 pending approval'
-      : `${pendingCount} pending approvals`;
-}
+
   // NEW: Get registration status for an event
   getRegistrationStatus(eventId: number): 'PENDING' | 'APPROVED' | 'REJECTED' | null {
     const reg = this.studentRegistrations.find(r => r.eventId === String(eventId));
@@ -489,35 +463,6 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
   }
 
   updateAllStats(): void {
-    this.stats[0].value = this.upcomingEvents.length;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const activeRegistrationIds = new Set(
-      this.studentRegistrations
-        .filter((reg) => reg.status !== 'REJECTED')
-        .map((reg) => String(reg.eventId))
-    );
-
-    const activeRegistrationsCount = this.upcomingEvents.filter((event) => {
-      if (!activeRegistrationIds.has(String(event.id))) return false;
-      const eventDate = new Date(event.date);
-      return eventDate >= today;
-    }).length;
-
-    this.stats[1].value = activeRegistrationsCount;
-    
-    const attendedCount = this.eventHistory.filter(item => item.attended).length;
-    this.stats[2].value = attendedCount;
-    if (this.eventHistory.length > 0) {
-      const percentage = Math.round((attendedCount / this.eventHistory.length) * 100);
-      this.stats[2].subtitle = `${percentage}% attendance rate`;
-    } else {
-      this.stats[2].subtitle = 'No past events';
-    }
-    
-    this.updatePendingActionsCount();
   }
 
   generateNotifications(): void {
@@ -733,6 +678,10 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
     if (window.innerWidth < 1024) {
       this.sidebarOpen = false;
     }
+  }
+
+  isNavTabActive(tabId: string): boolean {
+    return this.activeTab === tabId;
   }
 
   performGlobalSearch(): void {
@@ -1018,12 +967,14 @@ END:VCALENDAR`;
     this.appliedSearchQuery = this.searchQuery.trim();
     this.appliedSelectedCategory = this.selectedCategory;
     this.appliedSelectedDate = this.selectedDate;
+    this.appliedSelectedCollege = this.selectedCollege;
   }
 
   clearFilters(): void {
     this.searchQuery = '';
     this.selectedCategory = 'All';
     this.selectedDate = '';
+    this.selectedCollege = 'All Colleges';
     this.globalSearchQuery = '';
     this.applyFilters();
   }
@@ -1047,7 +998,19 @@ END:VCALENDAR`;
     if (this.appliedSelectedDate) {
       filtered = filtered.filter(event => event.date === this.appliedSelectedDate);
     }
+
+    if (this.appliedSelectedCollege !== 'All Colleges') {
+      filtered = filtered.filter(event => (event.college || 'Unknown College') === this.appliedSelectedCollege);
+    }
     return filtered;
+  }
+
+  getCollegeOptions(): string[] {
+    const colleges = this.upcomingEvents
+      .map((event) => event.college || 'Unknown College')
+      .filter((value, index, array) => array.indexOf(value) === index);
+
+    return ['All Colleges', ...colleges];
   }
 
   getCategoryColor(category: string): string {
@@ -1096,6 +1059,27 @@ getEventStatusColor(event: Event): string {
   
   return this.getStatusColor(event.status);
 }
+
+  getEventPosterImage(event: Event): string {
+    return event.posterUrl || this.dashboardCoverUrl;
+  }
+
+  getRegistrationBadgeText(eventId: number): string {
+    const status = this.getRegistrationStatus(eventId);
+    if (status === 'APPROVED') return 'Approved';
+    if (status === 'REJECTED') return 'Rejected';
+    if (status === 'PENDING') return 'Pending';
+    return 'Registered';
+  }
+
+  getRegistrationBadgeClass(eventId: number): string {
+    const status = this.getRegistrationStatus(eventId);
+    if (status === 'APPROVED') return 'status-approved';
+    if (status === 'REJECTED') return 'status-rejected';
+    if (status === 'PENDING') return 'status-pending';
+    return 'status-approved';
+  }
+
   formatDate(dateString: string): string {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
