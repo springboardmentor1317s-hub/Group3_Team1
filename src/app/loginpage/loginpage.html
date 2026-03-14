@@ -1,47 +1,70 @@
 <div class="page">
-  <div class="card">
-    <div class="icon">
-      <img class="icon-img" src="assets/icon login.png" alt="Login icon">
+  <header class="auth-header">
+    <div class="header-row">
+      <a routerLink="/" class="brand-block" aria-label="Campus EventHub home">
+        <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub logo">
+        <div class="brand-copy">
+          <span class="brand-name">
+            <span class="brand-campus">Campus</span>
+            <span class="brand-eventhub">Event Hub</span>
+          </span>
+        </div>
+      </a>
+
+      <div class="nav-actions">
+        <a routerLink="/" class="header-btn header-btn-secondary">Home</a>
+        <a routerLink="/register" class="header-btn header-btn-primary">Register</a>
+      </div>
     </div>
+  </header>
 
-    <h2>Welcome Back</h2>
-    <p class="subtitle">Login to your account</p>
+  <div class="page-content">
+    <div class="auth-shell">
+      <div class="card">
+        <div class="icon">
+          <img class="icon-img" src="assets/icon login.png" alt="Login icon">
+        </div>
 
-    <form (ngSubmit)="login()">
-      <label>Email Address</label>
-      <input type="email" [(ngModel)]="user.email" name="email" placeholder="Enter your email" required>
+        <h2>Welcome Back</h2>
+        <p class="subtitle">Login to your account</p>
 
-      <label>Password</label>
-      <div class="password-box">
-        <input [type]="show ? 'text' : 'password'" [(ngModel)]="user.password" name="password"
-          placeholder="Enter your password" required>
-        <i class="fa-solid" [class.fa-eye]="!show" [class.fa-eye-slash]="show" (click)="show = !show"></i>
+        <form (ngSubmit)="login()">
+          <label>Email Address</label>
+          <input type="email" [(ngModel)]="user.email" name="email" placeholder="Enter your email" required>
+
+          <label>Password</label>
+          <div class="password-box">
+            <input [type]="show ? 'text' : 'password'" [(ngModel)]="user.password" name="password"
+              placeholder="Enter your password" required>
+            <i class="fa-solid" [class.fa-eye]="!show" [class.fa-eye-slash]="show" (click)="show = !show"></i>
+          </div>
+
+          <label>Login As</label>
+          <select [(ngModel)]="user.role" name="role">
+            <option value="student">Student</option>
+            <option value="college_admin">College Admin</option>
+            <option value="super_admin">Super Admin</option>
+          </select>
+
+          <div class="form-row">
+            <label class="checkbox">
+              <input type="checkbox" name="remember">
+              <span>Remember me</span>
+            </label>
+            <a class="forgot" routerLink="/forgot">Forgot password?</a>
+          </div>
+
+          <button type="submit">Login</button>
+          <p class="error" *ngIf="errorMessage" role="alert" aria-live="assertive">
+            {{ errorMessage }}
+          </p>
+
+          <p class="link">
+            Don't have an account?
+            <a routerLink="/register">Create Account</a>
+          </p>
+        </form>
       </div>
-
-      <label>Login As</label>
-      <select [(ngModel)]="user.role" name="role">
-        <option value="student">Student</option>
-        <option value="college_admin">College Admin</option>
-        <option value="super_admin">Super Admin</option>
-      </select>
-
-      <div class="form-row">
-        <label class="checkbox">
-          <input type="checkbox" name="remember">
-          <span>Remember me</span>
-        </label>
-        <a class="forgot" routerLink="/forgot">Forgot password?</a>
-      </div>
-
-      <button type="submit">Login</button>
-      <p class="error" *ngIf="errorMessage" role="alert" aria-live="assertive">
-        {{ errorMessage }}
-      </p>
-
-      <p class="link">
-        Don't have an account?
-        <a routerLink="/register">Create Account</a>
-      </p>
-    </form>
+    </div>
   </div>
 </div>
