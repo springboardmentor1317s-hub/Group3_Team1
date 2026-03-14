@@ -80,6 +80,7 @@ export class AdminDashboard implements OnInit {
   registrationSearchText: string = '';
   registrationFilter: string = 'all';
   registrationSearchQuery: string = '';
+  dashboardSearchQuery: string = '';
   rejectionModalOpen = false;
   approveModalOpen = false;
   rejectModalOpen = false;
@@ -247,6 +248,11 @@ export class AdminDashboard implements OnInit {
     this.applyRegistrationFilters();
   }
 
+  applyDashboardSearch(): void {
+    // Reuse existing filtering behavior; dashboardSearchQuery is applied inside getters.
+    this.applyRegistrationFilters();
+  }
+
   getFilteredRegistrations(): Registration[] {
     let filtered = this.registrations;
 
@@ -259,8 +265,9 @@ export class AdminDashboard implements OnInit {
       filtered = filtered.filter((r) => r.status === statusMap[this.registrationFilter]);
     }
 
-    if (this.registrationSearchQuery.trim()) {
-      const searchLower = this.registrationSearchQuery.toLowerCase();
+    const combinedSearch = `${this.registrationSearchQuery} ${this.dashboardSearchQuery}`.trim();
+    if (combinedSearch) {
+      const searchLower = combinedSearch.toLowerCase();
       filtered = filtered.filter(
         (r) =>
           r.studentName.toLowerCase().includes(searchLower) ||
@@ -270,6 +277,19 @@ export class AdminDashboard implements OnInit {
     }
 
     return filtered;
+  }
+
+  getFilteredEvents(): OrganizerEvent[] {
+    const query = this.dashboardSearchQuery.trim().toLowerCase();
+    if (!query) return this.events;
+    return this.events.filter((e) => {
+      return (
+        e.name.toLowerCase().includes(query) ||
+        e.location.toLowerCase().includes(query) ||
+        e.organizer.toLowerCase().includes(query) ||
+        (e.category ?? '').toLowerCase().includes(query)
+      );
+    });
   }
 
   openRejectModal(registration: Registration): void {
@@ -508,6 +528,10 @@ export class AdminDashboard implements OnInit {
     return event.id;
   }
 
+  get totalStudents(): number {
+    return 1245;
+  }
+
   get totalEvents(): number {
     return this.events.length;
   }
@@ -526,7 +550,11 @@ export class AdminDashboard implements OnInit {
     return Math.round(total / this.events.length);
   }
 
-  getPendingRegistrationsCount(): number {
+getPendingApprovals(): number {
+    return this.getPendingCount();
+  }
+
+getPendingRegistrationsCount(): number {
     return this.getPendingCount();
   }
 
