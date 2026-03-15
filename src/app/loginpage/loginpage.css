@@ -106,6 +106,17 @@ button:hover {
   cursor: pointer;
 }
 
+.error {
+  margin-top: 12px;
+  color: #fee2e2;
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  text-align: center;
+}
+
 /* Animation */
 @keyframes fadeIn {
   from {
@@ -194,4 +205,57 @@ input, select {
   button {
     padding: 12px;
   }
+}
+
+/* Popup Modal */
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn .2s ease;
+}
+
+.popup-box {
+  background: white;
+  border-radius: 16px;
+  padding: 30px 35px;
+  text-align: center;
+  max-width: 320px;
+  width: 90%;
+  box-shadow: 0 20px 50px rgba(0,0,0,.25);
+  animation: floatIn .25s ease;
+}
+
+.popup-icon {
+  font-size: 36px;
+  margin-bottom: 12px;
+}
+
+.popup-message {
+  font-size: 15px;
+  color: #1e293b;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.popup-btn {
+  width: auto;
+  padding: 10px 35px;
+  margin-top: 0;
+  border-radius: 25px;
+  border: none;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+
+.popup-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(99,102,241,.4);
 }

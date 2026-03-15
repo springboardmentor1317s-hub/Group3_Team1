@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { FormsModule, NgForm } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-type DashboardTab = 'overview' | 'events' | 'analytics';
+import { forkJoin } from 'rxjs';
+
+type DashboardTab = 'overview' | 'events' | 'analytics' | 'registrations';
 
 interface OrganizerEvent {
   id: string;
@@ -13,10 +15,27 @@ interface OrganizerEvent {
   organizer: string;
   contact: string;
   description: string;
+  category?: string;
   status: 'Active' | 'Draft' | 'Past';
   registrations: number;
   participants: number;
   posterDataUrl?: string | null;
+}
+
+interface Registration {
+  id: string;
+  studentName: string;
+  studentId: string;
+  studentEmail: string;
+  email: string;
+  college: string;
+  eventName: string;
+  eventId: string;
+  registrationDate: string;
+  submittedDate: string;
+  createdAt: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  rejectionReason?: string;
 }
 
 interface CreateEventForm {
@@ -42,18 +61,71 @@ interface CreateEventForm {
 export class AdminDashboard implements OnInit {
 
   private readonly API_URL = '/api/events';
-  constructor(private readonly http: HttpClient) {}
+  private readonly REGISTRATIONS_API_URL = '/api/registrations';
+
+  // ✅ Inject ChangeDetectorRef to manually trigger UI update after async data loads
+  constructor(
+    private readonly http: HttpClient,
+    private readonly cdr: ChangeDetectorRef
+  ) {}
+
   userName: string = '';
   activeTab: DashboardTab = 'overview';
   createModalOpen = false;
 
   events: OrganizerEvent[] = [];
+  registrations: Registration[] = [];
+  filteredRegistrations: Registration[] = [];
+  registrationStatusFilter: 'All' | 'Pending' | 'Approved' | 'Rejected' = 'All';
+  registrationSearchText: string = '';
+  registrationFilter: string = 'all';
+  registrationSearchQuery: string = '';
+  rejectionModalOpen = false;
+  approveModalOpen = false;
+  rejectModalOpen = false;
+  selectedRegistrationForRejection: Registration | null = null;
+  selectedRegistration: Registration | null = null;
+  rejectionReason: string = '';
+  showToast = false;
+  toastMessage = '';
+  toastType: 'success' | 'error' = 'success';
+  isSavingEvent = false;
   createForm: CreateEventForm = this.getEmptyCreateForm();
+
+  // ✅ Loading state so the template can show a spinner instead of 0
+  isLoading = true;
 
   ngOnInit(): void {
     const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
     this.userName = user.name || 'User';
-    this.fetchEvents();
+
+    // ✅ Use forkJoin to fire BOTH requests in parallel and wait for BOTH to complete
+    //    before updating any state. This ensures the stats are never shown as 0.
+    this.isLoading = true;
+    forkJoin({
+      events: this.http.get<OrganizerEvent[]>(this.API_URL),
+      registrations: this.http.get<Registration[]>(this.REGISTRATIONS_API_URL)
+    }).subscribe({
+      next: ({ events, registrations }) => {
+        this.events = events;
+        this.refreshEventStatuses();
+
+        this.registrations = registrations;
+        this.applyRegistrationFilters();
+
+        this.isLoading = false;
+
+        // ✅ Tell Angular to re-check this component's bindings right now,
+        //    so totalEvents / activeEvents / totalRegistrations / averageParticipants
+        //    reflect real data on first paint instead of showing 0.
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error loading dashboard data', err);
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   setTab(tab: DashboardTab): void {
@@ -105,11 +177,13 @@ export class AdminDashboard implements OnInit {
     this.createForm.posterDataUrl = null;
   }
 
+  // ✅ fetchEvents / fetchRegistrations kept for standalone refresh use (e.g. after create/delete)
   fetchEvents(): void {
     this.http.get<OrganizerEvent[]>(this.API_URL).subscribe({
       next: (data) => {
         this.events = data;
         this.refreshEventStatuses();
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Error fetching events', err);
@@ -117,46 +191,253 @@ export class AdminDashboard implements OnInit {
     });
   }
 
-  saveEvent(): void {
+  fetchRegistrations(): void {
+    this.http.get<Registration[]>(this.REGISTRATIONS_API_URL).subscribe({
+      next: (data) => {
+        this.registrations = data;
+        this.applyRegistrationFilters();
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error fetching registrations', err);
+      }
+    });
+  }
+
+  filterRegistrationsByStatus(status: 'All' | 'Pending' | 'Approved' | 'Rejected'): void {
+    this.registrationStatusFilter = status;
+    this.applyRegistrationFilters();
+  }
+
+  applyRegistrationFilters(): void {
+    let filtered = this.registrations;
+
+    if (this.registrationStatusFilter !== 'All') {
+      const statusMap: { [key: string]: string } = {
+        'Pending': 'PENDING',
+        'Approved': 'APPROVED',
+        'Rejected': 'REJECTED'
+      };
+      filtered = filtered.filter((r) => r.status === statusMap[this.registrationStatusFilter]);
+    }
+
+    if (this.registrationSearchText.trim()) {
+      const searchLower = this.registrationSearchText.toLowerCase();
+      filtered = filtered.filter(
+        (r) =>
+          r.studentName.toLowerCase().includes(searchLower) ||
+          r.email.toLowerCase().includes(searchLower) ||
+          r.eventName.toLowerCase().includes(searchLower)
+      );
+    }
+
+    this.filteredRegistrations = filtered;
+  }
+
+  filterByStatus(status: 'PENDING' | 'APPROVED' | 'REJECTED'): void {
+    const statusMap: { [key: string]: 'All' | 'Pending' | 'Approved' | 'Rejected' } = {
+      'PENDING': 'Pending',
+      'APPROVED': 'Approved',
+      'REJECTED': 'Rejected'
+    };
+    this.filterRegistrationsByStatus(statusMap[status]);
+  }
+
+  applyRegistrationFilter(): void {
+    this.applyRegistrationFilters();
+  }
+
+  getFilteredRegistrations(): Registration[] {
+    let filtered = this.registrations;
+
+    if (this.registrationFilter !== 'all') {
+      const statusMap: { [key: string]: string } = {
+        'pending': 'PENDING',
+        'approved': 'APPROVED',
+        'rejected': 'REJECTED'
+      };
+      filtered = filtered.filter((r) => r.status === statusMap[this.registrationFilter]);
+    }
+
+    if (this.registrationSearchQuery.trim()) {
+      const searchLower = this.registrationSearchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (r) =>
+          r.studentName.toLowerCase().includes(searchLower) ||
+          r.email.toLowerCase().includes(searchLower) ||
+          r.studentId.toLowerCase().includes(searchLower)
+      );
+    }
+
+    return filtered;
+  }
+
+  openRejectModal(registration: Registration): void {
+    this.selectedRegistration = registration;
+    this.rejectionReason = '';
+    this.rejectModalOpen = true;
+    setTimeout(() => {
+      const textarea = document.getElementById('rejectionReason') as HTMLTextAreaElement;
+      if (textarea) {
+        textarea.focus();
+      }
+    }, 100);
+  }
+
+  closeRejectModal(): void {
+    this.rejectModalOpen = false;
+    this.selectedRegistration = null;
+    this.rejectionReason = '';
+  }
+
+  openApproveModal(registration: Registration): void {
+    this.selectedRegistration = registration;
+    this.approveModalOpen = true;
+  }
+
+  closeApproveModal(): void {
+    this.approveModalOpen = false;
+    this.selectedRegistration = null;
+  }
+
+  confirmApproveRegistration(): void {
+    if (!this.selectedRegistration) return;
+    const reg = this.selectedRegistration;
+    this.http.patch<Registration>(`${this.REGISTRATIONS_API_URL}/${reg.id}/approve`, {}).subscribe({
+      next: (updated) => {
+        const idx = this.registrations.findIndex((r) => r.id === reg.id);
+        if (idx >= 0) {
+          this.registrations[idx] = updated;
+          this.applyRegistrationFilter();
+        }
+        this.closeApproveModal();
+        this.showSuccessToast('Registration approved successfully!');
+      },
+      error: (err) => {
+        console.error('Error approving registration', err);
+        this.showErrorToast('Could not approve registration. Please try again.');
+      }
+    });
+  }
+
+  confirmRejectRegistration(): void {
+    if (!this.selectedRegistration || !this.rejectionReason.trim()) {
+      this.showErrorToast('Please enter a rejection reason.');
+      return;
+    }
+    const reg = this.selectedRegistration;
+    const reason = this.rejectionReason.trim();
+
+    this.http.patch<Registration>(`${this.REGISTRATIONS_API_URL}/${reg.id}/reject`, {
+      reason: reason
+    }).subscribe({
+      next: (updated) => {
+        const idx = this.registrations.findIndex((r) => r.id === reg.id);
+        if (idx >= 0) {
+          this.registrations[idx] = updated;
+          this.applyRegistrationFilter();
+        }
+        this.closeRejectModal();
+        this.showSuccessToast('Registration rejected successfully!');
+      },
+      error: (err) => {
+        console.error('Error rejecting registration', err);
+        this.showErrorToast('Could not reject registration. Please try again.');
+      }
+    });
+  }
+
+  confirmReject(): void {
+    if (confirm('Are you sure you want to reject this registration? This action cannot be undone.')) {
+      this.confirmRejectRegistration();
+    }
+  }
+
+  approveRegistration(registration: Registration): void {
+    this.openApproveModal(registration);
+  }
+
+  getPendingCount(): number {
+    return this.registrations.filter((r) => r.status === 'PENDING').length;
+  }
+
+  getApprovedCount(): number {
+    return this.registrations.filter((r) => r.status === 'APPROVED').length;
+  }
+
+  getRejectedCount(): number {
+    return this.registrations.filter((r) => r.status === 'REJECTED').length;
+  }
+
+  trackByRegistrationId(_index: number, reg: Registration): string {
+    return reg.id;
+  }
+
+  private showSuccessToast(message: string): void {
+    this.toastMessage = message;
+    this.toastType = 'success';
+    this.showToast = true;
+    setTimeout(() => {
+      this.showToast = false;
+    }, 3000);
+  }
+
+  private showErrorToast(message: string): void {
+    this.toastMessage = message;
+    this.toastType = 'error';
+    this.showToast = true;
+    setTimeout(() => {
+      this.showToast = false;
+    }, 3000);
+  }
+
+  saveEvent(form?: NgForm): void {
+    if (this.isSavingEvent) return;
+
+    form?.control.markAllAsTouched();
+
     const name = this.createForm.name.trim();
-    if (
-      !name ||
-      !this.createForm.category ||
-      !this.createForm.dateTime.trim() ||
-      !this.createForm.location.trim()
-    ) {
-      alert('Please fill Event Name, Category, Date, and Location.');
+    const category = this.createForm.category.trim();
+    const dateTime = this.createForm.dateTime.trim();
+    const location = this.createForm.location.trim();
+
+    if (!name || !category || !dateTime || !location || form?.invalid) {
+      this.showErrorToast('Please fill all required fields before saving the event.');
       return;
     }
 
     const payload = {
       name,
-      dateTime: this.createForm.dateTime,
+      dateTime,
       endDate: this.createForm.endDate.trim() || null,
-      location: this.createForm.location.trim(),
+      location,
       organizer: this.createForm.organizer.trim(),
       contact: this.createForm.contact.trim(),
       description: this.createForm.description.trim(),
       teamSize: this.createForm.teamSize ?? null,
       posterDataUrl: this.createForm.posterDataUrl,
-      category: this.createForm.category,
-      status: this.isPastEventDate(this.createForm.dateTime) ? 'Past' : 'Active',
+      category,
+      status: this.isPastEventDate(dateTime) ? 'Past' : 'Active',
       registrations: 0,
       participants: 0
     };
 
+    this.isSavingEvent = true;
     this.http.post<OrganizerEvent>(this.API_URL, payload).subscribe({
       next: (savedEvent) => {
         this.events = [savedEvent, ...this.events];
-
         this.createModalOpen = false;
         this.resetCreateForm();
         this.activeTab = 'events';
+        form?.resetForm(this.getEmptyCreateForm());
+        this.showSuccessToast('Event saved successfully!');
+        this.isSavingEvent = false;
       },
       error: (err) => {
         console.error('Error saving event', err);
         const message = err?.error?.error ?? err?.error?.message ?? 'Could not save event. Please try again.';
-        alert(message);
+        this.showErrorToast(message);
+        this.isSavingEvent = false;
       }
     });
   }
@@ -245,6 +526,18 @@ export class AdminDashboard implements OnInit {
     return Math.round(total / this.events.length);
   }
 
+  getPendingRegistrationsCount(): number {
+    return this.getPendingCount();
+  }
+
+  getApprovedRegistrationsCount(): number {
+    return this.getApprovedCount();
+  }
+
+  getRejectedRegistrationsCount(): number {
+    return this.getRejectedCount();
+  }
+
   private refreshEventStatuses(): void {
     const today = this.startOfToday();
     this.events = this.events.map((event) => {
@@ -304,5 +597,4 @@ export class AdminDashboard implements OnInit {
       category: ''
     };
   }
-
 }

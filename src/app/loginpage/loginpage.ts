@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { ChangeDetectorRef, Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
@@ -14,6 +14,7 @@ import { AuthService } from '../auth.service';
 })
 export class Loginpage {
   show = false;
+  errorMessage = '';
   user = {
     email: '',
     password: '',
@@ -23,10 +24,9 @@ export class Loginpage {
   constructor(
     private auth: Auth,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
     ) { }
-
-    errorMessage = '';
 
   // onRoleChange() {
   //   // Auto-fill removed as per request
@@ -52,6 +52,7 @@ export class Loginpage {
     //   }
     // }
   // }
+
   login() {
 
   this.errorMessage = '';
@@ -61,7 +62,8 @@ export class Loginpage {
           this.auth.setRole('super_admin');
           this.router.navigate(['/super-admin-dashboard']);
       } else {
-        alert('Invalid Super Admin Credentials');
+        this.errorMessage = 'Invalid credentials';
+        this.cdr.detectChanges();
       }
       return;
     } 
@@ -71,6 +73,14 @@ export class Loginpage {
   this.authService.login(payload).subscribe({
     next: (res: any) => {
       console.log('Login Success', res);
+
+      const actualRole = String(res.role || '').toLowerCase();
+      const selectedRole = String(this.user.role || '').toLowerCase();
+      if (actualRole && selectedRole && actualRole !== selectedRole) {
+        this.errorMessage = `Account role is ${actualRole.replace('_', ' ')}. Please select the correct role.`;
+        this.cdr.detectChanges();
+        return;
+      }
 
       // store token and role
       if (res.token) localStorage.setItem('token', res.token);
@@ -87,7 +97,7 @@ localStorage.setItem('userName', currentUser.name)
 localStorage.setItem('role', res.role);
       this.auth.setRole(res.role || this.user.role);
       // navigate
-      if (res.role === 'admin' || res.role === 'college_admin' || this.user.role === 'college_admin') {
+      if (res.role === 'admin' || res.role === 'college_admin') {
         this.router.navigate(['/admin-dashboard']);
       } else if (res.role === 'super_admin') {
         this.router.navigate(['/super-admin-dashboard']);
@@ -105,7 +115,8 @@ localStorage.setItem('role', res.role);
         });
         return;
       }
-      this.errorMessage = err.error?.message || 'Invalid email or password';
+      this.errorMessage = err?.error?.message || 'Invalid credentials';
+      this.cdr.detectChanges();
     }
   });
 }

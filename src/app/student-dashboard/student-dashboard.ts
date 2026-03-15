@@ -1,8 +1,10 @@
+
 import { Component, ElementRef, OnInit, ViewChild, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClientModule } from '@angular/common/http';
-import { Subscription } from 'rxjs';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { Subscription, interval, of } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 import { EventService, BackendEvent } from '../services/event.service';
 import { AuthService } from '../services/auth.service';
 
@@ -49,6 +51,20 @@ export interface CalendarEvent {
   addedToCalendar: boolean;
 }
 
+// NEW: Registration interface
+export interface EventRegistration {
+  id: string;
+  eventId: string;
+  eventName: string;
+  studentId: string;
+  studentName: string;
+  email: string;
+  college: string;
+  submittedDate: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  rejectionReason?: string;
+}
+
 @Component({
   selector: 'app-student-dashboard',
   standalone: true,
@@ -60,6 +76,8 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
   @ViewChild('profileImageInput') private profileImageInput?: ElementRef<HTMLInputElement>;
 
   private subscriptions: Subscription[] = [];
+  private readonly REGISTRATION_API_URL = '/api/registrations';
+  
   isLoading = false;
   errorMessage = '';
 
@@ -68,7 +86,7 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
   activeSubPage = '';
   profileImageUrl: string | null = null;
   
-  // Student Information - Will be loaded from auth service
+  // Student Information
   studentName = '';
   studentId = '';
   department = '';
@@ -83,6 +101,11 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
   appliedSearchQuery = '';
   appliedSelectedCategory = 'All';
   appliedSelectedDate = '';
+  
+  // NEW: Registration tracking
+  private studentRegistrations: EventRegistration[] = [];
+  private seenNotifications: Set<string> = new Set();
+  private registrationPollSubscription?: Subscription;
   
   // Edit Profile Form
   editProfileForm = {
@@ -173,7 +196,8 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
 
   constructor(
     private eventService: EventService,
-    private authService: AuthService
+    private authService: AuthService,
+    private http: HttpClient
   ) {}
 
   ngOnInit(): void {
@@ -184,14 +208,16 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
       this.studentId = currentUser.userId || '';
       this.email = currentUser.email || '';
       this.department = currentUser.college || 'Not Set';
-      // Phone and address would need to be added to User model in backend
       this.phone = 'Not Set';
       this.address = 'Not Set';
     } else {
-      // If no user logged in, redirect to login
       console.warn('No user logged in');
-      // Uncomment below to force login
-      // window.location.href = '/login';
+    }
+
+    // Load seen notifications from localStorage
+    const seen = localStorage.getItem('seenNotifications');
+    if (seen) {
+      this.seenNotifications = new Set(JSON.parse(seen));
     }
 
     // Fetch events from backend
@@ -206,37 +232,220 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
 
     this.generateCalendar();
     this.updateMonthYear();
+    
+    // NEW: Start polling for registration updates
+    this.startRegistrationPolling();
   }
 
   ngOnDestroy(): void {
     this.subscriptions.forEach(sub => sub.unsubscribe());
+    this.registrationPollSubscription?.unsubscribe();
   }
 
-  // Load events from MongoDB
+  // ===== NEW: REGISTRATION POLLING AND NOTIFICATION METHODS =====
+
+  private startRegistrationPolling(): void {
+    // Poll every 30 seconds for registration updates
+    this.registrationPollSubscription = interval(30000)
+      .pipe(
+        switchMap(() => this.fetchStudentRegistrations())
+      )
+      .subscribe({
+        next: (registrations) => {
+          this.processRegistrationUpdates(registrations);
+        },
+        error: (error) => {
+          console.error('Error polling registrations:', error);
+        }
+      });
+
+    // Also fetch immediately on init
+    this.fetchStudentRegistrations().subscribe({
+      next: (registrations) => {
+        this.processRegistrationUpdates(registrations);
+      }
+    });
+  }
+
+  private fetchStudentRegistrations() {
+    const currentUser = this.authService.currentUserValue;
+    if (!currentUser) {
+      return of([] as EventRegistration[]);
+    }
+
+    return this.http.get<EventRegistration[]>(
+      `${this.REGISTRATION_API_URL}/student/${currentUser.userId}`
+    );
+  }
+
+  private processRegistrationUpdates(registrations: EventRegistration[]): void {
+    registrations.forEach(reg => {
+      const notificationKey = `${reg.id}-${reg.status}`;
+      
+      if (!this.seenNotifications.has(notificationKey)) {
+        if (reg.status === 'APPROVED') {
+          this.addApprovalNotification(reg);
+          this.seenNotifications.add(notificationKey);
+        } else if (reg.status === 'REJECTED') {
+          this.addRejectionNotification(reg);
+          this.seenNotifications.add(notificationKey);
+        }
+      }
+    });
+
+    // Save seen notifications
+    localStorage.setItem(
+      'seenNotifications',
+      JSON.stringify(Array.from(this.seenNotifications))
+    );
+
+    this.studentRegistrations = registrations;
+    this.updateRegistrations();
+    this.updatePendingActionsCount();
+  }
+
+  private addApprovalNotification(registration: EventRegistration): void {
+    const notification: Notification = {
+      id: this.notifications.length + 1,
+      title: `✓ Registration Approved`,
+      message: `Great news! Your registration for "${registration.eventName}" has been approved by the college admin. You can now attend the event.`,
+      time: 'Just now',
+      type: 'success',
+      read: false
+    };
+
+    this.notifications.unshift(notification);
+    this.updateNotificationBadge();
+
+    // Show browser notification if permitted
+    this.showBrowserNotification(
+      'Registration Approved ✓',
+      `Your registration for "${registration.eventName}" has been approved!`
+    );
+  }
+
+  private addRejectionNotification(registration: EventRegistration): void {
+    const notification: Notification = {
+      id: this.notifications.length + 1,
+      title: `✗ Registration Rejected`,
+      message: `Unfortunately, your registration for "${registration.eventName}" was not approved. ${registration.rejectionReason ? 'Reason: ' + registration.rejectionReason : ''}`,
+      time: 'Just now',
+      type: 'warning',
+      read: false
+    };
+
+    this.notifications.unshift(notification);
+    this.updateNotificationBadge();
+
+    // Show browser notification if permitted
+    this.showBrowserNotification(
+      'Registration Rejected',
+      `Your registration for "${registration.eventName}" was rejected.`
+    );
+  }
+
+  private showBrowserNotification(title: string, body: string): void {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title, {
+        body,
+        icon: '/assets/logo.png',
+        badge: '/assets/logo.png'
+      });
+    } else if ('Notification' in window && Notification.permission !== 'denied') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          new Notification(title, {
+            body,
+            icon: '/assets/logo.png',
+            badge: '/assets/logo.png'
+          });
+        }
+      });
+    }
+  }
+
+  // private updatePendingActionsCount(): void {
+  //   const pendingCount = this.studentRegistrations.filter(r => r.status === 'PENDING').length;
+  //   this.stats[3].value = pendingCount;
+  //   this.stats[3].subtitle = pendingCount === 0 ? 'All clear' : pendingCount === 1 ? '1 pending approval' : `${pendingCount} pending approvals`;
+  // }
+  private updatePendingActionsCount(): void {
+  const pendingCount = this.studentRegistrations.filter(r => r.status === 'PENDING').length;
+  this.stats[3].value = pendingCount;
+  this.stats[3].subtitle = pendingCount === 0
+    ? 'All clear'
+    : pendingCount === 1
+      ? '1 pending approval'
+      : `${pendingCount} pending approvals`;
+}
+  // NEW: Get registration status for an event
+  getRegistrationStatus(eventId: number): 'PENDING' | 'APPROVED' | 'REJECTED' | null {
+    const reg = this.studentRegistrations.find(r => r.eventId === String(eventId));
+    return reg ? reg.status : null;
+  }
+
+  // NEW: Get rejection reason
+  getRejectionReason(eventId: number): string | null {
+    const reg = this.studentRegistrations.find(r => r.eventId === String(eventId));
+    return reg?.rejectionReason || null;
+  }
+
+  getRegistrationButtonConfig(event: Event): { text: string; class: string } {
+      const eventDate = new Date(event.date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  if (eventDate < today) {
+    return {
+      text: 'Closed',
+      class: 'btn-closed'
+    };
+  }
+  const status = this.getRegistrationStatus(event.id);
+  
+  if (status === 'APPROVED') {
+    return {
+      text: 'Registered ✓',
+      class: 'btn-approved'
+    };
+  } else if (status === 'REJECTED') {
+    return {
+      text: 'Rejected ✗',
+      class: 'btn-rejected'
+    };
+  } else if (status === 'PENDING') {
+    return {
+      text: 'Pending Approval',
+      class: 'btn-pending'
+    };
+  } else if (event.status === 'Full') {
+    return {
+      text: 'Full',
+      class: 'btn-full'
+    };
+  } else {
+    return {
+      text: 'Register',
+      class: 'btn-register'
+    };
+  }
+}
+  // ===== EXISTING METHODS (UPDATED) =====
+
   loadEvents(): void {
     this.isLoading = true;
     this.errorMessage = '';
     
     const eventSub = this.eventService.fetchEvents().subscribe({
       next: (backendEvents: BackendEvent[]) => {
-        // Convert backend events to frontend format
         this.upcomingEvents = backendEvents
           .filter((e: BackendEvent) => e.status === 'Active')
           .map((e: BackendEvent) => this.eventService.convertToFrontendEvent(e));
         
-        // Load past events for history
         this.loadEventHistory(backendEvents);
-        
-        // Update all stats
         this.updateAllStats();
-        
-        // Update registrations
         this.updateRegistrations();
-        
-        // Generate notifications for registered events
         this.generateNotifications();
-        
-        // Load calendar events
         this.loadCalendarEvents();
         
         this.isLoading = false;
@@ -251,14 +460,17 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
     this.subscriptions.push(eventSub);
   }
 
-  // Load event history from past events
   loadEventHistory(backendEvents: BackendEvent[]): void {
     const pastEvents = backendEvents.filter((e: BackendEvent) => e.status === 'Past');
-    const registeredEventIds = this.eventService.getCurrentRegistrations();
+    const registeredEventIds = new Set(
+      this.studentRegistrations
+        .filter((reg) => reg.status === 'APPROVED')
+        .map((reg) => String(reg.eventId))
+    );
     
     this.eventHistory = pastEvents.map((e: BackendEvent) => {
       const frontendEvent = this.eventService.convertToFrontendEvent(e);
-      const wasRegistered = registeredEventIds.includes(e.id);
+      const wasRegistered = registeredEventIds.has(String(e.id));
       
       return {
         event: {
@@ -270,22 +482,32 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
           category: frontendEvent.category,
           description: frontendEvent.description
         },
-        attended: wasRegistered ? Math.random() > 0.3 : false,// If they were registered, assume they attended
-        rating: wasRegistered ? Math.floor(Math.random() * 2) + 4 : null // Random rating 4-5 for attended events
+        attended: wasRegistered,
+        rating: null
       };
     });
   }
 
-  // Update all statistics from real data
   updateAllStats(): void {
-    // Upcoming Events
     this.stats[0].value = this.upcomingEvents.length;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const activeRegistrationIds = new Set(
+      this.studentRegistrations
+        .filter((reg) => reg.status !== 'REJECTED')
+        .map((reg) => String(reg.eventId))
+    );
+
+    const activeRegistrationsCount = this.upcomingEvents.filter((event) => {
+      if (!activeRegistrationIds.has(String(event.id))) return false;
+      const eventDate = new Date(event.date);
+      return eventDate >= today;
+    }).length;
+
+    this.stats[1].value = activeRegistrationsCount;
     
-    // My Registrations
-    const registeredCount = this.upcomingEvents.filter(e => e.registered).length;
-    this.stats[1].value = registeredCount;
-    
-    // Events Attended (from history)
     const attendedCount = this.eventHistory.filter(item => item.attended).length;
     this.stats[2].value = attendedCount;
     if (this.eventHistory.length > 0) {
@@ -295,29 +517,18 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
       this.stats[2].subtitle = 'No past events';
     }
     
-    // Pending Actions (events happening in next 7 days that user is registered for)
-    const today = new Date();
-    const nextWeek = new Date();
-    nextWeek.setDate(today.getDate() + 7);
-    
-    const pendingEvents = this.upcomingEvents.filter(event => {
-      if (!event.registered) return false;
-      const eventDate = new Date(event.date);
-      return eventDate >= today ;
-    });
-    this.stats[3].value = pendingEvents.length;
-    this.stats[3].subtitle = pendingEvents.length === 0 ? 'All clear' : 'Events this week';
+    this.updatePendingActionsCount();
   }
 
-  // Generate notifications for registered events
   generateNotifications(): void {
-    this.notifications = [];
-    let notificationId = 1;
+    const approvalNotifications = this.notifications.filter(
+      (n) => n.title.includes('Registration Approved') || n.title.includes('Registration Rejected')
+    );
+    this.notifications = [...approvalNotifications];
+    let notificationId = this.notifications.length + 1;
     
-    // Get registered events
     const registeredEvents = this.upcomingEvents.filter(e => e.registered);
     
-    // Create notification for each registered event
     registeredEvents.forEach(event => {
       const eventDate = new Date(event.date);
       const today = new Date();
@@ -359,23 +570,159 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
       });
     });
     
-    // Sort notifications by urgency (warnings first, then info, then success)
     this.notifications.sort((a, b) => {
       const order = { warning: 0, info: 1, success: 2 };
       return order[a.type] - order[b.type];
     });
     
-    // Update notification badge
     this.updateNotificationBadge();
   }
 
   updateRegistrations(): void {
-    this.myRegistrations = this.upcomingEvents.filter(event => event.registered);
+    const activeRegistrationIds = new Set(
+      this.studentRegistrations
+        .filter((reg) => reg.status !== 'REJECTED')
+        .map((reg) => String(reg.eventId))
+    );
+    this.myRegistrations = this.upcomingEvents.filter((event) => activeRegistrationIds.has(String(event.id)));
     this.updateAllStats();
     this.generateNotifications();
   }
 
-  // Navigation Methods
+  // ===== UPDATED: REGISTRATION METHOD =====
+  
+  // registerForEvent(event: Event): void {
+  //   if (event.status === 'Full' && !event.registered) return;
+
+  //   if (event.registered) {
+  //     // If already registered, just toggle off (old behavior)
+  //     event.registered = false;
+  //     event.status = 'Open';
+  //     alert(`Registration cancelled for: ${event.title}`);
+      
+  //     this.eventService.toggleRegistration(String(event.id)).subscribe({
+  //       next: (updatedBackendEvent) => {
+  //         const updatedEvent = this.eventService.convertToFrontendEvent(updatedBackendEvent);
+  //         event.attendees = updatedEvent.attendees;
+  //         event.maxAttendees = updatedEvent.maxAttendees;
+  //       },
+  //       error: (error) => {
+  //         console.error('Registration toggle failed:', error);
+  //         event.registered = true;
+  //         event.status = 'Registered';
+  //         alert(error?.error?.message || 'Could not cancel registration.');
+  //       }
+  //     });
+  //     return;
+  //   }
+
+  registerForEvent(event: Event): void {
+     // Check if event is closed (date has passed)
+  const eventDate = new Date(event.date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  if (eventDate < today) {
+    alert(`This event has ended and registrations are closed.\n\nEvent Date: ${event.date}\n\nYou cannot register for past events.`);
+    return;
+  }
+
+ 
+  const status = this.getRegistrationStatus(event.id);
+  
+  // If approved, show message
+  if (status === 'APPROVED') {
+    alert(`You are already registered for "${event.title}" and your registration has been approved!`);
+    return;
+  }
+  
+  // If rejected, show rejection reason
+  if (status === 'REJECTED') {
+    const reason = this.getRejectionReason(event.id);
+    alert(
+      `Your registration for "${event.title}" was rejected.\n\n` +
+      `${reason ? 'Reason: ' + reason : 'Please contact admin for more details.'}\n\n`
+    );
+    return;
+  }
+  
+  // If pending, show pending message
+  if (status === 'PENDING') {
+    alert(`Your registration for "${event.title}" is pending approval from the college admin.`);
+    return;
+  }
+  
+  if (event.status === 'Full' && !event.registered) {
+    alert('This event is full!');
+    return;
+  }
+
+  if (event.registered) {
+    // If already registered, just toggle off (old behavior)
+    event.registered = false;
+    event.status = 'Open';
+    alert(`Registration cancelled for: ${event.title}`);
+    
+    this.eventService.toggleRegistration(String(event.id)).subscribe({
+      next: (updatedBackendEvent) => {
+        const updatedEvent = this.eventService.convertToFrontendEvent(updatedBackendEvent);
+        event.attendees = updatedEvent.attendees;
+        event.maxAttendees = updatedEvent.maxAttendees;
+      },
+      error: (error) => {
+        console.error('Registration toggle failed:', error);
+        event.registered = true;
+        event.status = 'Registered';
+        alert(error?.error?.message || 'Could not cancel registration.');
+      }
+    });
+    return;
+  }
+    
+  const currentUser = this.authService.currentUserValue;
+  if (!currentUser) {
+    alert('Please log in to register for events.');
+    return;
+  }
+
+  const registrationPayload = {
+    eventId: String(event.id),
+    eventName: event.title,
+    studentId: currentUser.userId,
+    studentName: currentUser.name,
+    email: currentUser.email,
+    college: currentUser.college
+  };
+
+  this.http.post<EventRegistration>(this.REGISTRATION_API_URL, registrationPayload)
+    .subscribe({
+      next: (registration) => {
+        alert(
+          `Registration submitted for: ${event.title}\n\n` +
+          `Status: PENDING\n\n` +
+          `Your registration has been sent to the college admin for approval. ` +
+          `You will be notified once it's reviewed.`
+        );
+        
+        this.fetchStudentRegistrations().subscribe({
+          next: (registrations) => {
+            this.processRegistrationUpdates(registrations);
+          }
+        });
+      },
+      error: (error) => {
+        console.error('Registration failed:', error);
+        const message = error?.error?.error || error?.error?.message || 'Could not create registration. Please try again.';
+        alert(message);
+      }
+    });
+}
+
+
+  
+    
+  // ===== NAVIGATION METHODS =====
+
   toggleSidebar(): void {
     this.sidebarOpen = !this.sidebarOpen;
   }
@@ -388,7 +735,6 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Enhanced Global Search Method with Smart Navigation
   performGlobalSearch(): void {
     if (!this.globalSearchQuery.trim()) {
       return;
@@ -396,7 +742,6 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
     
     const searchTerm = this.globalSearchQuery.toLowerCase().trim();
     
-    // Smart Navigation - Check for page keywords first
     const pageKeywords: { [key: string]: string[] } = {
       'dashboard': ['dashboard', 'home', 'main'],
       'events': ['events', 'browse events', 'all events', 'event'],
@@ -408,7 +753,6 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
       'logout': ['logout', 'sign out', 'log out']
     };
     
-    // Check if search matches a page keyword
     for (const [page, keywords] of Object.entries(pageKeywords)) {
       if (keywords.some(keyword => searchTerm.includes(keyword))) {
         this.setActiveTab(page);
@@ -418,7 +762,6 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
       }
     }
     
-    // If no page match, search within events
     this.activeTab = 'events';
     this.activeSubPage = '';
     this.searchQuery = this.globalSearchQuery;
@@ -438,7 +781,8 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
     }, 100);
   }
 
-  // Profile Methods
+  // ===== PROFILE METHODS =====
+
   openEditProfile(): void {
     this.activeSubPage = 'edit-profile';
     this.editProfileForm = {
@@ -510,77 +854,32 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
     this.activeSubPage = '';
   }
 
-  // Event Registration Methods
-  // registerForEvent(event: Event): void {
-  //   if (event.status === 'Full' && !event.registered) return;
-
-  //   this.eventService.toggleRegistration(String(event.id)).subscribe({
-  //     next: (updatedBackendEvent) => {
-  //       const updatedEvent = this.eventService.convertToFrontendEvent(updatedBackendEvent);
-
-  //       event.registered = updatedEvent.registered;
-  //       event.status = updatedEvent.status;
-  //       event.attendees = updatedEvent.attendees;
-  //       event.maxAttendees = updatedEvent.maxAttendees;
-       
-  //       this.updateRegistrations();
-        
-  //       if (updatedEvent.registered) {
-  //         alert(`Successfully registered for: ${event.title}`);
-  //       } else {
-  //         alert(`Registration cancelled for: ${event.title}`);
-  //       }
-  //     },
-  //     error: (error) => {
-  //       console.error('Registration toggle failed:', error);
-  //       alert(error?.error?.message || 'Could not update registration. Please try again.');
-  //     }
-  //   });
-  // }
-  registerForEvent(event: Event): void {
-
-  if (event.status === 'Full' && !event.registered) return;
-
-  // 🔹 Immediately update UI
-  event.registered = !event.registered;
-  event.status = event.registered ? 'Registered' : 'Open';
-
-  // 🔹 Show alert immediately
-  if (event.registered) {
-    alert(`Successfully registered for: ${event.title}`);
-  } else {
-    alert(`Registration cancelled for: ${event.title}`);
-  }
-
-  // 🔹 Call backend API
-  this.eventService.toggleRegistration(String(event.id)).subscribe({
-    next: (updatedBackendEvent) => {
-      const updatedEvent = this.eventService.convertToFrontendEvent(updatedBackendEvent);
-
-      event.attendees = updatedEvent.attendees;
-      event.maxAttendees = updatedEvent.maxAttendees;
-    },
-    error: (error) => {
-      console.error('Registration toggle failed:', error);
-      alert(error?.error?.message || 'Could not update registration.');
-    }
-  });
-
-}
+  // ===== EVENT METHODS =====
 
   cancelRegistration(event: Event): void {
-    if (!event.registered) return;
+    const hasRegistration = this.studentRegistrations.some(
+      (reg) => String(reg.eventId) === String(event.id)
+    );
+    if (!hasRegistration) return;
 
     if (confirm(`Are you sure you want to cancel your registration for "${event.title}"?`)) {
-      this.eventService.toggleRegistration(String(event.id)).subscribe({
-        next: (updatedBackendEvent) => {
-          const updatedEvent = this.eventService.convertToFrontendEvent(updatedBackendEvent);
+      const currentUser = this.authService.currentUserValue;
+      if (!currentUser) {
+        alert('Please log in to cancel registration.');
+        return;
+      }
 
-          event.registered = updatedEvent.registered;
-          event.status = updatedEvent.status;
-          event.attendees = updatedEvent.attendees;
+      this.http.delete<{ message: string }>(
+        `${this.REGISTRATION_API_URL}/student/${currentUser.userId}/event/${event.id}`
+      ).subscribe({
+        next: () => {
+          this.studentRegistrations = this.studentRegistrations.filter(
+            (reg) => String(reg.eventId) !== String(event.id)
+          );
 
-          // Remove from calendar if added
+          event.registered = false;
+          event.status = 'Open';
+
           this.calendarEvents = this.calendarEvents.filter((ce) => ce.eventId !== event.id);
 
           this.updateRegistrations();
@@ -600,7 +899,6 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
     alert(`Event Details:\n\nTitle: ${event.title}\nDate: ${event.date}\nTime: ${event.time}\nLocation: ${event.location}${organizer}${contact}\nDescription: ${event.description}\nAttendees: ${event.attendees}/${event.maxAttendees}`);
   }
 
-  // Add to Calendar Methods
   addToCalendar(event: Event): void {
     const calendarEvent: CalendarEvent = {
       eventId: event.id,
@@ -641,12 +939,10 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
   }
 
   downloadICSFile(event: Event): void {
-    // Parse the date string properly
     const [year, month, day] = event.date.split('-').map(num => parseInt(num));
     const [timeStr, period] = event.time.split(' ');
     const [hours, minutes] = timeStr.split(':').map(num => parseInt(num));
     
-    // Convert to 24-hour format
     let hour24 = hours;
     if (period === 'PM' && hours !== 12) {
       hour24 = hours + 12;
@@ -654,9 +950,8 @@ export class StudentDashboardComponent implements OnInit, OnDestroy {
       hour24 = 0;
     }
     
-    // Create date in local timezone
     const startDate = new Date(year, month - 1, day, hour24, minutes, 0);
-    const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // 2 hours later
+    const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
     
     const icsContent = `BEGIN:VCALENDAR
 VERSION:2.0
@@ -713,7 +1008,8 @@ END:VCALENDAR`;
     });
   }
 
-  // Search and Filter Methods
+  // ===== SEARCH AND FILTER METHODS =====
+
   filterByCategory(category: string): void {
     this.selectedCategory = category;
   }
@@ -748,7 +1044,6 @@ END:VCALENDAR`;
       );
     }
     
-
     if (this.appliedSelectedDate) {
       filtered = filtered.filter(event => event.date === this.appliedSelectedDate);
     }
@@ -772,17 +1067,42 @@ END:VCALENDAR`;
       'Open': '#10b981',
       'Registered': '#3b82f6',
       'Full': '#ef4444',
-      'Closed': '#6b7280'
+      'Closed': '#4b5563 '
     };
     return colors[status] || '#6b7280';
   }
 
+  getEventStatusText(event: Event): string {
+  const eventDate = new Date(event.date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  if (eventDate < today) {
+    return 'Closed';
+  }
+  
+  return event.status;
+}
+
+getEventStatusColor(event: Event): string {
+  
+  const eventDate = new Date(event.date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  if (eventDate < today) {
+    return '#4b5563 '; // Gray color for closed
+  }
+  
+  return this.getStatusColor(event.status);
+}
   formatDate(dateString: string): string {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  // Notification Methods
+  // ===== NOTIFICATION METHODS =====
+
   markNotificationAsRead(notification: Notification): void {
     notification.read = true;
     this.updateNotificationBadge();
@@ -799,13 +1119,13 @@ END:VCALENDAR`;
     }
   }
 
-  // Calendar Methods
+  // ===== CALENDAR METHODS =====
+
   generateCalendar(): void {
     const year = this.currentDate.getFullYear();
     const month = this.currentDate.getMonth();
     
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
     const startDate = new Date(firstDay);
     startDate.setDate(startDate.getDate() - firstDay.getDay());
     
@@ -817,12 +1137,11 @@ END:VCALENDAR`;
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
       
-      // const dateStr = date.toISOString().split('T')[0];
       const year = date.getFullYear();
       const monthNumber = date.getMonth(); 
-      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const monthStr = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
-      const dateStr = `${year}-${month}-${day}`;
+      const dateStr = `${year}-${monthStr}-${day}`;
 
       const dayEvents = this.upcomingEvents.filter(event => event.date === dateStr);
       
@@ -831,7 +1150,6 @@ END:VCALENDAR`;
       this.calendarDays.push({
         date: date.getDate(),
         fullDate: dateStr,
-        // isCurrentMonth: date.getMonth() === month,
         isCurrentMonth: monthNumber === this.currentDate.getMonth(),
         isToday: isToday,
         events: dayEvents
@@ -857,7 +1175,8 @@ END:VCALENDAR`;
     this.updateMonthYear();
   }
 
-  // Event History Methods
+  // ===== EVENT HISTORY METHODS =====
+
   getFilteredHistory(): any[] {
     if (this.historyFilter === 'attended') {
       return this.eventHistory.filter(item => item.attended);
@@ -887,7 +1206,8 @@ END:VCALENDAR`;
     return months[date.getMonth()];
   }
 
-  // Logout Methods
+  // ===== LOGOUT METHODS =====
+
   handleLogout(): void {
     this.authService.logout();
     localStorage.clear();
@@ -899,5 +1219,3 @@ END:VCALENDAR`;
     this.activeTab = 'dashboard';
   }
 }
-
-
