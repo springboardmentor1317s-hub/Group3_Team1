@@ -2,44 +2,7 @@
   <div class="sidebar-overlay" [class.active]="sidebarOpen" (click)="toggleSidebar()"></div>
 
   <aside class="sidebar" [class.open]="sidebarOpen">
-    <div class="sidebar-header">
-      <div class="logo student-sidebar-logo">
-        <span class="logo-icon-wrap app-logo-badge app-logo-badge--78" aria-hidden="true">
-          <img class="logo-icon-img app-logo-image app-logo-image--66" src="/icon2.png" alt="" />
-        </span>
-        <span class="logo-text student-sidebar-logo-text">CampusEventHub</span>
-      </div>
-      <button class="close-btn student-sidebar-close-btn" (click)="toggleSidebar()">
-        <span class="material-icons">close</span>
-      </button>
-    </div>
-
-    <nav class="sidebar-nav">
-      <a
-        *ngFor="let item of menuItems"
-        [class.active]="activeTab === item.id"
-        (click)="item.id === 'logout' ? handleLogout() : setActiveTab(item.id)"
-        class="nav-item"
-        [class.logout-nav-item]="item.id === 'logout'"
-      >
-        <span class="material-icons">{{ item.icon }}</span>
-        <span class="nav-label">{{ item.label }}</span>
-        <span *ngIf="item.badge" class="badge">{{ item.badge }}</span>
-      </a>
-    </nav>
-
-    <div class="sidebar-footer">
-      <div class="user-info" (click)="setActiveTab('profile')" style="cursor: pointer;">
-        <div class="user-avatar">
-          <span class="material-icons">account_circle</span>
-        </div>
-        <div class="user-details">
-          <div class="user-name">{{ studentName }}</div>
-          <div class="user-role">{{ department }}</div>
-        </div>
-      </div>
-    </div>
-  </aside>
+    </aside>
 
     <main class="main-content">
       <!-- Unified Dashboard Header (always visible) -->
@@ -119,7 +82,7 @@
                 </div>
               </section>
             </div>
-            <div class="cover-art">
+<div class="cover-art">
               <img [src]="dashboardCoverUrl" alt="Student dashboard cover">
             </div>
           </section>

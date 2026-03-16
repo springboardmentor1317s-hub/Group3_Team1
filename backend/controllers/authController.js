@@ -38,8 +38,7 @@ exports.toggleRegistration = async (req, res) => {
     });
 
   } catch (error) {
-    console.error("Toggle Error:", error);
-    res.status(500).json({ message: "Server Error" });
+    res.status(500).json({ message: "Failed to toggle registration" });
   }
 };
 
@@ -81,8 +80,7 @@ exports.signup = async (req, res) => {
     res.status(201).json({ message: "User registered successfully" });
 
   } catch (error) {
-    console.log("Signup Error:", error);
-    res.status(500).json({ message: "Server Error" });
+    res.status(500).json({ message: "Failed to signup" });
   }
 };
 
