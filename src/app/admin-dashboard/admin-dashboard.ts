@@ -3,7 +3,7 @@ import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { forkJoin } from 'rxjs';
+import { catchError, finalize, forkJoin, timeout } from 'rxjs';
 
 type DashboardTab = 'overview' | 'events' | 'analytics' | 'registrations';
 
@@ -11,11 +11,13 @@ interface OrganizerEvent {
   id: string;
   name: string;
   dateTime: string;
+  endDate?: string | null;
   location: string;
   organizer: string;
   contact: string;
   description: string;
   category?: string;
+  teamSize?: number | null;
   status: 'Active' | 'Draft' | 'Past';
   registrations: number;
   participants: number;
@@ -72,6 +74,8 @@ export class AdminDashboard implements OnInit {
   userName: string = '';
   activeTab: DashboardTab = 'overview';
   createModalOpen = false;
+  isEditMode = false;
+  editingEvent: OrganizerEvent | null = null;
 
   events: OrganizerEvent[] = [];
   registrations: Registration[] = [];
@@ -134,12 +138,35 @@ export class AdminDashboard implements OnInit {
   }
 
   openCreateModal(): void {
+    this.isEditMode = false;
+    this.editingEvent = null;
+    this.resetCreateForm();
     this.createModalOpen = true;
   }
 
   closeCreateModal(): void {
     this.createModalOpen = false;
+    this.isEditMode = false;
+    this.editingEvent = null;
     this.resetCreateForm();
+  }
+
+  openEditModal(event: OrganizerEvent): void {
+    this.isEditMode = true;
+    this.editingEvent = event;
+    this.createForm = {
+      name: event.name ?? '',
+      dateTime: event.dateTime ?? '',
+      endDate: event.endDate ?? '',
+      location: event.location ?? '',
+      organizer: event.organizer ?? '',
+      contact: event.contact ?? '',
+      description: event.description ?? '',
+      teamSize: event.teamSize ?? null,
+      posterDataUrl: event.posterDataUrl ?? null,
+      category: event.category ?? ''
+    };
+    this.createModalOpen = true;
   }
 
   onPosterSelected(event: Event): void {
@@ -438,12 +465,51 @@ export class AdminDashboard implements OnInit {
       posterDataUrl: this.createForm.posterDataUrl,
       category,
       status: this.isPastEventDate(dateTime) ? 'Past' : 'Active',
-      registrations: 0,
-      participants: 0
+      registrations: this.editingEvent?.registrations ?? 0,
+      participants: this.editingEvent?.participants ?? 0
     };
 
     this.isSavingEvent = true;
-    this.http.post<OrganizerEvent>(this.API_URL, payload).subscribe({
+    if (this.isEditMode && this.editingEvent) {
+      const targetId = this.editingEvent.id;
+      const payloadWithId = { ...payload, id: targetId };
+      this.http.put<OrganizerEvent>(`${this.API_URL}/${targetId}`, payloadWithId).pipe(
+        timeout(8000),
+        catchError(() =>
+          this.http.patch<OrganizerEvent>(`${this.API_URL}/${targetId}`, payloadWithId).pipe(timeout(8000))
+        ),
+        finalize(() => {
+          this.isSavingEvent = false;
+        })
+      ).subscribe({
+        next: (updatedEvent) => {
+          const nextEvent = updatedEvent ?? ({ ...payloadWithId } as OrganizerEvent);
+          this.events = this.events.map((e) => (e.id === targetId ? nextEvent : e));
+          this.createModalOpen = false;
+          this.isEditMode = false;
+          this.editingEvent = null;
+          this.resetCreateForm();
+          this.activeTab = 'events';
+          form?.resetForm(this.getEmptyCreateForm());
+          this.showSuccessToast('Event updated successfully!');
+        },
+        error: (err) => {
+          console.error('Error updating event', err);
+          const message = err?.name === 'TimeoutError'
+            ? 'Update timed out. Please check the server and try again.'
+            : (err?.error?.error ?? err?.error?.message ?? 'Could not update event. Please try again.');
+          this.showErrorToast(message);
+        }
+      });
+      return;
+    }
+
+    this.http.post<OrganizerEvent>(this.API_URL, payload).pipe(
+      timeout(8000),
+      finalize(() => {
+        this.isSavingEvent = false;
+      })
+    ).subscribe({
       next: (savedEvent) => {
         this.events = [savedEvent, ...this.events];
         this.createModalOpen = false;
@@ -451,13 +517,13 @@ export class AdminDashboard implements OnInit {
         this.activeTab = 'events';
         form?.resetForm(this.getEmptyCreateForm());
         this.showSuccessToast('Event saved successfully!');
-        this.isSavingEvent = false;
       },
       error: (err) => {
         console.error('Error saving event', err);
-        const message = err?.error?.error ?? err?.error?.message ?? 'Could not save event. Please try again.';
+        const message = err?.name === 'TimeoutError'
+          ? 'Save timed out. Please check the server and try again.'
+          : (err?.error?.error ?? err?.error?.message ?? 'Could not save event. Please try again.');
         this.showErrorToast(message);
-        this.isSavingEvent = false;
       }
     });
   }

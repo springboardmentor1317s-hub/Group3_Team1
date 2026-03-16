@@ -1,4 +1,4 @@
-<div class="app">
+﻿<div class="app">
   <div class="bg-orb orb-1"></div>
   <div class="bg-orb orb-2"></div>
   <div class="bg-orb orb-3"></div>
@@ -27,9 +27,9 @@
         [(ngModel)]="dashboardSearchQuery"
         (input)="applyDashboardSearch()"
       />
-      <button class="icon-btn" aria-label="Search">🔍</button>
-      <button class="icon-btn" aria-label="Notifications">🔔</button>
-      <button class="icon-btn" aria-label="Downloads" (click)="exportEvents()">⬇️</button>
+      <button class="icon-btn" aria-label="Search" title="Search">&#128269;</button>
+      <button class="icon-btn" aria-label="Notifications" title="Notifications">&#128276;</button>
+      <button class="icon-btn" aria-label="Downloads" title="Export" (click)="exportEvents()">&#11015;</button>
       <div class="user-pill">
         <div class="avatar"></div>
         <span>{{ userName }}</span>
@@ -43,22 +43,22 @@
       <div class="sidebar-head">Menu</div>
       <ul class="menu">
         <li [class.active]="activeTab === 'overview'" (click)="setTab('overview')">
-          <span class="menu-icon">🏠</span>Dashboard
+          <span class="menu-icon">&#127968;</span>Dashboard
         </li>
         <li (click)="openCreateModal()">
-          <span class="menu-icon">🗓️</span>Create Event
+          <span class="menu-icon">&#128197;</span>Create Event
         </li>
         <li [class.active]="activeTab === 'events'" (click)="setTab('events')">
-          <span class="menu-icon">📋</span>Manage Events
+          <span class="menu-icon">&#128203;</span>Manage Events
         </li>
         <li [class.active]="activeTab === 'registrations'" (click)="setTab('registrations')">
-          <span class="menu-icon">🧾</span>Registrations
+          <span class="menu-icon">&#129534;</span>Registrations
         </li>
         <li [class.active]="activeTab === 'analytics'" (click)="setTab('analytics')">
-          <span class="menu-icon">📈</span>Analytics
+          <span class="menu-icon">&#128200;</span>Analytics
         </li>
         <li (click)="setTab('overview')">
-          <span class="menu-icon">💬</span>Feedback
+          <span class="menu-icon">&#128172;</span>Feedback
         </li>
       </ul>
     </aside>
@@ -66,21 +66,21 @@
     <main class="content">
       <section class="summary-cards">
         <article class="card stat">
-          <div class="stat-icon purple">📣</div>
+          <div class="stat-icon purple">&#128227;</div>
           <div>
             <p>Total Events</p>
             <h3>{{ isLoading ? '...' : totalEvents }}</h3>
           </div>
         </article>
         <article class="card stat">
-          <div class="stat-icon teal">✅</div>
+          <div class="stat-icon teal">&#9989;</div>
           <div>
             <p>Active Events</p>
             <h3>{{ isLoading ? '...' : activeEvents }}</h3>
           </div>
         </article>
         <article class="card stat">
-          <div class="stat-icon lavender">🧑‍🎓</div>
+          <div class="stat-icon lavender">&#127891;</div>
           <div>
             <p>Total Registrations</p>
             <h3>{{ isLoading ? '...' : totalRegistrations }}</h3>
@@ -220,6 +220,7 @@
               <span>{{ formatDateTime(e.dateTime) }}</span>
               <span>{{ e.status }}</span>
               <div class="row-actions">
+                <button class="pill-btn ghost" (click)="openEditModal(e)">Edit</button>
                 <button class="pill-btn" (click)="setTab('overview')">Manage</button>
                 <button class="pill-btn pending" (click)="deleteEvent(e)">Delete</button>
               </div>
@@ -254,7 +255,7 @@
               <div class="avatar small"></div>
               <div>
                 <h4>{{ reg.studentName }}</h4>
-                <p>{{ reg.college }} · {{ reg.eventName }}</p>
+                <p>{{ reg.college }} - {{ reg.eventName }}</p>
               </div>
               <div class="row-actions">
                 <button class="pill-btn" (click)="approveRegistration(reg)">Approve</button>
@@ -325,8 +326,8 @@
         <button type="button" class="modal__close" (click)="closeCreateModal()" aria-label="Close">&times;</button>
 
         <div class="modal__heroText">
-          <h2>Create Event</h2>
-          <p>Add details about your upcoming event</p>
+          <h2>{{ isEditMode ? 'Edit Event' : 'Create Event' }}</h2>
+          <p>{{ isEditMode ? 'Update details for this event' : 'Add details about your upcoming event' }}</p>
         </div>
       </div>
 
@@ -334,7 +335,7 @@
         <div class="create-form-actions">
           <button type="button" class="btn btn--ghost" (click)="closeCreateModal()">Cancel</button>
           <button type="submit" class="btn btn--primary" [disabled]="isSavingEvent">
-            {{ isSavingEvent ? 'Saving...' : 'Save Event' }}
+            {{ isSavingEvent ? 'Saving...' : (isEditMode ? 'Update Event' : 'Save Event') }}
           </button>
         </div>
 
@@ -367,7 +368,7 @@
 
             <div class="field">
               <label for="eventName">
-                <span class="field__icon">✦</span> Event Name
+                <span class="field__icon">&#10022;</span> Event Name
                 <span class="field__required">*</span>
               </label>
               <input
@@ -382,7 +383,7 @@
 
             <div class="field">
               <label for="eventLocation">
-                <span class="field__icon">📍</span> Location
+                <span class="field__icon">&#128205;</span> Location
                 <span class="field__required">*</span>
               </label>
               <input
@@ -397,7 +398,7 @@
 
             <div class="field">
               <label for="eventStartDate">
-                <span class="field__icon">📅</span> Start Date
+                <span class="field__icon">&#128197;</span> Start Date
                 <span class="field__required">*</span>
               </label>
               <input
@@ -411,7 +412,7 @@
 
             <div class="field">
               <label for="eventEndDate">
-                <span class="field__icon">📅</span> End Date
+                <span class="field__icon">&#128197;</span> End Date
                 <span class="field__badge-optional">(Optional)</span>
               </label>
               <input
@@ -424,7 +425,7 @@
 
             <div class="field">
               <label for="eventCategory">
-                <span class="field__icon">🗂️</span> Event Category
+                <span class="field__icon">&#128451;</span> Event Category
               </label>
 
               <select
@@ -445,7 +446,7 @@
 
             <div class="field">
               <label for="eventOrganizer">
-                <span class="field__icon">👤</span> Organizer
+                <span class="field__icon">&#128100;</span> Organizer
               </label>
               <input
                 id="eventOrganizer"
@@ -458,7 +459,7 @@
 
             <div class="field">
               <label for="eventTeamSize">
-                <span class="field__icon">👥</span> Team Size
+                <span class="field__icon">&#128101;</span> Team Size
                 <span class="field__badge-optional">(Optional)</span>
               </label>
               <input
@@ -473,7 +474,7 @@
 
             <div class="field">
               <label for="eventContact">
-                <span class="field__icon">📞</span> Contact
+                <span class="field__icon">&#128222;</span> Contact
               </label>
               <input
                 id="eventContact"
@@ -486,7 +487,7 @@
 
             <div class="field field--full">
               <label for="eventDescription">
-                <span class="field__icon">📝</span> Description
+                <span class="field__icon">&#128221;</span> Description
               </label>
               <textarea
                 id="eventDescription"
@@ -527,42 +528,42 @@
         <div class="approve-info" *ngIf="selectedRegistration">
           <div class="info-grid">
             <div class="info-block">
-              <span class="info-icon">👤</span>
+              <span class="info-icon">&#128100;</span>
               <div>
                 <div class="info-label">Student Name</div>
                 <div class="info-text">{{ selectedRegistration.studentName }}</div>
               </div>
             </div>
             <div class="info-block">
-              <span class="info-icon">🆔</span>
+              <span class="info-icon">&#127380;</span>
               <div>
                 <div class="info-label">Student ID</div>
                 <div class="info-text">{{ selectedRegistration.studentId }}</div>
               </div>
             </div>
             <div class="info-block">
-              <span class="info-icon">📧</span>
+              <span class="info-icon">&#128231;</span>
               <div>
                 <div class="info-label">Email</div>
                 <div class="info-text">{{ selectedRegistration.email }}</div>
               </div>
             </div>
             <div class="info-block">
-              <span class="info-icon">🏫</span>
+              <span class="info-icon">&#127979;</span>
               <div>
                 <div class="info-label">College</div>
                 <div class="info-text">{{ selectedRegistration.college }}</div>
               </div>
             </div>
             <div class="info-block">
-              <span class="info-icon">🎯</span>
+              <span class="info-icon">&#127919;</span>
               <div>
                 <div class="info-label">Event</div>
                 <div class="info-text">{{ selectedRegistration.eventName }}</div>
               </div>
             </div>
             <div class="info-block">
-              <span class="info-icon">📅</span>
+              <span class="info-icon">&#128197;</span>
               <div>
                 <div class="info-label">Submitted</div>
                 <div class="info-text">{{ formatDateTime(selectedRegistration.createdAt) }}</div>
@@ -571,7 +572,7 @@
           </div>
 
           <div class="approval-message">
-            <div class="message-icon">ℹ️</div>
+            <div class="message-icon">&#8505;</div>
             <p>The student will receive an immediate notification upon approval and can attend the event.</p>
           </div>
         </div>
@@ -579,7 +580,7 @@
         <div class="modal__footer">
           <button type="button" class="btn btn--ghost" (click)="closeApproveModal()">Cancel</button>
           <button type="button" class="btn btn--success" (click)="confirmApproveRegistration()">
-            ✓ Approve Registration
+            Approve Registration
           </button>
         </div>
       </div>
@@ -606,14 +607,14 @@
         <div class="reject-info" *ngIf="selectedRegistration">
           <div class="info-grid">
             <div class="info-block">
-              <span class="info-icon">👤</span>
+              <span class="info-icon">&#128100;</span>
               <div>
                 <div class="info-label">Student Name</div>
                 <div class="info-text">{{ selectedRegistration.studentName }}</div>
               </div>
             </div>
             <div class="info-block">
-              <span class="info-icon">🎯</span>
+              <span class="info-icon">&#127919;</span>
               <div>
                 <div class="info-label">Event</div>
                 <div class="info-text">{{ selectedRegistration.eventName }}</div>
@@ -624,7 +625,7 @@
 
         <div class="field field--full">
           <label for="rejectionReason">
-            <span class="field__icon">📝</span>
+            <span class="field__icon">&#128221;</span>
             Rejection Reason
             <span class="field__required">*</span>
           </label>
@@ -643,19 +644,19 @@
         </div>
 
         <div class="rejection-warning">
-          <div class="warning-icon">⚠️</div>
+          <div class="warning-icon">&#9888;</div>
           <p>The student will be notified with this reason. Please be clear and professional.</p>
         </div>
 
         <div class="modal__footer">
           <button type="button" class="btn btn--ghost" (click)="closeRejectModal()">Cancel</button>
-          <button 
-            type="button" 
+          <button
+            type="button"
             class="btn btn--danger"
             [disabled]="!rejectionReason || rejectionReason.trim().length < 10"
             (click)="confirmRejectRegistration()"
           >
-            ✕ Reject Registration
+            Reject Registration
           </button>
         </div>
       </div>
@@ -663,13 +664,13 @@
   </div>
 
   <div class="toast-container">
-    <div 
+    <div
       class="toast"
       *ngIf="showToast"
       [class.toast-success]="toastType === 'success'"
       [class.toast-error]="toastType === 'error'"
     >
-      <span class="toast-icon">{{ toastType === 'success' ? '✓' : '✕' }}</span>
+      <span class="toast-icon">{{ toastType === 'success' ? 'OK' : '!' }}</span>
       <div class="toast-copy">
         <span class="toast-title">{{ toastType === 'success' ? 'Success' : 'Action needed' }}</span>
         <span class="toast-message">{{ toastMessage }}</span>

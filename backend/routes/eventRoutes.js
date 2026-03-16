@@ -159,4 +159,67 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+async function updateEvent(req, res) {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ message: "Event not found" });
+
+    const allowedFields = [
+      "name",
+      "dateTime",
+      "endDate",
+      "location",
+      "organizer",
+      "contact",
+      "description",
+      "category",
+      "posterDataUrl",
+      "status",
+      "teamSize",
+      "maxAttendees"
+    ];
+
+    const updates = {};
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    }
+
+    const nextName = String(updates.name ?? event.name ?? "").trim();
+    const nextDateTime = String(updates.dateTime ?? event.dateTime ?? "").trim();
+    const nextLocation = String(updates.location ?? event.location ?? "").trim();
+    const nextCategory = String(updates.category ?? event.category ?? "").trim();
+
+    if (!nextName || !nextDateTime || !nextLocation || !nextCategory) {
+      return res.status(400).json({ error: "Name, date, location, and category are required." });
+    }
+
+    const updated = await Event.findByIdAndUpdate(req.params.id, updates, {
+      new: true,
+      runValidators: true
+    });
+
+    if (!updated) return res.status(404).json({ message: "Event not found" });
+
+    const registrationsCount = await Registration.countDocuments({
+      eventId: String(updated._id),
+      status: { $ne: "REJECTED" }
+    });
+
+    res.json(
+      toClient(updated, {
+        registrationsCount
+      })
+    );
+  } catch (error) {
+    const statusCode = error.name === "ValidationError" ? 400 : 500;
+    res.status(statusCode).json({ error: error.message });
+  }
+}
+
+// Update Event
+router.put("/:id", updateEvent);
+router.patch("/:id", updateEvent);
+
 module.exports = router;
