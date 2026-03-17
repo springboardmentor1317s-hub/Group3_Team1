@@ -71,11 +71,14 @@ export class AdminDashboard implements OnInit {
     private readonly cdr: ChangeDetectorRef
   ) {}
 
-  userName: string = '';
+userName: string = '';
+  userAvatarUrl: string | null = null;
+  isDarkMode: boolean = false;
   activeTab: DashboardTab = 'overview';
   createModalOpen = false;
   isEditMode = false;
   editingEvent: OrganizerEvent | null = null;
+  private manageHiddenEventIds = new Set<string>();
 
   events: OrganizerEvent[] = [];
   registrations: Registration[] = [];
@@ -103,6 +106,12 @@ export class AdminDashboard implements OnInit {
   ngOnInit(): void {
     const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
     this.userName = user.name || 'User';
+    this.userAvatarUrl = user.profileImageUrl || null;
+
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark' || (savedTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      this.isDarkMode = true;
+    }
 
     // ✅ Use forkJoin to fire BOTH requests in parallel and wait for BOTH to complete
     //    before updating any state. This ensures the stats are never shown as 0.
@@ -133,8 +142,23 @@ export class AdminDashboard implements OnInit {
     });
   }
 
+  toggleTheme(): void {
+    this.isDarkMode = !this.isDarkMode;
+    localStorage.setItem('theme', this.isDarkMode ? 'dark' : 'light');
+    this.cdr.detectChanges();
+  }
+
   setTab(tab: DashboardTab): void {
     this.activeTab = tab;
+  }
+
+  onManageClick(event: OrganizerEvent, targetTab: DashboardTab): void {
+    this.manageHiddenEventIds.add(event.id);
+    this.setTab(targetTab);
+  }
+
+  isManageHidden(event: OrganizerEvent): boolean {
+    return this.manageHiddenEventIds.has(event.id);
   }
 
   openCreateModal(): void {
@@ -630,6 +654,13 @@ getPendingRegistrationsCount(): number {
 
   getRejectedRegistrationsCount(): number {
     return this.getRejectedCount();
+  }
+
+  get avatarText(): string {
+    const name = (this.userName || '').trim();
+    if (!name) return 'U';
+    const firstWord = name.split(/\s+/)[0] || 'U';
+    return firstWord.charAt(0).toUpperCase();
   }
 
   private refreshEventStatuses(): void {

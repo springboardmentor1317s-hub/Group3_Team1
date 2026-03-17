@@ -1,4 +1,4 @@
-﻿<div class="app">
+﻿<div class="app" [class.dark]="isDarkMode">
   <div class="bg-orb orb-1"></div>
   <div class="bg-orb orb-2"></div>
   <div class="bg-orb orb-3"></div>
@@ -9,7 +9,7 @@
         <img src="/icon2.png" alt="CampusEventHub logo" />
       </span>
       <div>
-        <div class="brand-title">Campus<span>Event</span>Hub</div>
+        <div class="brand-title">Campus<span class="event">Event</span>Hub</div>
         <div class="brand-sub">Admin Dashboard</div>
       </div>
     </div>
@@ -30,11 +30,18 @@
       <button class="icon-btn" aria-label="Search" title="Search">&#128269;</button>
       <button class="icon-btn" aria-label="Notifications" title="Notifications">&#128276;</button>
       <button class="icon-btn" aria-label="Downloads" title="Export" (click)="exportEvents()">&#11015;</button>
-      <div class="user-pill">
-        <div class="avatar"></div>
+      <a class="user-pill user-pill--link" routerLink="/admin-profile">
+        <div class="avatar">
+          <img *ngIf="userAvatarUrl" [src]="userAvatarUrl" alt="Profile photo" />
+          <span *ngIf="!userAvatarUrl" class="avatar-text">{{ avatarText }}</span>
+        </div>
         <span>{{ userName }}</span>
-      </div>
+      </a>
       <a class="logout-btn" routerLink="/login">Logout</a>
+      <button class="theme-toggle" (click)="toggleTheme()" [attr.title]="isDarkMode ? 'Light mode' : 'Dark mode'">
+        <span *ngIf="!isDarkMode">☀️</span>
+        <span *ngIf="isDarkMode">🌙</span>
+      </button>
     </div>
   </header>
 
@@ -112,7 +119,7 @@
               <span>{{ e.name }}</span>
               <span>{{ formatDateTime(e.dateTime) }}</span>
               <span>{{ e.participants }}</span>
-              <button class="pill-btn" (click)="setTab('events')">Manage</button>
+              <span></span>
             </div>
             <div class="table-row" *ngIf="events.length === 0">
               <span>No events yet.</span>
@@ -183,7 +190,7 @@
               <div class="avatar small"></div>
               <div>
                 <h4>{{ reg.studentName }}</h4>
-                <p>{{ reg.college }}</p>
+                <p style="font-size: 1rem;">{{ reg.college }}</p>
               </div>
               <div class="row-actions">
                 <button class="pill-btn" (click)="approveRegistration(reg)">Approve</button>
@@ -221,7 +228,6 @@
               <span>{{ e.status }}</span>
               <div class="row-actions">
                 <button class="pill-btn ghost" (click)="openEditModal(e)">Edit</button>
-                <button class="pill-btn" (click)="setTab('overview')">Manage</button>
                 <button class="pill-btn pending" (click)="deleteEvent(e)">Delete</button>
               </div>
             </div>
@@ -311,9 +317,9 @@
     </main>
   </div>
 
-  <div class="modal-backdrop" *ngIf="createModalOpen" (click)="closeCreateModal()">
+  <div class="modal-backdrop create-modal-backdrop" *ngIf="createModalOpen" (click)="closeCreateModal()">
     <div
-      class="modal"
+      class="modal create-modal"
       (click)="$event.stopPropagation()"
       role="dialog"
       aria-modal="true"
@@ -340,6 +346,18 @@
         </div>
 
         <div class="modal__body create-event-body">
+          <div class="form-intro">
+            <div class="form-badge">Event Creation</div>
+            <div>
+              <h3>Set up your event</h3>
+              <p>Add venue, dates, and key details so students can find and register easily.</p>
+            </div>
+            <div class="form-meta">
+              <span class="meta-pill">&#128197; Date & time</span>
+              <span class="meta-pill">&#128205; Location</span>
+              <span class="meta-pill">&#127919; Category</span>
+            </div>
+          </div>
           <div class="form-grid">
             <div class="field field--full">
               <label for="eventPoster">Poster Image (optional)</label>
