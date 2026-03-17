@@ -2,7 +2,7 @@ import { Component, ElementRef, OnInit, ViewChild, OnDestroy } from '@angular/co
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpClientModule } from '@angular/common/http';
-import { Subscription, interval, of } from 'rxjs';
+import { Subscription, of, timer } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { EventService, BackendEvent } from '../services/event.service';
 import { AuthService } from '../services/auth.service';
@@ -357,6 +357,7 @@ readonly dashboardCoverUrl = '/assets/student-dashboard-cover.png';
       next: () => {
         alert(`Registration submitted for "${event.title}"`);
         this.loadEvents();
+        this.refreshStudentRegistrationsNow();
       },
       error: (err) => alert('Registration failed: ' + (err.error?.message || 'Unknown error'))
     });
@@ -623,13 +624,26 @@ readonly dashboardCoverUrl = '/assets/student-dashboard-cover.png';
 
   // Registration Polling
   private startRegistrationPolling(): void {
-    this.registrationPollSubscription = interval(30000)
+    this.registrationPollSubscription = timer(0, 30000)
       .pipe(switchMap(() => this.fetchStudentRegistrations()))
       .subscribe(registrations => {
         this.studentRegistrations = registrations;
         this.updateRegistrations();
+        this.updateAllStats();
         this.generateNotifications();
       });
+  }
+
+  private refreshStudentRegistrationsNow(): void {
+    this.fetchStudentRegistrations().subscribe({
+      next: (registrations) => {
+        this.studentRegistrations = registrations;
+        this.updateRegistrations();
+        this.updateAllStats();
+        this.generateNotifications();
+      },
+      error: () => {}
+    });
   }
 
   private fetchStudentRegistrations() {

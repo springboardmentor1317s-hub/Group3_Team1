@@ -8,9 +8,6 @@
       <!-- Unified Dashboard Header (always visible) -->
       <div class="dashboard-topbar">
         <div class="header-brand-block">
-          <button class="menu-btn" (click)="toggleSidebar()">
-            <span class="material-icons">{{ sidebarOpen ? 'close' : 'menu' }}</span>
-          </button>
           <a class="dashboard-brand" (click)="setActiveTab('dashboard')">
             <span class="dashboard-brand-badge" aria-hidden="true">
               <img class="dashboard-brand-image" src="/icon2.png" alt="Campus Event Hub" />
@@ -59,7 +56,10 @@
 
           <section class="student-cover-banner">
             <div class="cover-copy">
-              <h1 class="hero-title">Welcome back, Student!</h1>
+              <h1 class="hero-title">
+                <span class="hero-title-line">Welcome Back</span>
+                <span class="hero-title-line">Student</span>
+              </h1>
               <p class="hero-subtitle">Your personalized hub for campus events and registrations.</p>
               <div class="quick-actions">
                 <button class="quick-action-btn" (click)="setActiveTab('events')">
@@ -67,23 +67,6 @@
                   Browse Events
                 </button>
               </div>
-
-              <section class="bottom-stats-section">
-                <div class="bottom-stats-grid">
-                  <div class="bottom-stat-card primary-card" *ngFor="let stat of referenceStats; let i = index">
-                    <div class="bottom-stat-icon">
-                      <span class="material-icons">{{ stat.icon }}</span>
-                    </div>
-                    <div class="bottom-stat-numbers">
-                      <span class="stat-big-number">{{ stat.count }}</span>
-                      <span class="stat-small-number">{{ stat.title }}</span>
-                    </div>
-                  </div>
-                </div>
-              </section>
-            </div>
-<div class="cover-art">
-              <img [src]="dashboardCoverUrl" alt="Student dashboard cover">
             </div>
           </section>
 
