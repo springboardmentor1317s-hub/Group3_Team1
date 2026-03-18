@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
+import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 import {
   StudentDashboardService,
   StudentProfile,
@@ -11,7 +12,7 @@ import {
 @Component({
   selector: 'app-student-profile-page',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, SiteFooterComponent],
   templateUrl: './student-profile-page.component.html',
   styleUrls: ['./student-profile-page.component.scss']
 })

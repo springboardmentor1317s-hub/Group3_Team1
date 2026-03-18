@@ -10,6 +10,8 @@
     linear-gradient(180deg, #f6f1e7 0%, #f8fbff 46%, #edf4ff 100%);
   padding: 1.1rem;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex;
+  flex-direction: column;
 }
 
 .luxury-header {
@@ -182,6 +184,8 @@
 .dashboard-main {
   max-width: 1380px;
   margin: 0 auto;
+  width: 100%;
+  flex: 1;
 }
 
 .hero-panel {

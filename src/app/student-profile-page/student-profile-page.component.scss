@@ -9,6 +9,8 @@
     radial-gradient(circle at top left, rgba(245, 158, 11, 0.14), transparent 26%),
     linear-gradient(180deg, #f6f9ff 0%, #fff7ed 100%);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex;
+  flex-direction: column;
 }
 
 .profile-header {
@@ -121,6 +123,8 @@
 .profile-main {
   max-width: 1320px;
   margin: 0 auto;
+  width: 100%;
+  flex: 1;
 }
 
 .error-banner,

@@ -9,6 +9,8 @@
     radial-gradient(circle at top right, rgba(14, 165, 233, 0.18), transparent 24%),
     linear-gradient(180deg, #fff8eb 0%, #f8fbff 100%);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex;
+  flex-direction: column;
 }
 
 .page-header {
@@ -122,6 +124,8 @@
 .events-main {
   max-width: 1380px;
   margin: 0 auto;
+  width: 100%;
+  flex: 1;
 }
 
 .intro-card,

@@ -5,11 +5,12 @@ import { Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
 import { AuthService } from '../auth.service';
 import { StudentDashboardService } from '../services/student-dashboard.service';
+import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 
 @Component({
   selector: 'app-loginpage',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent],
   templateUrl: './loginpage.html',
   styleUrls: ['./loginpage.css']
 })
