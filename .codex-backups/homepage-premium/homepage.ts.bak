@@ -63,7 +63,6 @@ export class Homepage implements OnInit, OnDestroy {
   private collegeRotationTimer: ReturnType<typeof setInterval> | null = null;
   private dragStartX: number | null = null;
   private dragDeltaX = 0;
-  private revealObserver: IntersectionObserver | null = null;
 
   constructor(
     private eventService: EventService,
@@ -147,13 +146,10 @@ export class Homepage implements OnInit, OnDestroy {
         this.collegesLoading = false;
       }
     });
-
-    setTimeout(() => this.setupRevealObserver(), 0);
   }
 
   ngOnDestroy() {
     this.stopCollegeRotation();
-    this.revealObserver?.disconnect();
   }
 
   setActiveSection(section: string) {
@@ -367,30 +363,5 @@ export class Homepage implements OnInit, OnDestroy {
     this.isDraggingColleges = false;
     this.dragStartX = null;
     this.dragDeltaX = 0;
-  }
-
-  private setupRevealObserver() {
-    this.revealObserver?.disconnect();
-
-    const sections = document.querySelectorAll('.reveal-section');
-    if (!sections.length) {
-      return;
-    }
-
-    this.revealObserver = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('is-visible');
-          }
-        });
-      },
-      {
-        threshold: 0.18,
-        rootMargin: '0px 0px -8% 0px'
-      }
-    );
-
-    sections.forEach((section) => this.revealObserver?.observe(section));
   }
 }

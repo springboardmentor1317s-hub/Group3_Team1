@@ -26,7 +26,7 @@
     </div>
   </header>
 
-  <section class="hero reveal-section is-visible">
+  <section class="hero">
     <div class="hero-shell">
       <div class="hero-copy">
         <p class="hero-kicker">Nationwide event platform</p>
@@ -34,11 +34,6 @@
         <p class="hero-text">
           Explore hackathons, sports competitions, cultural festivals and workshops organized by colleges across the country.
         </p>
-        <div class="hero-pills">
-          <span>Nationwide Reach</span>
-          <span>Trusted College Admins</span>
-          <span>Smart Event Discovery</span>
-        </div>
 
         <div class="hero-actions">
           <a href="#events" class="btn primary">Explore Events</a>
@@ -46,22 +41,11 @@
         </div>
       </div>
 
-      <div class="hero-visual" aria-hidden="true">
-        <div class="hero-orb hero-orb-primary"></div>
-        <div class="hero-orb hero-orb-secondary"></div>
-        <div class="hero-glass-card hero-glass-card-top">
-          <span>Live registrations</span>
-          <strong>Smart tracking</strong>
-        </div>
-        <div class="hero-glass-card hero-glass-card-bottom">
-          <span>Campus visibility</span>
-          <strong>Nationwide reach</strong>
-        </div>
-      </div>
+      <div class="hero-visual" aria-hidden="true"></div>
     </div>
   </section>
 
-  <section class="stats-panel reveal-section">
+  <section class="stats-panel">
     <div class="stat-item">
       <h2>{{ platformStats.collegesConnected }}+</h2>
       <p>Colleges Connected</p>
@@ -80,7 +64,7 @@
     </div>
   </section>
 
-  <section class="featured-events reveal-section" id="events">
+  <section class="featured-events" id="events">
     <div class="section-heading">
       <p class="section-kicker">Live event highlights</p>
       <h2>Featured Events</h2>
@@ -134,7 +118,7 @@
     </ng-template>
   </section>
 
-  <section class="registered-colleges-section reveal-section" id="colleges">
+  <section class="registered-colleges-section" id="colleges">
     <div class="section-heading">
       <p class="section-kicker">Registered colleges</p>
       <h2>College Admins Across Campuses</h2>
@@ -174,7 +158,7 @@
     </ng-template>
   </section>
 
-  <section id="about" class="about-strip reveal-section">
+  <section id="about" class="about-strip">
     <div class="about-shell">
       <div class="about-copy">
         <p class="section-kicker">About CampusEventHub</p>
@@ -232,7 +216,7 @@
     </div>
   </section>
 
-  <footer id="contacts" class="footer-section reveal-section">
+  <footer id="contacts" class="footer-section">
     <div class="footer-shell">
       <div class="footer-brand">
         <p class="section-kicker">Contact us</p>

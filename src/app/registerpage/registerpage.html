@@ -1,61 +1,99 @@
-
 <div class="page">
-    <div class="card">
+  <header class="auth-header">
+    <div class="header-row">
+      <a routerLink="/" class="brand-block" aria-label="Campus EventHub home">
+        <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub logo">
+        <div class="brand-copy">
+          <span class="brand-name">
+            <span class="brand-campus">Campus</span>
+            <span class="brand-eventhub">Event Hub</span>
+          </span>
+        </div>
+      </a>
+
+      <div class="nav-actions">
+        <a routerLink="/" class="header-btn header-btn-secondary">Home</a>
+        <a routerLink="/login" class="header-btn header-btn-primary">Login</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="page-content">
+    <div class="auth-shell signup-shell">
+      <div class="card">
         <div class="icon">
-            👤
+          <img class="icon-img" src="assets/icon register.png" alt="Register icon">
         </div>
         <h1>Create Account</h1>
-        <p class="subtitle">Join CampusEventHub today</p>
+        <p class="subtitle">Fill the form to get started</p>
 
         <div *ngIf="errorMessage" class="error-message">
-            {{ errorMessage }}
+          {{ errorMessage }}
         </div>
 
-        <form (ngSubmit)="register()">
+        <form class="signup-form" (ngSubmit)="register()">
+          <div class="field">
             <label>Full Name</label>
             <input type="text"
-                    placeholder="Full Name"
-                    [(ngModel)]="user.fullName"
-                    name="fullName"
-                    required>
-                <label>Email Address</label>
+              placeholder="Full Name"
+              [(ngModel)]="user.fullName"
+              name="fullName"
+              required>
+          </div>
+
+          <div class="field">
+            <label>Email Address</label>
             <input type="email"
-                    placeholder="Email Address"
-                    [(ngModel)]="user.email"
-                    name="email"
-                    required>
+              placeholder="Email Address"
+              [(ngModel)]="user.email"
+              name="email"
+              required>
+          </div>
+
+          <div class="field">
             <label>College/University</label>
             <input type="text"
-                    placeholder="College / University"
-                    [(ngModel)]="user.college"
-                    name="college">
+              placeholder="College / University"
+              [(ngModel)]="user.college"
+              name="college">
+          </div>
 
+          <div class="field">
             <label>Role</label>
             <select [(ngModel)]="user.role" name="role">
-                <option value="student">Student</option>
-                <option value="college_admin">College Admin</option>
+              <option value="student">Student</option>
+              <option value="college_admin">College Admin</option>
             </select>
+          </div>
+
+          <div class="field">
             <label>Password</label>
             <input type="password"
-                    placeholder="Password"
-                    [(ngModel)]="user.password"
-                    name="password"
-                    required>
+              placeholder="Password"
+              [(ngModel)]="user.password"
+              name="password"
+              required>
+          </div>
+
+          <div class="field">
             <label>Confirm Password</label>
             <input type="password"
-                    placeholder="Confirm Password"
-                    [(ngModel)]="user.confirmPassword"
-                    name="confirmPassword"
-                    required>
+              placeholder="Confirm Password"
+              [(ngModel)]="user.confirmPassword"
+              name="confirmPassword"
+              required>
+          </div>
 
-            <button type="submit">Create Account</button>
-            
+          <div class="form-actions">
+            <button type="submit">Register</button>
 
             <p class="link">
-                Already have an account?
-                <a routerLink="/login">Sign in</a>
+              Already have an account?
+              <a routerLink="/login">Login</a>
             </p>
-
+          </div>
         </form>
+      </div>
+    </div>
   </div>
 </div>
