@@ -1,0 +1,113 @@
+<div class="profile-shell">
+  <header class="profile-header">
+    <div class="profile-header-inner">
+      <button type="button" class="brand-block" (click)="goTo('dashboard')">
+        <img src="/icon2.png" alt="Campus Event Hub">
+        <div>
+          <span>Student Profile</span>
+          <strong>Campus Event Hub</strong>
+        </div>
+      </button>
+
+      <nav class="profile-nav">
+        <button type="button" class="profile-link" (click)="goTo('dashboard')">Dashboard</button>
+        <button type="button" class="profile-link" (click)="goTo('events')">Events</button>
+        <button type="button" class="profile-link" (click)="goTo('registrations')">My Registrations</button>
+        <button type="button" class="profile-link" (click)="goTo('feedback')">Feedback</button>
+      </nav>
+
+      <div class="profile-actions">
+        <button type="button" class="profile-chip active">Profile</button>
+        <button type="button" class="notification-btn" (click)="openNotifications()" aria-label="Notifications">
+          <span class="material-icons">notifications</span>
+        </button>
+        <button type="button" class="logout-btn" (click)="logout()">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="profile-main">
+    <p *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</p>
+
+    <section *ngIf="loading" class="state-card">Loading profile details...</section>
+
+    <ng-container *ngIf="!loading && profile as student">
+      <section class="hero-profile">
+        <div class="hero-copy">
+          <p class="kicker">Premium Student Identity</p>
+          <h1>{{ student.name }}</h1>
+          <p class="hero-text">
+            This page pulls your real database profile and registration activity so you can
+            quickly verify contact details, college info, and event participation status.
+          </p>
+        </div>
+
+        <div class="mini-stats">
+          <article>
+            <strong>{{ registrations.length }}</strong>
+            <span>Total Registrations</span>
+          </article>
+          <article>
+            <strong>{{ approvedCount }}</strong>
+            <span>Approved</span>
+          </article>
+          <article>
+            <strong>{{ pendingCount }}</strong>
+            <span>Pending</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="profile-grid">
+        <article class="info-card primary">
+          <h2>Profile Details</h2>
+          <div class="info-list">
+            <div>
+              <span>Full Name</span>
+              <strong>{{ student.name }}</strong>
+            </div>
+            <div>
+              <span>User ID</span>
+              <strong>{{ student.userId }}</strong>
+            </div>
+            <div>
+              <span>Email Address</span>
+              <strong>{{ student.email }}</strong>
+            </div>
+            <div>
+              <span>Role</span>
+              <strong>{{ student.role }}</strong>
+            </div>
+            <div>
+              <span>College</span>
+              <strong>{{ student.college || 'Not available' }}</strong>
+            </div>
+            <div>
+              <span>Joined On</span>
+              <strong>{{ student.createdAt | date: 'fullDate' }}</strong>
+            </div>
+          </div>
+        </article>
+
+        <article class="info-card secondary">
+          <h2>Recent Registration Activity</h2>
+          <div class="recent-list" *ngIf="registrations.length > 0; else noRegistrations">
+            <div class="recent-item" *ngFor="let registration of registrations.slice(0, 5)">
+              <div>
+                <strong>{{ registration.eventName }}</strong>
+                <p>{{ registration.event?.dateLabel || (registration.createdAt | date: 'mediumDate') }}</p>
+              </div>
+              <span class="status-pill" [attr.data-tone]="getRegistrationTone(registration.status)">
+                {{ getRegistrationStatusLabel(registration.status) }}
+              </span>
+            </div>
+          </div>
+
+          <ng-template #noRegistrations>
+            <p class="empty-copy">No registrations available yet.</p>
+          </ng-template>
+        </article>
+      </section>
+    </ng-container>
+  </main>
+</div>

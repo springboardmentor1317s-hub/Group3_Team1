@@ -1,0 +1,106 @@
+<div class="events-shell">
+  <header class="page-header">
+    <div class="page-header-inner">
+      <button type="button" class="brand-block" (click)="navigate('dashboard')">
+        <img src="/icon2.png" alt="Campus Event Hub">
+        <div>
+          <span>Event Collection</span>
+          <strong>Campus Event Hub</strong>
+        </div>
+      </button>
+
+      <nav class="page-nav">
+        <button type="button" class="page-link" (click)="navigate('dashboard')">Dashboard</button>
+        <button type="button" class="page-link active">Events</button>
+        <button type="button" class="page-link" (click)="navigate('registrations')">My Registrations</button>
+        <button type="button" class="page-link" (click)="navigate('feedback')">Feedback</button>
+      </nav>
+
+      <div class="page-actions">
+        <button type="button" class="student-chip" (click)="navigate('profile')">{{ studentName }}</button>
+        <button type="button" class="notification-btn" (click)="openNotifications()" aria-label="Notifications">
+          <span class="material-icons">notifications</span>
+        </button>
+        <button type="button" class="logout-btn" (click)="logout()">Logout</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="events-main">
+    <section class="intro-card">
+      <div>
+        <p class="kicker">All Published Events</p>
+        <h1>Discover every premium opportunity on campus</h1>
+        <p class="intro-text">
+          View all live events with original database poster images, real registration state,
+          and clean responsive cards across phone, tablet, and desktop.
+        </p>
+      </div>
+    </section>
+
+    <p *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</p>
+
+    <section class="filters-card">
+      <label>
+        <span>Search</span>
+        <input type="text" placeholder="Search event name, details, or location" [(ngModel)]="searchQuery" (input)="applyFilters()">
+      </label>
+
+      <label>
+        <span>Category</span>
+        <select [(ngModel)]="selectedCategory" (change)="applyFilters()">
+          <option *ngFor="let category of categories" [value]="category">{{ category }}</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Date</span>
+        <input type="date" [(ngModel)]="selectedDate" (change)="applyFilters()">
+      </label>
+    </section>
+
+    <section *ngIf="loading" class="state-card">Loading events...</section>
+
+    <section class="event-grid" *ngIf="!loading && filteredEvents.length > 0">
+      <article class="event-card" *ngFor="let event of filteredEvents; trackBy: trackById" [attr.id]="'event-' + event.id">
+        <div
+          class="card-cover"
+          [style.background-image]="event.imageUrl ? 'linear-gradient(180deg, rgba(15, 23, 42, 0.18), rgba(15, 23, 42, 0.76)), url(' + event.imageUrl + ')' : null"
+        >
+          <span class="category-pill">{{ event.category }}</span>
+          <span class="status-pill" [attr.data-state]="event.status.toLowerCase()">{{ event.status }}</span>
+        </div>
+
+        <div class="card-body">
+          <div class="meta-row">
+            <span><span class="material-icons">calendar_today</span>{{ event.dateLabel }}</span>
+            <span><span class="material-icons">schedule</span>{{ event.timeLabel }}</span>
+          </div>
+
+          <h3>{{ event.title }}</h3>
+          <p>{{ event.description }}</p>
+
+          <div class="detail-grid">
+            <span><span class="material-icons">location_on</span>{{ event.location }}</span>
+            <span><span class="material-icons">groups</span>{{ event.registrations }}/{{ event.maxAttendees }} seats</span>
+            <span><span class="material-icons">person</span>{{ event.organizer }}</span>
+            <span><span class="material-icons">call</span>{{ event.contact }}</span>
+          </div>
+
+          <button
+            type="button"
+            class="register-btn"
+            [disabled]="event.status !== 'Open' || actionEventId === event.id"
+            (click)="registerForEvent(event)"
+          >
+            {{ getRegisterLabel(event) }}
+          </button>
+        </div>
+      </article>
+    </section>
+
+    <section *ngIf="!loading && filteredEvents.length === 0" class="state-card">
+      No events matched the selected filters.
+    </section>
+  </main>
+</div>

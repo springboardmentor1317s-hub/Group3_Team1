@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
 import { AuthService } from '../auth.service';
+import { StudentDashboardService } from '../services/student-dashboard.service';
 
 @Component({
   selector: 'app-loginpage',
@@ -25,7 +26,8 @@ export class Loginpage {
     private auth: Auth,
     private router: Router,
     private authService: AuthService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private studentDashboardService: StudentDashboardService
     ) { }
 
   // onRoleChange() {
@@ -102,6 +104,8 @@ localStorage.setItem('role', res.role);
       } else if (res.role === 'super_admin') {
         this.router.navigate(['/super-admin-dashboard']);
       } else {
+        this.studentDashboardService.invalidateDashboardCache();
+        this.studentDashboardService.prefetchDashboard();
         this.router.navigate(['/student-dashboard']);
       }
     },

@@ -37,7 +37,20 @@ export const routes: Routes = [
 
   {
     path: 'new-student-dashboard',
-    loadComponent: () => import('./new-student-dashboard/new-student-dashboard.component').then(m => m.NewStudentDashboardComponent)
+    loadComponent: () => import('./student-dashboard-page/student-dashboard-page.component').then(m => m.StudentDashboardPageComponent),
+    canActivate: [roleGuard('student')]
+  },
+
+  {
+    path: 'student-events',
+    loadComponent: () => import('./student-events-page/student-events-page.component').then(m => m.StudentEventsPageComponent),
+    canActivate: [roleGuard('student')]
+  },
+
+  {
+    path: 'student-profile',
+    loadComponent: () => import('./student-profile-page/student-profile-page.component').then(m => m.StudentProfilePageComponent),
+    canActivate: [roleGuard('student')]
   }
 ];
 
