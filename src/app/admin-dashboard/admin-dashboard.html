@@ -1,4 +1,4 @@
-<div class="app">
+﻿<div class="app" [class.dark]="isDarkMode">
   <div class="bg-orb orb-1"></div>
   <div class="bg-orb orb-2"></div>
   <div class="bg-orb orb-3"></div>
@@ -9,7 +9,7 @@
         <img src="/icon2.png" alt="CampusEventHub logo" />
       </span>
       <div>
-        <div class="brand-title">Campus<span>Event</span>Hub</div>
+        <div class="brand-title">Campus<span class="event">Event</span>Hub</div>
         <div class="brand-sub">Admin Dashboard</div>
       </div>
     </div>
@@ -27,14 +27,21 @@
         [(ngModel)]="dashboardSearchQuery"
         (input)="applyDashboardSearch()"
       />
-      <button class="icon-btn" aria-label="Search">🔍</button>
-      <button class="icon-btn" aria-label="Notifications">🔔</button>
-      <button class="icon-btn" aria-label="Downloads" (click)="exportEvents()">⬇️</button>
-      <div class="user-pill">
-        <div class="avatar"></div>
+      <button class="icon-btn" aria-label="Search" title="Search">&#128269;</button>
+      <button class="icon-btn" aria-label="Notifications" title="Notifications">&#128276;</button>
+      <button class="icon-btn" aria-label="Downloads" title="Export" (click)="exportEvents()">&#11015;</button>
+      <a class="user-pill user-pill--link" routerLink="/admin-profile">
+        <div class="avatar">
+          <img *ngIf="userAvatarUrl" [src]="userAvatarUrl" alt="Profile photo" />
+          <span *ngIf="!userAvatarUrl" class="avatar-text">{{ avatarText }}</span>
+        </div>
         <span>{{ userName }}</span>
-      </div>
+      </a>
       <a class="logout-btn" routerLink="/login">Logout</a>
+      <button class="theme-toggle" (click)="toggleTheme()" [attr.title]="isDarkMode ? 'Light mode' : 'Dark mode'">
+        <span *ngIf="!isDarkMode">☀️</span>
+        <span *ngIf="isDarkMode">🌙</span>
+      </button>
     </div>
   </header>
 
@@ -43,22 +50,25 @@
       <div class="sidebar-head">Menu</div>
       <ul class="menu">
         <li [class.active]="activeTab === 'overview'" (click)="setTab('overview')">
-          <span class="menu-icon">🏠</span>Dashboard
+          <span class="menu-icon">&#127968;</span>Dashboard
         </li>
         <li (click)="openCreateModal()">
-          <span class="menu-icon">🗓️</span>Create Event
+          <span class="menu-icon">&#128197;</span>Create Event
         </li>
         <li [class.active]="activeTab === 'events'" (click)="setTab('events')">
-          <span class="menu-icon">📋</span>Manage Events
+          <span class="menu-icon">&#128203;</span>Manage Events
         </li>
-        <li [class.active]="activeTab === 'registrations'" (click)="setTab('registrations')">
-          <span class="menu-icon">🧾</span>Registrations
+        <li [class.active]="registrationFilter === 'all'" (click)="showAllRegistrations()">
+          <span class="menu-icon">&#129534;</span>All Registrations
         </li>
         <li [class.active]="activeTab === 'analytics'" (click)="setTab('analytics')">
-          <span class="menu-icon">📈</span>Analytics
+          <span class="menu-icon">&#128200;</span>Analytics
+        </li>
+        <li [class.active]="registrationFilter === 'approved'" (click)="showApprovedStudents()">
+          <span class="menu-icon">✅</span>Approved Students
         </li>
         <li (click)="setTab('overview')">
-          <span class="menu-icon">💬</span>Feedback
+          <span class="menu-icon">&#128172;</span>Feedback
         </li>
       </ul>
     </aside>
@@ -66,21 +76,21 @@
     <main class="content">
       <section class="summary-cards">
         <article class="card stat">
-          <div class="stat-icon purple">📣</div>
+          <div class="stat-icon purple">&#128227;</div>
           <div>
             <p>Total Events</p>
             <h3>{{ isLoading ? '...' : totalEvents }}</h3>
           </div>
         </article>
         <article class="card stat">
-          <div class="stat-icon teal">✅</div>
+          <div class="stat-icon teal">&#9989;</div>
           <div>
             <p>Active Events</p>
             <h3>{{ isLoading ? '...' : activeEvents }}</h3>
           </div>
         </article>
         <article class="card stat">
-          <div class="stat-icon lavender">🧑‍🎓</div>
+          <div class="stat-icon lavender">&#127891;</div>
           <div>
             <p>Total Registrations</p>
             <h3>{{ isLoading ? '...' : totalRegistrations }}</h3>
@@ -111,8 +121,8 @@
             <div class="table-row" *ngFor="let e of getFilteredEvents() | slice:0:3">
               <span>{{ e.name }}</span>
               <span>{{ formatDateTime(e.dateTime) }}</span>
-              <span>{{ e.participants }}</span>
-              <button class="pill-btn" (click)="setTab('events')">Manage</button>
+              <span>{{ e.approvedCount }}</span>
+              <span></span>
             </div>
             <div class="table-row" *ngIf="events.length === 0">
               <span>No events yet.</span>
@@ -182,8 +192,8 @@
             <div class="reg-item" *ngFor="let reg of registrations">
               <div class="avatar small"></div>
               <div>
-                <h4>{{ reg.studentName }}</h4>
-                <p>{{ reg.college }}</p>
+                <h4>{{ reg.studentName }} <span *ngIf="reg.status === 'APPROVED'" class="status-approved">Approved</span></h4>
+                <p style="font-size: 1rem;">{{ reg.college }}</p>
               </div>
               <div class="row-actions">
                 <button class="pill-btn" (click)="approveRegistration(reg)">Approve</button>
@@ -209,18 +219,20 @@
             <button class="ghost-btn" (click)="openCreateModal()">Create Event</button>
           </div>
           <div class="table">
-            <div class="table-row head">
-              <span>Event Name</span>
-              <span>Date</span>
-              <span>Status</span>
-              <span>Actions</span>
+<div class="table-row head">
+              <span class="name-col">Event Name</span>
+              <span class="date-col">Date</span>
+              <span class="status-col">Status</span>
+              <span class="participants-col">Participants</span>
+              <span class="actions-col">Actions</span>
             </div>
-            <div class="table-row" *ngFor="let e of getFilteredEvents()">
-              <span>{{ e.name }}</span>
-              <span>{{ formatDateTime(e.dateTime) }}</span>
-              <span>{{ e.status }}</span>
-              <div class="row-actions">
-                <button class="pill-btn" (click)="setTab('overview')">Manage</button>
+<div class="table-row" *ngFor="let e of getFilteredEvents()">
+              <span class="name-col">{{ e.name }}</span>
+              <span class="date-col">{{ formatDateTime(e.dateTime) }}</span>
+              <span class="status-col">{{ e.status }}</span>
+              <span class="participants-col">{{ e.approvedCount }}</span>
+              <div class="actions-col row-actions">
+                <button class="pill-btn ghost" (click)="openEditModal(e)">Edit</button>
                 <button class="pill-btn pending" (click)="deleteEvent(e)">Delete</button>
               </div>
             </div>
@@ -250,17 +262,35 @@
             </div>
           </div>
           <div class="reg-list">
-            <div class="reg-item" *ngFor="let reg of getFilteredRegistrations()">
-              <div class="avatar small"></div>
-              <div>
-                <h4>{{ reg.studentName }}</h4>
-                <p>{{ reg.college }} · {{ reg.eventName }}</p>
+            <ng-container *ngIf="registrationFilter === 'all'; else flatList">
+              <div class="reg-group" *ngFor="let group of getFilteredRegistrations()">
+                <div class="group-header">
+                  <h4>{{ group.eventName }} ({{ group.total }})</h4>
+                </div>
+                <div class="reg-list-group">
+                  <div class="reg-item" *ngFor="let reg of group.registrations">
+                    <div class="avatar small"></div>
+                    <div>
+                      <h5>{{ reg.studentName }} <span *ngIf="reg.status === 'APPROVED'" class="status-approved">Approved</span></h5>
+                      <p>{{ reg.college }}</p>
+                    </div>
+                    <div class="row-actions">
+                      <button class="pill-btn" (click)="approveRegistration(reg)">Approve</button>
+                      <button class="pill-btn pending" (click)="openRejectModal(reg)">Reject</button>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div class="row-actions">
-                <button class="pill-btn" (click)="approveRegistration(reg)">Approve</button>
-                <button class="pill-btn pending" (click)="openRejectModal(reg)">Reject</button>
+            </ng-container>
+            <ng-template #flatList>
+              <div class="reg-item" *ngFor="let reg of getFilteredRegistrations()">
+                <div class="avatar small"></div>
+                <div>
+                  <h4>{{ reg.studentName }} <span class="status-approved">Approved</span></h4>
+                  <p>{{ reg.college }} - {{ reg.eventName }}</p>
+                </div>
               </div>
-            </div>
+            </ng-template>
             <div class="reg-item" *ngIf="getFilteredRegistrations().length === 0">
               <div class="avatar small"></div>
               <div>
@@ -310,203 +340,6 @@
     </main>
   </div>
 
-  <div class="modal-backdrop" *ngIf="createModalOpen" (click)="closeCreateModal()">
-    <div
-      class="modal"
-      (click)="$event.stopPropagation()"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Create event"
-    >
-      <div
-        class="modal__hero"
-        [style.--poster-image]="createForm.posterDataUrl ? 'url(' + createForm.posterDataUrl + ')' : null"
-      >
-        <button type="button" class="modal__close" (click)="closeCreateModal()" aria-label="Close">&times;</button>
-
-        <div class="modal__heroText">
-          <h2>Create Event</h2>
-          <p>Add details about your upcoming event</p>
-        </div>
-      </div>
-
-      <form #createEventForm="ngForm" class="create-event-form" (ngSubmit)="saveEvent(createEventForm)" novalidate>
-        <div class="create-form-actions">
-          <button type="button" class="btn btn--ghost" (click)="closeCreateModal()">Cancel</button>
-          <button type="submit" class="btn btn--primary" [disabled]="isSavingEvent">
-            {{ isSavingEvent ? 'Saving...' : 'Save Event' }}
-          </button>
-        </div>
-
-        <div class="modal__body create-event-body">
-          <div class="form-grid">
-            <div class="field field--full">
-              <label for="eventPoster">Poster Image (optional)</label>
-              <div class="poster-row">
-                <input
-                  id="eventPoster"
-                  class="file-input"
-                  type="file"
-                  accept="image/*"
-                  (change)="onPosterSelected($event)"
-                />
-                <button
-                  *ngIf="createForm.posterDataUrl"
-                  type="button"
-                  class="poster-remove"
-                  (click)="removePoster()"
-                >
-                  Remove
-                </button>
-              </div>
-              <div class="help">JPG/PNG recommended (max ~1.5MB). Uploading changes the header image.</div>
-              <div class="poster-preview" *ngIf="createForm.posterDataUrl as posterDataUrl">
-                <img [src]="posterDataUrl" alt="Poster preview" />
-              </div>
-            </div>
-
-            <div class="field">
-              <label for="eventName">
-                <span class="field__icon">✦</span> Event Name
-                <span class="field__required">*</span>
-              </label>
-              <input
-                id="eventName"
-                type="text"
-                name="name"
-                [(ngModel)]="createForm.name"
-                placeholder="e.g. Annual Tech Fest 2025"
-                required
-              />
-            </div>
-
-            <div class="field">
-              <label for="eventLocation">
-                <span class="field__icon">📍</span> Location
-                <span class="field__required">*</span>
-              </label>
-              <input
-                id="eventLocation"
-                type="text"
-                name="location"
-                [(ngModel)]="createForm.location"
-                placeholder="e.g. Main Auditorium, Block A"
-                required
-              />
-            </div>
-
-            <div class="field">
-              <label for="eventStartDate">
-                <span class="field__icon">📅</span> Start Date
-                <span class="field__required">*</span>
-              </label>
-              <input
-                id="eventStartDate"
-                type="date"
-                name="startDate"
-                [(ngModel)]="createForm.dateTime"
-                required
-              />
-            </div>
-
-            <div class="field">
-              <label for="eventEndDate">
-                <span class="field__icon">📅</span> End Date
-                <span class="field__badge-optional">(Optional)</span>
-              </label>
-              <input
-                id="eventEndDate"
-                type="date"
-                name="endDate"
-                [(ngModel)]="createForm.endDate"
-              />
-            </div>
-
-            <div class="field">
-              <label for="eventCategory">
-                <span class="field__icon">🗂️</span> Event Category
-              </label>
-
-              <select
-                id="eventCategory"
-                name="category"
-                [(ngModel)]="createForm.category"
-                required
-              >
-                <option value="">Select Category</option>
-                <option value="Technology">Technology</option>
-                <option value="Cultural">Cultural</option>
-                <option value="Workshop">Workshop</option>
-                <option value="Career">Career</option>
-                <option value="Sports">Sports</option>
-                <option value="Seminar">Seminar</option>
-              </select>
-            </div>
-
-            <div class="field">
-              <label for="eventOrganizer">
-                <span class="field__icon">👤</span> Organizer
-              </label>
-              <input
-                id="eventOrganizer"
-                type="text"
-                name="organizer"
-                [(ngModel)]="createForm.organizer"
-                placeholder="e.g. Student Council"
-              />
-            </div>
-
-            <div class="field">
-              <label for="eventTeamSize">
-                <span class="field__icon">👥</span> Team Size
-                <span class="field__badge-optional">(Optional)</span>
-              </label>
-              <input
-                id="eventTeamSize"
-                type="number"
-                name="teamSize"
-                [(ngModel)]="createForm.teamSize"
-                placeholder="e.g. 4"
-                min="1"
-              />
-            </div>
-
-            <div class="field">
-              <label for="eventContact">
-                <span class="field__icon">📞</span> Contact
-              </label>
-              <input
-                id="eventContact"
-                type="text"
-                name="contact"
-                [(ngModel)]="createForm.contact"
-                placeholder="e.g. email or phone"
-              />
-            </div>
-
-            <div class="field field--full">
-              <label for="eventDescription">
-                <span class="field__icon">📝</span> Description
-              </label>
-              <textarea
-                id="eventDescription"
-                name="description"
-                [(ngModel)]="createForm.description"
-                rows="4"
-                placeholder="Tell students what this event is about..."
-              ></textarea>
-            </div>
-          </div>
-        </div>
-
-        <div class="modal__footer">
-          <button type="button" class="btn btn--ghost" (click)="closeCreateModal()">Cancel</button>
-          <div class="modal__footerNote">Required fields must be filled before saving.</div>
-        </div>
-      </form>
-    </div>
-  </div>
-
   <div class="modal-backdrop" *ngIf="approveModalOpen" (click)="closeApproveModal()">
     <div
       class="modal approve-modal"
@@ -527,42 +360,42 @@
         <div class="approve-info" *ngIf="selectedRegistration">
           <div class="info-grid">
             <div class="info-block">
-              <span class="info-icon">👤</span>
+              <span class="info-icon">&#128100;</span>
               <div>
                 <div class="info-label">Student Name</div>
                 <div class="info-text">{{ selectedRegistration.studentName }}</div>
               </div>
             </div>
             <div class="info-block">
-              <span class="info-icon">🆔</span>
+              <span class="info-icon">&#127380;</span>
               <div>
                 <div class="info-label">Student ID</div>
                 <div class="info-text">{{ selectedRegistration.studentId }}</div>
               </div>
             </div>
             <div class="info-block">
-              <span class="info-icon">📧</span>
+              <span class="info-icon">&#128231;</span>
               <div>
                 <div class="info-label">Email</div>
                 <div class="info-text">{{ selectedRegistration.email }}</div>
               </div>
             </div>
             <div class="info-block">
-              <span class="info-icon">🏫</span>
+              <span class="info-icon">&#127979;</span>
               <div>
                 <div class="info-label">College</div>
                 <div class="info-text">{{ selectedRegistration.college }}</div>
               </div>
             </div>
             <div class="info-block">
-              <span class="info-icon">🎯</span>
+              <span class="info-icon">&#127919;</span>
               <div>
                 <div class="info-label">Event</div>
                 <div class="info-text">{{ selectedRegistration.eventName }}</div>
               </div>
             </div>
             <div class="info-block">
-              <span class="info-icon">📅</span>
+              <span class="info-icon">&#128197;</span>
               <div>
                 <div class="info-label">Submitted</div>
                 <div class="info-text">{{ formatDateTime(selectedRegistration.createdAt) }}</div>
@@ -571,7 +404,7 @@
           </div>
 
           <div class="approval-message">
-            <div class="message-icon">ℹ️</div>
+            <div class="message-icon">&#8505;</div>
             <p>The student will receive an immediate notification upon approval and can attend the event.</p>
           </div>
         </div>
@@ -579,7 +412,7 @@
         <div class="modal__footer">
           <button type="button" class="btn btn--ghost" (click)="closeApproveModal()">Cancel</button>
           <button type="button" class="btn btn--success" (click)="confirmApproveRegistration()">
-            ✓ Approve Registration
+            Approve Registration
           </button>
         </div>
       </div>
@@ -606,14 +439,14 @@
         <div class="reject-info" *ngIf="selectedRegistration">
           <div class="info-grid">
             <div class="info-block">
-              <span class="info-icon">👤</span>
+              <span class="info-icon">&#128100;</span>
               <div>
                 <div class="info-label">Student Name</div>
                 <div class="info-text">{{ selectedRegistration.studentName }}</div>
               </div>
             </div>
             <div class="info-block">
-              <span class="info-icon">🎯</span>
+              <span class="info-icon">&#127919;</span>
               <div>
                 <div class="info-label">Event</div>
                 <div class="info-text">{{ selectedRegistration.eventName }}</div>
@@ -624,7 +457,7 @@
 
         <div class="field field--full">
           <label for="rejectionReason">
-            <span class="field__icon">📝</span>
+            <span class="field__icon">&#128221;</span>
             Rejection Reason
             <span class="field__required">*</span>
           </label>
@@ -643,33 +476,40 @@
         </div>
 
         <div class="rejection-warning">
-          <div class="warning-icon">⚠️</div>
+          <div class="warning-icon">&#9888;</div>
           <p>The student will be notified with this reason. Please be clear and professional.</p>
         </div>
 
         <div class="modal__footer">
           <button type="button" class="btn btn--ghost" (click)="closeRejectModal()">Cancel</button>
-          <button 
-            type="button" 
+          <button
+            type="button"
             class="btn btn--danger"
             [disabled]="!rejectionReason || rejectionReason.trim().length < 10"
             (click)="confirmRejectRegistration()"
           >
-            ✕ Reject Registration
+            Reject Registration
           </button>
         </div>
       </div>
     </div>
   </div>
 
+  <app-create-event 
+    [visible]="createEventVisible" 
+    [editingEvent]="editingEvent"
+    (visibleChange)="createEventVisible = $event"
+    (eventSaved)="handleEventSaved($event)">
+  </app-create-event>
+
   <div class="toast-container">
-    <div 
+    <div
       class="toast"
       *ngIf="showToast"
       [class.toast-success]="toastType === 'success'"
       [class.toast-error]="toastType === 'error'"
     >
-      <span class="toast-icon">{{ toastType === 'success' ? '✓' : '✕' }}</span>
+      <span class="toast-icon">{{ toastType === 'success' ? 'OK' : '!' }}</span>
       <div class="toast-copy">
         <span class="toast-title">{{ toastType === 'success' ? 'Success' : 'Action needed' }}</span>
         <span class="toast-message">{{ toastMessage }}</span>

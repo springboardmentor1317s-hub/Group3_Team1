@@ -8,6 +8,7 @@ const eventRoutes = require('./routes/eventRoutes');
 const debugRoutes = require('./routes/debugRoutes');
 const superAdminRoutes = require('./routes/superAdminRoutes'); 
 const registrationRoutes = require('./routes/registrationRoutes');
+const profileRoutes = require('./routes/profileRoutes');
 const app = express();
 
 app.use(cors());
@@ -15,6 +16,7 @@ app.use(express.json({ limit: '10mb' }));
 
 app.use('/api', authRoutes);
 app.use('/api', debugRoutes);
+app.use('/api/profile', profileRoutes);
 app.use('/api/superadmin', superAdminRoutes); 
 app.use("/api/events", eventRoutes);
 app.use('/api/registrations', registrationRoutes);

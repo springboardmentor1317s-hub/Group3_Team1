@@ -4,6 +4,7 @@ import { Loginpage } from './loginpage/loginpage';
 import { Homepage } from './homepage/homepage';
 // import { StudentDashboardComponent } from './student-dashboard/student-dashboard';
 import { AdminDashboard } from './admin-dashboard/admin-dashboard';
+import { AdminProfile } from './admin-profile/admin-profile';
 import { SuperAdminDashboard } from './super-admin-dashboard/super-admin-dashboard';
 import { SignupSuccessComponent } from './signup-success/signup-success.component';
 import { roleGuard } from './role/role';
@@ -26,6 +27,12 @@ export const routes: Routes = [
   {
     path: 'admin-dashboard',
     component: AdminDashboard,
+    canActivate: [roleGuard('college_admin')]
+  },
+
+  {
+    path: 'admin-profile',
+    component: AdminProfile,
     canActivate: [roleGuard('college_admin')]
   },
 
