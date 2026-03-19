@@ -4,6 +4,35 @@ const jwt = require("jsonwebtoken");
 const Event = require("../models/Event");
 const Registration = require("../models/Registration");
 
+function normalizeText(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function toNotificationDate(value) {
+  if (!value) {
+    return new Date(0).toISOString();
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return new Date(0).toISOString();
+  }
+
+  return parsed.toISOString();
+}
+
+function buildNotification(id, title, message, tone, createdAt, icon, category) {
+  return {
+    id,
+    title,
+    message,
+    tone,
+    createdAt: toNotificationDate(createdAt),
+    icon,
+    category
+  };
+}
+
 function formatProfile(user) {
   return {
     id: String(user._id),
@@ -93,6 +122,105 @@ function mapRegistration(registration, event) {
   };
 }
 
+function buildStudentNotifications(user, registrations, events, eventMap, approvedCount, pendingCount) {
+  const notifications = [];
+  const userCollege = normalizeText(user.college);
+  const now = Date.now();
+
+  notifications.push(
+    buildNotification(
+      "registrations-overview",
+      "Your dashboard is live",
+      `You have ${registrations.length} registrations, ${approvedCount} approvals, and ${pendingCount} pending requests.`,
+      approvedCount > 0 ? "success" : "info",
+      new Date(),
+      "insights",
+      "overview"
+    )
+  );
+
+  registrations.forEach((registration) => {
+    const event = eventMap.get(String(registration.eventId));
+    const eventName = registration.eventName || event?.name || "your event";
+
+    if (registration.status === "APPROVED") {
+      notifications.push(
+        buildNotification(
+          `registration-approved-${registration._id}`,
+          "Registration approved",
+          `${eventName} has been approved by the admin. You're all set for the event.`,
+          "success",
+          registration.approvedAt || registration.updatedAt,
+          "verified",
+          "approval"
+        )
+      );
+      return;
+    }
+
+    if (registration.status === "REJECTED") {
+      notifications.push(
+        buildNotification(
+          `registration-rejected-${registration._id}`,
+          "Registration update",
+          registration.rejectionReason
+            ? `${eventName} was declined. Reason: ${registration.rejectionReason}`
+            : `${eventName} was declined by the admin.`,
+          "warning",
+          registration.rejectedAt || registration.updatedAt,
+          "report_problem",
+          "approval"
+        )
+      );
+      return;
+    }
+
+    if (now - new Date(registration.createdAt).getTime() <= 1000 * 60 * 60 * 24 * 14) {
+      notifications.push(
+        buildNotification(
+          `registration-pending-${registration._id}`,
+          "Registration received",
+          `Your request for ${eventName} has been submitted and is waiting for admin approval.`,
+          "info",
+          registration.createdAt,
+          "hourglass_top",
+          "registration"
+        )
+      );
+    }
+  });
+
+  events
+    .filter((event) => event.status !== "Past")
+    .filter((event) => {
+      if (!userCollege) {
+        return true;
+      }
+
+      const collegeName = normalizeText(event.collegeName);
+      const organizer = normalizeText(event.organizer);
+      return collegeName === userCollege || organizer.includes(userCollege);
+    })
+    .slice(0, 6)
+    .forEach((event) => {
+      notifications.push(
+        buildNotification(
+          `event-live-${event._id}`,
+          userCollege ? "New event from your college" : "Fresh campus event",
+          `${event.name} is now live${event.location ? ` at ${event.location}` : ""}. Check details and reserve your seat early.`,
+          "info",
+          event.createdAt || event.dateTime,
+          "campaign",
+          "event"
+        )
+      );
+    });
+
+  return notifications
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 12);
+}
+
 async function buildStudentDashboardPayload(userId) {
   const [user, events, registrations] = await Promise.all([
     User.findById(userId).select("-password"),
@@ -134,22 +262,7 @@ async function buildStudentDashboardPayload(userId) {
   const approvedCount = registrations.filter((item) => item.status === "APPROVED").length;
   const pendingCount = registrations.filter((item) => item.status === "PENDING").length;
 
-  const notifications = [
-    {
-      id: "registrations-count",
-      title: "Registration overview",
-      message: `You have ${registrations.length} registrations and ${approvedCount} approved entries.`,
-      tone: approvedCount > 0 ? "success" : "info"
-    },
-    {
-      id: "pending-approvals",
-      title: "Pending approvals",
-      message: pendingCount > 0
-        ? `${pendingCount} registrations are waiting for approval.`
-        : "No registrations are pending right now.",
-      tone: pendingCount > 0 ? "warning" : "success"
-    }
-  ];
+  const notifications = buildStudentNotifications(user, registrations, enrichedEvents, eventMap, approvedCount, pendingCount);
 
   return {
     profile: formatProfile(user),

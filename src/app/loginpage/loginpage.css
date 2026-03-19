@@ -560,6 +560,13 @@ button:hover {
   box-shadow: 0 18px 34px rgba(104, 102, 255, 0.38);
 }
 
+button:disabled {
+  cursor: wait;
+  opacity: 0.78;
+  transform: none;
+  box-shadow: 0 10px 22px rgba(104, 102, 255, 0.2);
+}
+
 .error {
   color: #5e1313;
   background: rgba(255, 232, 232, 0.92);

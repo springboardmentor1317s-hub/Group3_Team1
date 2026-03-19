@@ -19,7 +19,7 @@
       <div class="header-actions">
         <button type="button" class="profile-chip" (click)="openProfile()">
           <span class="material-icons">account_circle</span>
-          <span>{{ studentName }}</span>
+          <span class="profile-chip-name">{{ studentName }}</span>
         </button>
         <div class="notification-wrapper" (click)="$event.stopPropagation()">
         <button type="button" class="notification-btn" (click)="openNotifications($event)" aria-label="Notifications">
@@ -30,7 +30,7 @@
           <div class="notification-dropdown-head">
             <div>
               <p>Notifications</p>
-              <h3>Live updates</h3>
+              <h3>Campus pulse</h3>
             </div>
             <span class="notification-count">{{ notifications.length }}</span>
           </div>
@@ -38,9 +38,26 @@
           <div *ngIf="notificationsLoading" class="notification-dropdown-state">Loading notifications...</div>
 
           <div class="notification-dropdown-list" *ngIf="!notificationsLoading && notifications.length > 0">
-            <article class="notification-dropdown-card" *ngFor="let item of notifications; trackBy: trackNotification">
+            <article class="notification-dropdown-card featured" *ngIf="featuredNotification as featured">
+              <span class="notification-icon material-icons">{{ featured.icon }}</span>
+              <div class="notification-copy">
+                <div class="notification-chip-row">
+                  <span class="notification-category">{{ featured.category }}</span>
+                  <span class="notification-time">{{ formatNotificationTime(featured.createdAt) }}</span>
+                </div>
+                <h4>{{ featured.title }}</h4>
+                <p>{{ featured.message }}</p>
+              </div>
+            </article>
+
+            <article class="notification-dropdown-card" *ngFor="let item of remainingNotifications; trackBy: trackNotification">
               <span class="notification-tone" [attr.data-tone]="item.tone"></span>
-              <div>
+              <span class="notification-icon material-icons">{{ item.icon }}</span>
+              <div class="notification-copy">
+                <div class="notification-chip-row">
+                  <span class="notification-category">{{ item.category }}</span>
+                  <span class="notification-time">{{ formatNotificationTime(item.createdAt) }}</span>
+                </div>
                 <h4>{{ item.title }}</h4>
                 <p>{{ item.message }}</p>
               </div>
@@ -62,9 +79,11 @@
 
   <main class="dashboard-main">
     <section class="hero-panel">
+      <div class="hero-orb hero-orb-one"></div>
+      <div class="hero-orb hero-orb-two"></div>
       <div class="hero-copy">
         <span class="hero-kicker">Smart dashboard for your live campus journey</span>
-        <h1>Welcome back, <span>{{ studentName }}</span></h1>
+        <h1>Welcome back, <span class="hero-name">{{ studentName }}</span></h1>
         <p>
           Track premium campus experiences, manage your real-time registrations,
           and discover upcoming events from your college network in one place.
@@ -99,9 +118,8 @@
 
     <section class="panel events-panel">
       <div class="panel-head">
-        <div>
-          <p class="section-kicker">Curated Event Collection</p>
-          <h2>Browse Events</h2>
+        <div class="signature-heading">
+          <h2>Active Events</h2>
         </div>
         <button type="button" class="view-all-btn" (click)="viewAllEvents()">View All</button>
       </div>
@@ -120,9 +138,20 @@
         </label>
 
         <label class="filter-field">
+          <span>College</span>
+          <select [(ngModel)]="selectedCollege" (change)="applyFilters()">
+            <option *ngFor="let college of colleges" [value]="college">{{ college }}</option>
+          </select>
+        </label>
+
+        <label class="filter-field">
           <span>Date</span>
           <input type="date" [(ngModel)]="selectedDate" (change)="applyFilters()">
         </label>
+
+        <div class="filter-actions">
+          <button type="button" class="clear-filter-btn" (click)="clearFilters()">Clear Filters</button>
+        </div>
       </div>
 
       <div *ngIf="loading" class="loading-card">Loading events and registrations...</div>
@@ -132,24 +161,34 @@
           <div
             class="event-poster"
             [style.background-image]="event.imageUrl ? 'linear-gradient(180deg, rgba(9, 17, 40, 0.1), rgba(9, 17, 40, 0.7)), url(' + event.imageUrl + ')' : null"
-          >
-            <span class="event-badge">{{ event.category }}</span>
-            <span class="event-state" [attr.data-state]="event.status.toLowerCase()">{{ event.status }}</span>
-          </div>
+          ></div>
 
           <div class="event-body">
-            <div class="event-meta-row">
-              <span><span class="material-icons">calendar_today</span>{{ event.dateLabel }}</span>
-              <span><span class="material-icons">schedule</span>{{ event.timeLabel }}</span>
+            <div class="event-topline">
+              <span class="event-seat-pill">{{ event.registrations }}/{{ event.maxAttendees }} seats</span>
+              <span class="event-contact-pill"><span class="material-icons">call</span>{{ event.contact }}</span>
             </div>
 
             <h3>{{ event.title }}</h3>
-            <p class="event-description">{{ event.description }}</p>
+            <p class="event-description" [class.expanded]="isEventDescriptionExpanded(event.id)">
+              {{ event.description }}
+            </p>
+            <button
+              *ngIf="event.description.length > 120"
+              type="button"
+              class="description-toggle"
+              (click)="toggleEventDescription(event.id)"
+            >
+              {{ isEventDescriptionExpanded(event.id) ? 'View less' : 'View more' }}
+            </button>
 
             <div class="event-highlights">
+              <span class="event-badge subtle">{{ event.category }}</span>
+              <span><span class="material-icons">calendar_today</span>{{ event.dateLabel }}</span>
+              <span><span class="material-icons">schedule</span>{{ event.timeLabel }}</span>
               <span><span class="material-icons">location_on</span>{{ event.location }}</span>
-              <span><span class="material-icons">groups</span>{{ event.registrations }}/{{ event.maxAttendees }} seats</span>
               <span><span class="material-icons">apartment</span>{{ event.collegeName }}</span>
+              <span><span class="material-icons">shield</span>{{ event.organizer || 'Campus Event Hub' }}</span>
             </div>
 
             <div class="event-actions">
@@ -174,64 +213,49 @@
       </div>
     </section>
 
-    <section class="panel registrations-panel" id="registrations-section">
+    <section class="panel registrations-panel">
       <div class="panel-head">
         <div>
-          <p class="section-kicker">Live Registration Tracker</p>
           <h2>My Registrations</h2>
         </div>
+        <button type="button" class="view-all-btn" (click)="openRegistrationsPage()">Open Full Page</button>
       </div>
 
-      <div *ngIf="registrationsLoading" class="loading-card">Loading your registrations...</div>
+      <div *ngIf="registrationsLoading" class="loading-card">Loading your registrations summary...</div>
 
-      <div class="registrations-table" *ngIf="!registrationsLoading && registrations.length > 0">
-        <div class="table-head">
-          <span>Event</span>
-          <span>Status</span>
-          <span>Date</span>
-          <span>Actions</span>
-        </div>
-
-        <div class="table-row" *ngFor="let registration of registrations; trackBy: trackById">
-          <div class="table-event">
-            <img
-              *ngIf="registration.event?.posterDataUrl; else registrationPosterFallback"
-              [src]="registration.event?.posterDataUrl || ''"
-              [alt]="registration.eventName"
-            >
-            <ng-template #registrationPosterFallback>
-              <div class="poster-fallback">{{ registration.eventName.charAt(0) }}</div>
-            </ng-template>
-
-            <div>
-              <strong>{{ registration.eventName }}</strong>
-              <p>{{ registration.event?.location || 'Location TBA' }}</p>
-            </div>
+      <div class="registrations-spotlight" *ngIf="!registrationsLoading">
+        <article class="registration-summary-card">
+          <span class="summary-icon material-icons">inventory_2</span>
+          <div>
+            <strong>{{ statsState.myRegistrations }}</strong>
+            <p>Total registrations synced from your account.</p>
           </div>
+        </article>
 
-          <span class="status-pill-table" [attr.data-tone]="getRegistrationTone(registration.status)">
-            {{ getRegistrationStatusLabel(registration.status) }}
-          </span>
+        <article class="registration-summary-card">
+          <span class="summary-icon material-icons">verified</span>
+          <div>
+            <strong>{{ statsState.approvedEntries }}</strong>
+            <p>Approved entries ready for event participation.</p>
+          </div>
+        </article>
 
-          <span>{{ registration.event?.dateLabel || (registration.createdAt | date: 'mediumDate') }}</span>
-
-          <span>
-            <button
-              type="button"
-              class="cancel-btn"
-              [disabled]="actionEventId === registration.eventId"
-              (click)="cancelRegistration(registration)"
-            >
-              {{ actionEventId === registration.eventId ? 'Cancelling...' : 'Cancel' }}
-            </button>
-          </span>
-        </div>
+        <article class="registration-summary-card">
+          <span class="summary-icon material-icons">hourglass_top</span>
+          <div>
+            <strong>{{ statsState.myRegistrations - statsState.approvedEntries }}</strong>
+            <p>Pending or recently updated requests to review.</p>
+          </div>
+        </article>
       </div>
 
-      <div *ngIf="!registrationsLoading && registrations.length === 0" class="empty-state compact">
-        <span class="material-icons">inventory_2</span>
-        <h3>No registrations yet</h3>
-        <p>Register for any event and it will appear here with real approval status.</p>
+      <div class="registrations-cta" *ngIf="!registrationsLoading">
+        <div>
+          <p class="section-kicker">Dedicated Registrations Hub</p>
+          <h3>Use the new page for filters, status tracking, and full registration history.</h3>
+          <p>We moved the detailed list out of the dashboard so this page stays cleaner and faster to scan.</p>
+        </div>
+        <button type="button" class="solid-btn" (click)="openRegistrationsPage()">Go To My Registrations</button>
       </div>
     </section>
 

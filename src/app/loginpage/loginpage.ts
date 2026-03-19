@@ -17,6 +17,7 @@ import { SiteFooterComponent } from '../shared/site-footer/site-footer.component
 export class Loginpage {
   show = false;
   errorMessage = '';
+  isLoggingIn = false;
   user = {
     email: '',
     password: '',
@@ -59,6 +60,8 @@ export class Loginpage {
   login() {
 
   this.errorMessage = '';
+  this.isLoggingIn = true;
+  this.studentDashboardService.resetDashboardState();
 
      if (this.user.role === 'super_admin') {
           if (this.user.email === 'super@campus.com' && this.user.password === 'super@123') {
@@ -68,6 +71,7 @@ export class Loginpage {
         this.errorMessage = 'Invalid credentials';
         this.cdr.detectChanges();
       }
+      this.isLoggingIn = false;
       return;
     } 
 
@@ -81,6 +85,7 @@ export class Loginpage {
       const selectedRole = String(this.user.role || '').toLowerCase();
       if (actualRole && selectedRole && actualRole !== selectedRole) {
         this.errorMessage = `Account role is ${actualRole.replace('_', ' ')}. Please select the correct role.`;
+        this.isLoggingIn = false;
         this.cdr.detectChanges();
         return;
       }
@@ -101,16 +106,28 @@ localStorage.setItem('role', res.role);
       this.auth.setRole(res.role || this.user.role);
       // navigate
       if (res.role === 'admin' || res.role === 'college_admin') {
+        this.isLoggingIn = false;
         this.router.navigate(['/admin-dashboard']);
       } else if (res.role === 'super_admin') {
+        this.isLoggingIn = false;
         this.router.navigate(['/super-admin-dashboard']);
       } else {
-        this.studentDashboardService.invalidateDashboardCache();
-        this.studentDashboardService.prefetchDashboard();
-        this.router.navigate(['/student-dashboard']);
+        this.studentDashboardService.resetDashboardState();
+        this.studentDashboardService.refreshDashboardSnapshot().subscribe({
+          next: () => {
+            this.isLoggingIn = false;
+            this.router.navigate(['/student-dashboard']);
+          },
+          error: (dashboardError) => {
+            this.isLoggingIn = false;
+            this.errorMessage = dashboardError?.error?.message || 'Student dashboard data load nahi hua. Please try again.';
+            this.cdr.detectChanges();
+          }
+        });
       }
     },
     error: (err) => {
+      this.isLoggingIn = false;
       console.log('Login Failed', err);
       if (err?.status === 403 && err?.error?.approvalStatus) {
         const status = err.error.approvalStatus;

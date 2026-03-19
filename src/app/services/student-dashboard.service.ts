@@ -69,6 +69,9 @@ export interface StudentNotificationItem {
   title: string;
   message: string;
   tone: 'info' | 'success' | 'warning';
+  createdAt: string;
+  icon: string;
+  category: 'overview' | 'registration' | 'approval' | 'event';
 }
 
 export interface StudentDashboardSnapshot {
@@ -83,12 +86,16 @@ export interface StudentDashboardSnapshot {
   notifications: StudentNotificationItem[];
 }
 
+type StudentNotificationTone = StudentNotificationItem['tone'];
+type StudentNotificationCategory = StudentNotificationItem['category'];
+
 @Injectable({
   providedIn: 'root'
 })
 export class StudentDashboardService {
   private readonly apiUrl = '/api';
   private readonly snapshotStorageKey = 'studentDashboardSnapshot';
+  private readonly currentUserStorageKey = 'currentUser';
   private snapshotRequest$?: Observable<StudentDashboardSnapshot>;
   private profileRequest$?: Observable<StudentProfile>;
   private eventsRequest$?: Observable<StudentEventCard[]>;
@@ -102,6 +109,7 @@ export class StudentDashboardService {
     approvedEntries: 0
   };
   private cachedNotifications: StudentNotificationItem[] = [];
+  private cachedSnapshot: StudentDashboardSnapshot | null = null;
 
   constructor(
     private http: HttpClient,
@@ -178,6 +186,26 @@ export class StudentDashboardService {
     this.profileRequest$ = undefined;
   }
 
+  resetDashboardState(): void {
+    this.invalidateDashboardCache();
+    this.cachedProfile = null;
+    this.cachedEvents = [];
+    this.cachedRegistrations = [];
+    this.cachedStats = {
+      upcomingEvents: 0,
+      myRegistrations: 0,
+      approvedEntries: 0
+    };
+    this.cachedNotifications = [];
+    this.cachedSnapshot = null;
+    localStorage.removeItem(this.snapshotStorageKey);
+  }
+
+  refreshDashboardSnapshot(): Observable<StudentDashboardSnapshot> {
+    this.invalidateDashboardCache();
+    return this.getDashboardSnapshot();
+  }
+
   getCachedProfile(): StudentProfile | null {
     return this.cachedProfile;
   }
@@ -198,6 +226,10 @@ export class StudentDashboardService {
     return this.cachedNotifications;
   }
 
+  getCachedSnapshot(): StudentDashboardSnapshot | null {
+    return this.cachedSnapshot;
+  }
+
   prefetchDashboard(): void {
     this.getDashboardSnapshot().subscribe({
       error: () => undefined
@@ -214,7 +246,130 @@ export class StudentDashboardService {
     return status.charAt(0) + status.slice(1).toLowerCase();
   }
 
+  applyOptimisticRegistration(event: StudentEventCard, profile: StudentProfile | null): void {
+    const existingSnapshot = this.cachedSnapshot;
+    if (!existingSnapshot) {
+      return;
+    }
+
+    const nowIso = new Date().toISOString();
+    const eventLabel = event.title;
+    const optimisticRegistration: StudentRegistrationRecord = {
+      id: `optimistic-${event.id}`,
+      eventId: event.id,
+      eventName: event.title,
+      studentId: profile?.id || '',
+      studentName: profile?.name || 'Student',
+      email: profile?.email || '',
+      college: profile?.college || '',
+      status: 'PENDING',
+      rejectionReason: '',
+      approvedAt: null,
+      rejectedAt: null,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      event: {
+        id: event.id,
+        name: event.title,
+        dateTime: event.dateTime,
+        location: event.location,
+        organizer: event.organizer,
+        contact: event.contact,
+        description: event.description,
+        category: event.category,
+        posterDataUrl: event.imageUrl,
+        status: event.status,
+        registrations: event.registrations + 1,
+        maxAttendees: event.maxAttendees,
+        dateLabel: event.dateLabel
+      }
+    };
+
+    const nextEvents: StudentEventCard[] = existingSnapshot.events.map((item) => {
+      if (item.id !== event.id) {
+        return item;
+      }
+
+      const nextRegistrations = item.registrations + 1;
+      const nextStatus: StudentEventCard['status'] = 'Registered';
+      return {
+        ...item,
+        registrations: nextRegistrations,
+        status: nextStatus
+      };
+    });
+
+    const nextRegistrations = [optimisticRegistration, ...existingSnapshot.registrations.filter((item) => item.eventId !== event.id)];
+
+    this.setSnapshotCache({
+      ...existingSnapshot,
+      events: nextEvents,
+      registrations: nextRegistrations,
+      stats: {
+        upcomingEvents: nextEvents.filter((item) => item.status !== 'Closed').length,
+        myRegistrations: nextRegistrations.length,
+        approvedEntries: nextRegistrations.filter((item) => item.status === 'APPROVED').length
+      },
+      notifications: [
+        {
+          id: `optimistic-registration-${event.id}`,
+          title: 'Registration received',
+          message: `Your request for ${eventLabel} has been submitted and is now waiting for admin approval.`,
+          tone: 'info' as StudentNotificationTone,
+          createdAt: nowIso,
+          icon: 'hourglass_top',
+          category: 'registration' as StudentNotificationCategory
+        },
+        ...existingSnapshot.notifications.filter((item) => item.id !== `optimistic-registration-${event.id}`)
+      ].slice(0, 12)
+    });
+  }
+
+  applyOptimisticCancellation(registration: StudentRegistrationRecord): void {
+    const existingSnapshot = this.cachedSnapshot;
+    if (!existingSnapshot) {
+      return;
+    }
+
+    const nextRegistrations = existingSnapshot.registrations.filter((item) => item.eventId !== registration.eventId);
+    const nextEvents: StudentEventCard[] = existingSnapshot.events.map((item) => {
+      if (item.id !== registration.eventId) {
+        return item;
+      }
+
+      return {
+        ...item,
+        registrations: Math.max(0, item.registrations - 1),
+        status: (item.status === 'Registered' ? 'Open' : item.status) as StudentEventCard['status']
+      };
+    });
+
+    this.setSnapshotCache({
+      ...existingSnapshot,
+      events: nextEvents,
+      registrations: nextRegistrations,
+      stats: {
+        upcomingEvents: nextEvents.filter((item) => item.status !== 'Closed').length,
+        myRegistrations: nextRegistrations.length,
+        approvedEntries: nextRegistrations.filter((item) => item.status === 'APPROVED').length
+      },
+      notifications: [
+        {
+          id: `optimistic-cancel-${registration.eventId}`,
+          title: 'Registration cancelled',
+          message: `You cancelled ${registration.eventName}. You can register again if seats are still open.`,
+          tone: 'warning' as StudentNotificationTone,
+          createdAt: new Date().toISOString(),
+          icon: 'event_busy',
+          category: 'registration' as StudentNotificationCategory
+        },
+        ...existingSnapshot.notifications.filter((item) => item.id !== `optimistic-cancel-${registration.eventId}`)
+      ].slice(0, 12)
+    });
+  }
+
   private setSnapshotCache(snapshot: StudentDashboardSnapshot): void {
+    this.cachedSnapshot = snapshot;
     this.cachedProfile = snapshot.profile;
     this.cachedEvents = snapshot.events || [];
     this.cachedRegistrations = snapshot.registrations || [];
@@ -231,7 +386,8 @@ export class StudentDashboardService {
 
     try {
       const snapshot = JSON.parse(stored) as StudentDashboardSnapshot;
-      if (!snapshot) {
+      if (!snapshot || !this.isSnapshotForCurrentUser(snapshot)) {
+        localStorage.removeItem(this.snapshotStorageKey);
         return;
       }
 
@@ -240,8 +396,34 @@ export class StudentDashboardService {
       this.cachedRegistrations = Array.isArray(snapshot.registrations) ? snapshot.registrations : [];
       this.cachedStats = snapshot.stats || this.cachedStats;
       this.cachedNotifications = Array.isArray(snapshot.notifications) ? snapshot.notifications : [];
+      this.cachedSnapshot = {
+        profile: this.cachedProfile as StudentProfile,
+        events: this.cachedEvents,
+        registrations: this.cachedRegistrations,
+        stats: this.cachedStats,
+        notifications: this.cachedNotifications
+      };
     } catch {
       localStorage.removeItem(this.snapshotStorageKey);
+    }
+  }
+
+  private isSnapshotForCurrentUser(snapshot: StudentDashboardSnapshot): boolean {
+    const currentUserRaw = localStorage.getItem(this.currentUserStorageKey);
+    if (!currentUserRaw) {
+      return false;
+    }
+
+    try {
+      const currentUser = JSON.parse(currentUserRaw) as { userId?: string; email?: string };
+      const snapshotUserId = snapshot.profile?.userId || '';
+      const snapshotEmail = snapshot.profile?.email || '';
+      return !!currentUser && (
+        (!!currentUser.userId && currentUser.userId === snapshotUserId) ||
+        (!!currentUser.email && currentUser.email === snapshotEmail)
+      );
+    } catch {
+      return false;
     }
   }
 
@@ -269,27 +451,64 @@ export class StudentDashboardService {
           events,
           registrations,
           stats,
-          notifications: this.buildNotifications(stats)
+          notifications: this.buildNotifications(profile, registrations, events, stats)
         };
       })
     );
   }
 
-  private buildNotifications(stats: StudentDashboardSnapshot['stats']): StudentNotificationItem[] {
-    return [
+  private buildNotifications(
+    profile: StudentProfile,
+    registrations: StudentRegistrationRecord[],
+    events: StudentEventCard[],
+    stats: StudentDashboardSnapshot['stats']
+  ): StudentNotificationItem[] {
+    const base: StudentNotificationItem[] = [
       {
         id: 'registrations-count',
-        title: 'Registration overview',
-        message: `You have ${stats.myRegistrations} registrations and ${stats.approvedEntries} approved entries.`,
-        tone: stats.approvedEntries > 0 ? 'success' : 'info'
-      },
-      {
-        id: 'upcoming-events',
-        title: 'Upcoming events',
-        message: `${stats.upcomingEvents} live event opportunities are currently available for you.`,
-        tone: stats.upcomingEvents > 0 ? 'info' : 'warning'
+        title: 'Dashboard overview',
+        message: `You have ${stats.myRegistrations} registrations and ${stats.approvedEntries} approved entries right now.`,
+        tone: stats.approvedEntries > 0 ? 'success' : 'info',
+        createdAt: new Date().toISOString(),
+        icon: 'insights',
+        category: 'overview'
       }
     ];
+
+    const recentRegistrations: StudentNotificationItem[] = registrations.slice(0, 6).map((registration) => ({
+      id: `registration-${registration.id}`,
+      title: registration.status === 'APPROVED'
+        ? 'Registration approved'
+        : registration.status === 'REJECTED'
+          ? 'Registration update'
+          : 'Registration received',
+      message: registration.status === 'APPROVED'
+        ? `${registration.eventName} has been approved for you.`
+        : registration.status === 'REJECTED'
+          ? `${registration.eventName} was declined${registration.rejectionReason ? `: ${registration.rejectionReason}` : '.'}`
+          : `${registration.eventName} is waiting for admin approval.`,
+      tone: (registration.status === 'APPROVED' ? 'success' : registration.status === 'REJECTED' ? 'warning' : 'info') as StudentNotificationTone,
+      createdAt: registration.approvedAt || registration.rejectedAt || registration.updatedAt || registration.createdAt,
+      icon: registration.status === 'APPROVED' ? 'verified' : registration.status === 'REJECTED' ? 'report_problem' : 'hourglass_top',
+      category: (registration.status === 'APPROVED' || registration.status === 'REJECTED' ? 'approval' : 'registration') as StudentNotificationCategory
+    }));
+
+    const collegeEvents: StudentNotificationItem[] = events
+      .filter((event) => !profile.college || event.collegeName === profile.college)
+      .slice(0, 4)
+      .map((event) => ({
+        id: `event-${event.id}`,
+        title: profile.college ? 'New event from your college' : 'Live campus event',
+        message: `${event.title} is live now${event.location ? ` at ${event.location}` : ''}.`,
+        tone: 'info' as StudentNotificationTone,
+        createdAt: event.dateTime,
+        icon: 'campaign',
+        category: 'event' as StudentNotificationCategory
+      }));
+
+    return [...base, ...recentRegistrations, ...collegeEvents]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 12);
   }
 
   private mapEvent(event: BackendEvent): StudentEventCard {

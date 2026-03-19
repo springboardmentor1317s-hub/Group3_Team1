@@ -19,6 +19,7 @@ interface OrganizerEvent {
   status: 'Active' | 'Draft' | 'Past';
   registrations: number;
   participants: number;
+  collegeName?: string;
   posterDataUrl?: string | null;
 }
 
@@ -436,6 +437,7 @@ export class AdminDashboard implements OnInit {
       description: this.createForm.description.trim(),
       teamSize: this.createForm.teamSize ?? null,
       posterDataUrl: this.createForm.posterDataUrl,
+      collegeName: JSON.parse(localStorage.getItem('currentUser') || '{}')?.college || '',
       category,
       status: this.isPastEventDate(dateTime) ? 'Past' : 'Active',
       registrations: 0,

@@ -41,6 +41,10 @@ export class StudentProfilePageComponent implements OnInit {
     return this.registrations.filter((item) => item.status === 'PENDING').length;
   }
 
+  get studentName(): string {
+    return this.profile?.name || JSON.parse(localStorage.getItem('currentUser') || '{}')?.name || 'Student';
+  }
+
   loadProfile(): void {
     this.errorMessage = '';
 
@@ -96,7 +100,7 @@ export class StudentProfilePageComponent implements OnInit {
       this.router.navigate(['/new-student-dashboard'], { fragment: 'feedback-section' });
       return;
     }
-    this.router.navigate(['/new-student-dashboard'], { fragment: 'registrations-section' });
+    this.router.navigate(['/student-registrations']);
   }
 
   openNotifications(): void {

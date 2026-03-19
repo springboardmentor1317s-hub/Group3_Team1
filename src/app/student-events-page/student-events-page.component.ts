@@ -20,12 +20,15 @@ export class StudentEventsPageComponent implements OnInit {
   events: StudentEventCard[] = [];
   filteredEvents: StudentEventCard[] = [];
   categories: string[] = ['All'];
+  colleges: string[] = ['All'];
   searchQuery = '';
   selectedCategory = 'All';
+  selectedCollege = 'All';
   selectedDate = '';
   loading = true;
   actionEventId = '';
   errorMessage = '';
+  expandedEventIds = new Set<string>();
   private focusEventId = '';
 
   constructor(
@@ -75,12 +78,22 @@ export class StudentEventsPageComponent implements OnInit {
       const matchesQuery = !query
         || event.title.toLowerCase().includes(query)
         || event.description.toLowerCase().includes(query)
-        || event.location.toLowerCase().includes(query);
+        || event.location.toLowerCase().includes(query)
+        || (event.collegeName || '').toLowerCase().includes(query);
       const matchesCategory = this.selectedCategory === 'All' || event.category === this.selectedCategory;
+      const matchesCollege = this.selectedCollege === 'All' || event.collegeName === this.selectedCollege;
       const matchesDate = !this.selectedDate || event.dateTime.slice(0, 10) === this.selectedDate;
 
-      return matchesQuery && matchesCategory && matchesDate;
+      return matchesQuery && matchesCategory && matchesCollege && matchesDate;
     });
+  }
+
+  clearFilters(): void {
+    this.searchQuery = '';
+    this.selectedCategory = 'All';
+    this.selectedCollege = 'All';
+    this.selectedDate = '';
+    this.applyFilters();
   }
 
   registerForEvent(event: StudentEventCard): void {
@@ -108,7 +121,7 @@ export class StudentEventsPageComponent implements OnInit {
       return;
     }
     if (path === 'registrations') {
-      this.router.navigate(['/new-student-dashboard'], { fragment: 'registrations-section' });
+      this.router.navigate(['/student-registrations']);
       return;
     }
     if (path === 'feedback') {
@@ -131,11 +144,11 @@ export class StudentEventsPageComponent implements OnInit {
   }
 
   getRegisterLabel(event: StudentEventCard): string {
-    if (this.actionEventId === event.id) {
-      return 'Please wait...';
-    }
     if (event.status === 'Registered') {
       return 'Registered';
+    }
+    if (this.actionEventId === event.id) {
+      return 'Joining...';
     }
     if (event.status === 'Full') {
       return 'Full';
@@ -144,6 +157,19 @@ export class StudentEventsPageComponent implements OnInit {
       return 'Closed';
     }
     return 'Register Now';
+  }
+
+  toggleEventDescription(eventId: string): void {
+    if (this.expandedEventIds.has(eventId)) {
+      this.expandedEventIds.delete(eventId);
+      return;
+    }
+
+    this.expandedEventIds.add(eventId);
+  }
+
+  isEventDescriptionExpanded(eventId: string): boolean {
+    return this.expandedEventIds.has(eventId);
   }
 
   trackById(_: number, item: StudentEventCard): string {
@@ -171,6 +197,7 @@ export class StudentEventsPageComponent implements OnInit {
   private setEvents(events: StudentEventCard[]): void {
     this.events = [...events].sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
     this.categories = ['All', ...Array.from(new Set(this.events.map((event) => event.category).filter(Boolean)))];
+    this.colleges = ['All', ...Array.from(new Set(this.events.map((event) => event.collegeName).filter(Boolean)))];
     this.applyFilters();
   }
 }

@@ -48,6 +48,12 @@ export const routes: Routes = [
   },
 
   {
+    path: 'student-registrations',
+    loadComponent: () => import('./student-registrations-page/student-registrations-page.component').then(m => m.StudentRegistrationsPageComponent),
+    canActivate: [roleGuard('student')]
+  },
+
+  {
     path: 'student-profile',
     loadComponent: () => import('./student-profile-page/student-profile-page.component').then(m => m.StudentProfilePageComponent),
     canActivate: [roleGuard('student')]
