@@ -110,7 +110,7 @@
   padding: 16px 26px;
   gap: 20px;
   flex-wrap: nowrap;
-  min-height: 72px;
+  min-height: 90px;
   width: calc(100% + 56px);
   margin-left: -28px;
   margin-right: -28px;
@@ -366,7 +366,7 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  height: 400px;
+  height: 500px;
   box-shadow: 0 14px 26px rgba(92, 76, 150, 0.18);
   backdrop-filter: blur(12px);
 }
@@ -642,29 +642,80 @@
   color: var(--muted);
 }
 
-.table {
+.table-card .table {
   display: grid;
-  gap: 12px;
-  max-height: 260px;
-  overflow: auto;
-  padding-right: 6px;
+  gap: 16px;
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 8px;
   width: 100%;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) rgba(125, 107, 255, 0.2);
+}
+
+.table-card .table:hover {
+  scrollbar-color: var(--primary) rgba(125, 107, 255, 0.4);
+}
+
+.table-card .table::-webkit-scrollbar {
+  width: 6px;
+}
+
+.table-card .table::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.table-card .table::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.table-card .table::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.dark .table-card .table::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .table-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.8fr);
-  gap: 10px;
+  grid-template-columns: 3fr 1.5fr 1.2fr 1fr 140px;
+  gap: 24px;
   align-items: center;
-  font-size: 1.1rem;
-  color: var(--muted);
+  padding: 24px 20px;
+  font-size: 1.15rem;
+  color: var(--text);
+  border-bottom: 1px solid rgba(120, 102, 170, 0.15);
+  transition: background 0.2s ease;
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+.table-row:hover {
+  background: rgba(125, 107, 255, 0.08);
+  border-radius: 12px;
 }
 
 .table-row > * {
   min-width: 0;
 }
 
-.table-row span {
+.table-row.head span {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  font-size: inherit;
+}
+
+.table-row:not(.head) span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -680,24 +731,62 @@
 }
 
 .table-row.head {
-  font-weight: 600;
-  color: var(--text);
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: linear-gradient(135deg, rgba(125,107,255,0.22), rgba(99,210,194,0.18));
+  padding: 24px 28px;
+  font-weight: 800;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  white-space: normal;
+  line-height: 1.3;
 }
 
 .row-actions {
   display: flex;
-  gap: 8px;
+  gap: 12px;
+  justify-content: flex-end;
 }
 
 .pill-btn {
   border: none;
-  background: linear-gradient(135deg, #7d6bff, #5c4dd8);
-  color: #fff;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 1.1rem;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
   cursor: pointer;
-  width: 100px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(125, 107, 255, 0.3);
+}
+
+.pill-btn.ghost {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--primary);
+  border: 1px solid rgba(125, 107, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(125, 107, 255, 0.15);
+}
+
+.pill-btn.ghost:hover {
+  background: rgba(125, 107, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.pill-btn.pending {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #92400e;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+.pill-btn.pending:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(251, 191, 36, 0.4);
 }
 
 .pill-btn.ghost {
@@ -764,18 +853,19 @@
 
 .hero-card {
   display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
+  grid-template-columns: 1fr 1fr;
   align-items: center;
-  width: 260px;
-  height: 300px;
-  margin-left: 400px;
-  padding-bottom: 24px;
+  width: 100%;
+  height: 280px;
+  padding: 28px;
+  padding-bottom: 32px;
 }
 
 .hero-stats {
   display: grid;
   gap: 12px;
   width: 240px;
+  justify-content: center;
 }
 
 .hero-stats h4 {
@@ -787,18 +877,92 @@
 .hero-stats p {
   color: var(--muted);
   font-size: 1rem;
+  margin-top: 0px;
 }
 
 .registrations-card {
   padding-bottom: 24px;
 }
 
-.reg-list {
+.registrations-card .reg-list {
+  max-height: 420px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 8px;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) rgba(125, 107, 255, 0.2);
+}
+
+.registrations-card .reg-list:hover {
+  scrollbar-color: var(--primary) rgba(125, 107, 255, 0.4);
+}
+
+.registrations-card .reg-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.registrations-card .reg-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.registrations-card .reg-list::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.registrations-card .reg-list::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.dark .registrations-card .reg-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.reg-group {
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 16px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(125, 107, 255, 0.2);
+  overflow: hidden;
+}
+
+.group-header {
+  background: linear-gradient(135deg, #7d6bff, #5c4dd8);
+  color: white;
+  padding: 12px 16px;
+  font-weight: 600;
+}
+
+.reg-list-group {
   display: grid;
-  gap: 14px;
-  max-height: 260px;
+  gap: 12px;
+  padding: 16px;
+  max-height: 280px;
   overflow: auto;
-  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary) transparent;
+}
+
+.reg-list-group::-webkit-scrollbar {
+  width: 6px;
+}
+
+.reg-list-group::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.reg-list-group::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 3px;
+}
+
+.reg-item h5 {
+  font-size: 0.9rem;
+  margin-bottom: 2px;
 }
 
 .reg-item {
@@ -1807,4 +1971,18 @@
   .form-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.status-approved {
+  background: #4ade80;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-left: 0.5rem;
+}
+
+[class*="dark"] .status-approved {
+  background: #22c55e;
 }
