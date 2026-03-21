@@ -1187,6 +1187,7 @@
   background-repeat: no-repeat, no-repeat;
   overflow: hidden;
   border-bottom: 1px solid var(--border);
+  
 }
 
 .modal__close {
@@ -1198,7 +1199,7 @@
   border-radius: 999px;
   border: 0;
   background: rgba(255, 255, 255, 0.92);
-  color: #1f1b35;
+  color: #000000;
   font-weight: 900;
   cursor: pointer;
   display: inline-flex;
@@ -1208,7 +1209,7 @@
 
 .create-modal .modal__heroText h2 {
   margin: 0;
-  color: var(--text);
+  color: white;
   font-size: 40px;
   letter-spacing: -0.02em;
   text-shadow: none;
@@ -1216,7 +1217,7 @@
 
 .create-modal .modal__heroText p {
   margin: 6px 0 0;
-  color: var(--muted);
+  color: white;
 }
 
 .approve-modal .modal__hero,
@@ -1232,11 +1233,15 @@
 .reject-modal .modal__heroText h2 {
   font-size: 34px;
   letter-spacing: -0.01em;
+  color: white;
+  margin-left: 10px;
 }
 
 .approve-modal .modal__heroText p,
 .reject-modal .modal__heroText p {
   font-size: 0.98rem;
+  color: white;
+  margin-left: 10px;
 }
 
 .approve-modal,
