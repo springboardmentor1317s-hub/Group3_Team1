@@ -8,13 +8,15 @@ const eventSchema = new mongoose.Schema({
   contact: { type: String, default: "", trim: true },
   description: { type: String, default: "", trim: true },
   category: { type: String, required: true, trim: true },
+  endDate: { type: String, default: "", trim: true },
+  teamSize: { type: Number, default: null },
   posterDataUrl: { type: String, default: null },
   status: { type: String, enum: ["Active", "Draft", "Past"], default: "Active" },
   registrations: { type: Number, default: 0 },
   participants: { type: Number, default: 0 },
-  createdAt: { type: Date, default: Date.now },
+  collegeName: { type: String, default: "", trim: true },
+  maxAttendees: { type: Number, default: 100 },
   attendeeIds: [{ type: String }],
-  // collegeName: { type: String, required: true },
   createdAt: { type: Date, default: Date.now }
 });
 

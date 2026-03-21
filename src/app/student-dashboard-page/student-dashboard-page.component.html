@@ -1,0 +1,281 @@
+<div class="student-shell">
+  <header class="luxury-header">
+    <div class="header-inner">
+      <button class="brand-block" type="button" (click)="navigateTab('dashboard')">
+        <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub">
+        <div class="brand-copy">
+          <span class="brand-name">Campus Event Hub</span>
+          <span class="eyebrow">Student Lounge</span>
+        </div>
+      </button>
+
+      <nav class="header-nav">
+        <button type="button" class="nav-link active" (click)="navigateTab('dashboard')">Dashboard</button>
+        <button type="button" class="nav-link" (click)="navigateTab('events')">Events</button>
+        <button type="button" class="nav-link" (click)="navigateTab('registrations')">My Registrations</button>
+        <button type="button" class="nav-link" (click)="navigateTab('feedback')">Feedback</button>
+      </nav>
+
+      <div class="header-actions">
+        <button type="button" class="profile-chip" (click)="openProfile()">
+          <span class="material-icons">account_circle</span>
+          <span class="profile-chip-name">{{ studentName }}</span>
+        </button>
+        <div class="notification-wrapper" (click)="$event.stopPropagation()">
+        <button type="button" class="notification-btn" (click)="openNotifications($event)" aria-label="Notifications">
+          <span class="material-icons">notifications</span>
+          <span class="notification-badge">{{ notifications.length }}</span>
+        </button>
+        <div class="notification-dropdown" *ngIf="notificationsDropdownOpen">
+          <div class="notification-dropdown-head">
+            <div>
+              <p>Notifications</p>
+              <h3>Campus pulse</h3>
+            </div>
+            <span class="notification-count">{{ notifications.length }}</span>
+          </div>
+
+          <div *ngIf="notificationsLoading" class="notification-dropdown-state">Loading notifications...</div>
+
+          <div class="notification-dropdown-list" *ngIf="!notificationsLoading && notifications.length > 0">
+            <article class="notification-dropdown-card featured" *ngIf="featuredNotification as featured">
+              <span class="notification-icon material-icons">{{ featured.icon }}</span>
+              <div class="notification-copy">
+                <div class="notification-chip-row">
+                  <span class="notification-category">{{ featured.category }}</span>
+                  <span class="notification-time">{{ formatNotificationTime(featured.createdAt) }}</span>
+                </div>
+                <h4>{{ featured.title }}</h4>
+                <p>{{ featured.message }}</p>
+              </div>
+            </article>
+
+            <article class="notification-dropdown-card" *ngFor="let item of remainingNotifications; trackBy: trackNotification">
+              <span class="notification-tone" [attr.data-tone]="item.tone"></span>
+              <span class="notification-icon material-icons">{{ item.icon }}</span>
+              <div class="notification-copy">
+                <div class="notification-chip-row">
+                  <span class="notification-category">{{ item.category }}</span>
+                  <span class="notification-time">{{ formatNotificationTime(item.createdAt) }}</span>
+                </div>
+                <h4>{{ item.title }}</h4>
+                <p>{{ item.message }}</p>
+              </div>
+            </article>
+          </div>
+
+          <div class="notification-dropdown-state" *ngIf="!notificationsLoading && notifications.length === 0">
+            No notifications right now.
+          </div>
+        </div>
+        </div>
+        <button type="button" class="logout-btn" (click)="logout()">
+          <span class="material-icons">logout</span>
+          <span>Logout</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="dashboard-main">
+    <section class="hero-panel">
+      <div class="hero-orb hero-orb-one"></div>
+      <div class="hero-orb hero-orb-two"></div>
+      <div class="hero-copy">
+        <span class="hero-kicker">Smart dashboard for your live campus journey</span>
+        <h1>Welcome back, <span class="hero-name">{{ studentName }}</span></h1>
+        <p>
+          Track premium campus experiences, manage your real-time registrations,
+          and discover upcoming events from your college network in one place.
+        </p>
+
+        <div class="hero-actions">
+          <button type="button" class="primary-hero-btn" (click)="viewAllEvents()">
+            <span class="material-icons">travel_explore</span>
+            Explore All Events
+          </button>
+          <button type="button" class="secondary-hero-btn" (click)="openProfile()">
+            <span class="material-icons">badge</span>
+            View Profile
+          </button>
+        </div>
+
+        <div class="stat-grid">
+          <article class="stat-card" *ngFor="let stat of stats">
+            <div class="stat-icon" [attr.data-accent]="stat.accent">
+              <span class="material-icons">{{ stat.icon }}</span>
+            </div>
+            <div>
+              <div class="stat-value">{{ stat.count }}</div>
+              <div class="stat-label">{{ stat.title }}</div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <p *ngIf="errorMessage" class="page-error">{{ errorMessage }}</p>
+
+    <section class="panel events-panel">
+      <div class="panel-head">
+        <div class="signature-heading">
+          <h2>Active Events</h2>
+        </div>
+        <button type="button" class="view-all-btn" (click)="viewAllEvents()">View All</button>
+      </div>
+
+      <div class="filter-bar">
+        <label class="filter-field">
+          <span>Search</span>
+          <input type="text" placeholder="Search by title, description, location" [(ngModel)]="searchQuery" (input)="applyFilters()">
+        </label>
+
+        <label class="filter-field">
+          <span>Category</span>
+          <select [(ngModel)]="selectedCategory" (change)="applyFilters()">
+            <option *ngFor="let category of categories" [value]="category">{{ category }}</option>
+          </select>
+        </label>
+
+        <label class="filter-field">
+          <span>College</span>
+          <select [(ngModel)]="selectedCollege" (change)="applyFilters()">
+            <option *ngFor="let college of colleges" [value]="college">{{ college }}</option>
+          </select>
+        </label>
+
+        <label class="filter-field">
+          <span>Date</span>
+          <input type="date" [(ngModel)]="selectedDate" (change)="applyFilters()">
+        </label>
+
+        <div class="filter-actions">
+          <button type="button" class="clear-filter-btn" (click)="clearFilters()">Clear Filters</button>
+        </div>
+      </div>
+
+      <div *ngIf="loading" class="loading-card">Loading events and registrations...</div>
+
+      <div class="event-grid" *ngIf="!loading && displayedEvents.length > 0">
+        <article class="event-card" *ngFor="let event of displayedEvents; trackBy: trackById">
+          <div
+            class="event-poster"
+            [style.background-image]="event.imageUrl ? 'linear-gradient(180deg, rgba(9, 17, 40, 0.1), rgba(9, 17, 40, 0.7)), url(' + event.imageUrl + ')' : null"
+          ></div>
+
+          <div class="event-body">
+            <div class="event-topline">
+              <span class="event-seat-pill">{{ event.registrations }}/{{ event.maxAttendees }} seats</span>
+              <span class="event-contact-pill"><span class="material-icons">call</span>{{ event.contact }}</span>
+            </div>
+
+            <h3>{{ event.title }}</h3>
+            <p class="event-description" [class.expanded]="isEventDescriptionExpanded(event.id)">
+              {{ event.description }}
+            </p>
+            <button
+              *ngIf="event.description.length > 120"
+              type="button"
+              class="description-toggle"
+              (click)="toggleEventDescription(event.id)"
+            >
+              {{ isEventDescriptionExpanded(event.id) ? 'View less' : 'View more' }}
+            </button>
+
+            <div class="event-highlights">
+              <span class="event-badge subtle">{{ event.category }}</span>
+              <span><span class="material-icons">calendar_today</span>{{ event.dateLabel }}</span>
+              <span><span class="material-icons">schedule</span>{{ event.timeLabel }}</span>
+              <span><span class="material-icons">location_on</span>{{ event.location }}</span>
+              <span><span class="material-icons">apartment</span>{{ event.collegeName }}</span>
+              <span><span class="material-icons">shield</span>{{ event.organizer || 'Campus Event Hub' }}</span>
+            </div>
+
+            <div class="event-actions">
+              <button type="button" class="ghost-btn" (click)="viewEvent(event)">View</button>
+              <button
+                type="button"
+                class="solid-btn"
+                [disabled]="event.status !== 'Open' || actionEventId === event.id"
+                (click)="registerForEvent(event)"
+              >
+                {{ getRegisterLabel(event) }}
+              </button>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div *ngIf="!loading && filteredEvents.length === 0" class="empty-state">
+        <span class="material-icons">event_busy</span>
+        <h3>No events found</h3>
+        <p>Try changing your search, category, or date filters.</p>
+      </div>
+    </section>
+
+    <section class="panel registrations-panel">
+      <div class="panel-head">
+        <div>
+          <h2>My Registrations</h2>
+        </div>
+        <button type="button" class="view-all-btn" (click)="openRegistrationsPage()">Open Full Page</button>
+      </div>
+
+      <div *ngIf="registrationsLoading" class="loading-card">Loading your registrations summary...</div>
+
+      <div class="registrations-spotlight" *ngIf="!registrationsLoading">
+        <article class="registration-summary-card">
+          <span class="summary-icon material-icons">inventory_2</span>
+          <div>
+            <strong>{{ statsState.myRegistrations }}</strong>
+            <p>Total registrations synced from your account.</p>
+          </div>
+        </article>
+
+        <article class="registration-summary-card">
+          <span class="summary-icon material-icons">verified</span>
+          <div>
+            <strong>{{ statsState.approvedEntries }}</strong>
+            <p>Approved entries ready for event participation.</p>
+          </div>
+        </article>
+
+        <article class="registration-summary-card">
+          <span class="summary-icon material-icons">hourglass_top</span>
+          <div>
+            <strong>{{ statsState.myRegistrations - statsState.approvedEntries }}</strong>
+            <p>Pending or recently updated requests to review.</p>
+          </div>
+        </article>
+      </div>
+
+      <div class="registrations-cta" *ngIf="!registrationsLoading">
+        <div>
+          <p class="section-kicker">Dedicated Registrations Hub</p>
+          <h3>Use the new page for filters, status tracking, and full registration history.</h3>
+          <p>We moved the detailed list out of the dashboard so this page stays cleaner and faster to scan.</p>
+        </div>
+        <button type="button" class="solid-btn" (click)="openRegistrationsPage()">Go To My Registrations</button>
+      </div>
+    </section>
+
+    <section class="panel feedback-panel" id="feedback-section">
+      <div class="panel-head">
+        <div>
+          <p class="section-kicker">We Value Your Input</p>
+          <h2>Feedback</h2>
+        </div>
+      </div>
+
+      <div class="feedback-card">
+        <div>
+          <h3>Share your event experience</h3>
+          <p>For event suggestions, issue reporting, or platform feedback, contact the campus team directly from your registered email.</p>
+        </div>
+
+        <a class="feedback-link" href="mailto:support@campuseventhub.com?subject=Student%20Feedback">Send Feedback</a>
+      </div>
+    </section>
+  </main>
+  <app-site-footer></app-site-footer>
+</div>

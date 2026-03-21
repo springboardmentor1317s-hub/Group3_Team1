@@ -54,7 +54,9 @@
             <a class="forgot" routerLink="/forgot">Forgot password?</a>
           </div>
 
-          <button type="submit">Login</button>
+          <button type="submit" [disabled]="isLoggingIn">
+            {{ isLoggingIn ? 'Loading dashboard...' : 'Login' }}
+          </button>
           <p class="error" *ngIf="errorMessage" role="alert" aria-live="assertive">
             {{ errorMessage }}
           </p>
@@ -67,4 +69,5 @@
       </div>
     </div>
   </div>
+  <app-site-footer></app-site-footer>
 </div>

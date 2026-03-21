@@ -5,10 +5,11 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '../auth.service';
 import { AdminApprovalService } from '../services/admin-approval.service';
+import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 
 @Component({
   selector: 'app-registerpage',
-  imports: [CommonModule,FormsModule,RouterModule],
+  imports: [CommonModule,FormsModule,RouterModule,SiteFooterComponent],
   templateUrl: './registerpage.html',
   styleUrl: './registerpage.css',
 })

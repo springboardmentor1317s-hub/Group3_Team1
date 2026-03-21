@@ -19,6 +19,9 @@ export interface LoginResponse {
   token: string;
   role: string;
   name: string;
+  userId: string;
+  email: string;
+  college?: string;
 }
 
 export interface SignupRequest {
@@ -61,11 +64,12 @@ export class AuthService {
           if (response.token) {
             localStorage.setItem('token', response.token);
             const user: User = {
-              id: '',
+              id: response.userId || '',
               name: response.name,
-              userId: identifier,
-              email: identifier,
-              role: response.role
+              userId: response.userId || identifier,
+              email: response.email || identifier,
+              role: response.role,
+              college: response.college
             };
             localStorage.setItem('currentUser', JSON.stringify(user));
             this.currentUserSubject.next(user);

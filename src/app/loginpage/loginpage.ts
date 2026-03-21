@@ -4,17 +4,20 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
 import { AuthService } from '../auth.service';
+import { StudentDashboardService } from '../services/student-dashboard.service';
+import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 
 @Component({
   selector: 'app-loginpage',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent],
   templateUrl: './loginpage.html',
   styleUrls: ['./loginpage.css']
 })
 export class Loginpage {
   show = false;
   errorMessage = '';
+  isLoggingIn = false;
   user = {
     email: '',
     password: '',
@@ -25,7 +28,8 @@ export class Loginpage {
     private auth: Auth,
     private router: Router,
     private authService: AuthService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private studentDashboardService: StudentDashboardService
     ) { }
 
   // onRoleChange() {
@@ -56,6 +60,8 @@ export class Loginpage {
   login() {
 
   this.errorMessage = '';
+  this.isLoggingIn = true;
+  this.studentDashboardService.resetDashboardState();
 
      if (this.user.role === 'super_admin') {
           if (this.user.email === 'super@campus.com' && this.user.password === 'super@123') {
@@ -65,6 +71,7 @@ export class Loginpage {
         this.errorMessage = 'Invalid credentials';
         this.cdr.detectChanges();
       }
+      this.isLoggingIn = false;
       return;
     } 
 
@@ -78,6 +85,7 @@ export class Loginpage {
       const selectedRole = String(this.user.role || '').toLowerCase();
       if (actualRole && selectedRole && actualRole !== selectedRole) {
         this.errorMessage = `Account role is ${actualRole.replace('_', ' ')}. Please select the correct role.`;
+        this.isLoggingIn = false;
         this.cdr.detectChanges();
         return;
       }
@@ -98,14 +106,28 @@ localStorage.setItem('role', res.role);
       this.auth.setRole(res.role || this.user.role);
       // navigate
       if (res.role === 'admin' || res.role === 'college_admin') {
+        this.isLoggingIn = false;
         this.router.navigate(['/admin-dashboard']);
       } else if (res.role === 'super_admin') {
+        this.isLoggingIn = false;
         this.router.navigate(['/super-admin-dashboard']);
       } else {
-        this.router.navigate(['/student-dashboard']);
+        this.studentDashboardService.resetDashboardState();
+        this.studentDashboardService.refreshDashboardSnapshot().subscribe({
+          next: () => {
+            this.isLoggingIn = false;
+            this.router.navigate(['/student-dashboard']);
+          },
+          error: (dashboardError) => {
+            this.isLoggingIn = false;
+            this.errorMessage = dashboardError?.error?.message || 'Student dashboard data load nahi hua. Please try again.';
+            this.cdr.detectChanges();
+          }
+        });
       }
     },
     error: (err) => {
+      this.isLoggingIn = false;
       console.log('Login Failed', err);
       if (err?.status === 403 && err?.error?.approvalStatus) {
         const status = err.error.approvalStatus;
