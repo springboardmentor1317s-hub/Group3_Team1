@@ -1,4 +1,5 @@
 import { Component, Injectable } from '@angular/core';
+import { StudentDashboardService } from '../services/student-dashboard.service';
 
 @Component({
   selector: 'app-auth',
@@ -8,6 +9,7 @@ import { Component, Injectable } from '@angular/core';
 })
 @Injectable({ providedIn: 'root' })
 export class Auth {
+  constructor(private studentDashboardService: StudentDashboardService) {}
 
   setRole(role: string) {
     localStorage.setItem('role', role);
@@ -18,6 +20,7 @@ export class Auth {
   }
 
   logout() {
+    this.studentDashboardService.resetDashboardState();
     localStorage.clear();
   }
 }

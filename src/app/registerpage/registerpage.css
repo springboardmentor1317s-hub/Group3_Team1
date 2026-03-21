@@ -22,7 +22,8 @@
 .page {
   min-height: 100vh;
   width: 100vw;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
 
@@ -183,7 +184,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 134px 20px 24px;
+  padding: 134px 20px 48px;
 }
 
 .card {
@@ -389,7 +390,8 @@ button:hover {
 
 /* Premium auth layout overrides */
 .page {
-  height: 100dvh;
+  height: auto;
+  min-height: 100dvh;
   background:
     linear-gradient(135deg, rgba(20, 34, 88, 0.72), rgba(88, 38, 113, 0.34)),
     radial-gradient(circle at 14% 18%, rgba(251, 194, 119, 0.22), transparent 24%),
@@ -399,7 +401,7 @@ button:hover {
 }
 
 .page-content {
-  padding: 118px 26px 20px;
+  padding: 118px 26px 48px;
 }
 
 .auth-shell {
@@ -557,13 +559,12 @@ button:hover {
 
 @media (max-width: 768px) {
   .page {
-    overflow: auto;
     height: auto;
     min-height: 100vh;
   }
 
   .page-content {
-    padding: 144px 16px 20px;
+    padding: 144px 16px 48px;
   }
 
   .card {

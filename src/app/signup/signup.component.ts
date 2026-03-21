@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth.service';
+import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 
 @Component({
   selector: 'app-signup',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SiteFooterComponent],
   templateUrl: './signup.component.html',
   styleUrls: ['./signup.component.scss']
 })
