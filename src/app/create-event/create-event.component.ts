@@ -15,6 +15,7 @@ export interface CreateEventForm {
   contact: string;
   description: string;
   teamSize: number | null;
+  maxAttendees: number | null;
   posterDataUrl: string | null;
   category: string;
 }
@@ -51,17 +52,18 @@ export class CreateEventComponent implements OnInit {
     if (this.visible) {
       this.isEditMode = !!this.editingEvent;
       if (this.editingEvent) {
-          this.createForm = {
+        this.createForm = {
           name: this.editingEvent.name ?? '',
           collegeName: this.editingEvent.collegeName ?? '',
           dateTime: this.editingEvent.dateTime ?? '',
-          endDate: '',
-          registrationDeadline: '',
+          endDate: this.editingEvent.endDate ?? '',
+          registrationDeadline: this.editingEvent.registrationDeadline ?? '',
           location: this.editingEvent.location ?? '',
           organizer: this.editingEvent.organizer ?? '',
           contact: this.editingEvent.contact ?? '',
           description: this.editingEvent.description ?? '',
-          teamSize: null,
+          teamSize: this.editingEvent.teamSize ?? null,
+          maxAttendees: this.editingEvent.maxAttendees ?? null,
           posterDataUrl: this.editingEvent.posterDataUrl ?? null,
           category: this.editingEvent.category ?? ''
         };
@@ -135,6 +137,7 @@ export class CreateEventComponent implements OnInit {
       contact: this.createForm.contact.trim(),
       description: this.createForm.description.trim(),
       teamSize: this.createForm.teamSize ?? null,
+      maxAttendees: this.createForm.maxAttendees ?? null,
       posterDataUrl: this.createForm.posterDataUrl,
       category,
       status: 'Active',
@@ -191,6 +194,7 @@ export class CreateEventComponent implements OnInit {
       contact: '',
       description: '',
       teamSize: null,
+      maxAttendees: null,
       posterDataUrl: null,
       category: ''
     };
