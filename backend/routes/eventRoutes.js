@@ -19,6 +19,9 @@ function toClient(eventDoc, options = {}) {
     id: obj._id.toString(),
     name: obj.name,
     dateTime: obj.dateTime,
+    endDate: obj.endDate || "",
+    registrationDeadline: obj.registrationDeadline || "",
+    teamSize: obj.teamSize ?? null,
     location: obj.location,
     organizer: obj.organizer,
     contact: obj.contact,
@@ -109,7 +112,41 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "Name, date, location, and category are required." });
     }
 
-    const newEvent = new Event(req.body);
+    const teamSizeValue = req.body?.teamSize;
+    const maxAttendeesValue = req.body?.maxAttendees;
+
+    const payload = {
+      name,
+      dateTime,
+      endDate: String(req.body?.endDate ?? "").trim(),
+      registrationDeadline: String(req.body?.registrationDeadline ?? "").trim(),
+      location,
+      organizer: String(req.body?.organizer ?? "").trim(),
+      contact: String(req.body?.contact ?? "").trim(),
+      description: String(req.body?.description ?? "").trim(),
+      category,
+      posterDataUrl: req.body?.posterDataUrl ?? null,
+      status: String(req.body?.status ?? "Active").trim() || "Active",
+      registrations: Number(req.body?.registrations ?? 0) || 0,
+      participants: Number(req.body?.participants ?? 0) || 0,
+      collegeName: String(req.body?.collegeName ?? "").trim(),
+      teamSize: teamSizeValue === "" || teamSizeValue === null || teamSizeValue === undefined
+        ? null
+        : Number(teamSizeValue),
+      maxAttendees: maxAttendeesValue === "" || maxAttendeesValue === null || maxAttendeesValue === undefined
+        ? 100
+        : Number(maxAttendeesValue)
+    };
+
+    if (payload.teamSize !== null && (!Number.isFinite(payload.teamSize) || payload.teamSize < 1)) {
+      return res.status(400).json({ error: "teamSize must be a positive number." });
+    }
+
+    if (!Number.isFinite(payload.maxAttendees) || payload.maxAttendees < 1) {
+      return res.status(400).json({ error: "maxAttendees must be a positive number." });
+    }
+
+    const newEvent = new Event(payload);
     const created = await newEvent.save();
     res.status(201).json(toClient(created));
   } catch (error) {
@@ -168,6 +205,7 @@ async function updateEvent(req, res) {
       "name",
       "dateTime",
       "endDate",
+      "registrationDeadline",
       "location",
       "organizer",
       "contact",
@@ -176,6 +214,7 @@ async function updateEvent(req, res) {
       "posterDataUrl",
       "status",
       "teamSize",
+      "collegeName",
       "maxAttendees"
     ];
 
@@ -193,6 +232,24 @@ async function updateEvent(req, res) {
 
     if (!nextName || !nextDateTime || !nextLocation || !nextCategory) {
       return res.status(400).json({ error: "Name, date, location, and category are required." });
+    }
+
+    if (updates.teamSize !== undefined) {
+      if (updates.teamSize === "" || updates.teamSize === null) {
+        updates.teamSize = null;
+      } else {
+        updates.teamSize = Number(updates.teamSize);
+        if (!Number.isFinite(updates.teamSize) || updates.teamSize < 1) {
+          return res.status(400).json({ error: "teamSize must be a positive number." });
+        }
+      }
+    }
+
+    if (updates.maxAttendees !== undefined) {
+      updates.maxAttendees = Number(updates.maxAttendees);
+      if (!Number.isFinite(updates.maxAttendees) || updates.maxAttendees < 1) {
+        return res.status(400).json({ error: "maxAttendees must be a positive number." });
+      }
     }
 
     const updated = await Event.findByIdAndUpdate(req.params.id, updates, {

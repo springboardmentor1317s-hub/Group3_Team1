@@ -28,7 +28,36 @@
         (input)="applyDashboardSearch()"
       />
       <button class="icon-btn" aria-label="Search" title="Search">&#128269;</button>
-      <button class="icon-btn" aria-label="Notifications" title="Notifications">&#128276;</button>
+      <div class="notification-wrapper" (click)="$event.stopPropagation()">
+        <button class="icon-btn notification-btn" aria-label="Notifications" title="Notifications" (click)="toggleNotifications()">
+          &#128276;
+          <span class="notification-badge" *ngIf="unreadNotificationCount > 0">
+            {{ unreadNotificationCount > 99 ? '99+' : unreadNotificationCount }}
+          </span>
+        </button>
+        <div class="notification-panel" *ngIf="showNotifications">
+          <div class="notification-header">
+            <span>New Registrations</span>
+            <button
+              type="button"
+              class="notification-clear-btn"
+              *ngIf="notifications.length > 0"
+              (click)="clearAllNotifications()"
+            >
+              Clear All
+            </button>
+          </div>
+          <div class="notification-list" *ngIf="notifications.length > 0; else noNotifications">
+            <div class="notification-item" *ngFor="let notification of notifications | slice:0:10">
+              <p>{{ notification.message }}</p>
+              <span>{{ notification.timeLabel }}</span>
+            </div>
+          </div>
+          <ng-template #noNotifications>
+            <div class="notification-empty">No new student registrations.</div>
+          </ng-template>
+        </div>
+      </div>
       <button class="icon-btn" aria-label="Downloads" title="Export" (click)="exportEvents()">&#11015;</button>
       <a class="user-pill user-pill--link" routerLink="/admin-profile">
         <div class="avatar">
@@ -37,37 +66,52 @@
         </div>
         <span>{{ userName }}</span>
       </a>
-      <a class="logout-btn" routerLink="/login">Logout</a>
-      <button class="theme-toggle" (click)="toggleTheme()" [attr.title]="isDarkMode ? 'Light mode' : 'Dark mode'">
-        <span *ngIf="!isDarkMode">☀️</span>
-        <span *ngIf="isDarkMode">🌙</span>
-      </button>
+      <button type="button" class="logout-btn" (click)="logout()">Logout</button>
     </div>
   </header>
 
-  <div class="layout">
-    <aside class="sidebar">
-      <div class="sidebar-head">Menu</div>
-      <ul class="menu">
-        <li [class.active]="activeTab === 'overview'" (click)="setTab('overview')">
+  <div class="layout" [class.sidebar-expanded]="isSidebarVisible">
+    <aside
+      class="sidebar"
+      [class.expanded]="isSidebarVisible"
+      [class.pinned]="isSidebarPinned"
+      (mouseenter)="onSidebarMouseEnter()"
+      (mouseleave)="onSidebarMouseLeave()"
+    >
+      <div class="sidebar-head">
+        <button
+          class="menu-toggle-btn"
+          type="button"
+          (click)="toggleSidebar()"
+          [attr.aria-label]="isSidebarPinned ? 'Collapse menu' : 'Pin menu open'"
+          [class.active]="isSidebarPinned"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <span class="sidebar-head-label">Menu</span>
+      </div>
+      <ul class="menu" *ngIf="isSidebarVisible">
+        <li [class.active]="activeTab === 'overview'" (click)="setTab('overview'); onSidebarItemClick()">
           <span class="menu-icon">&#127968;</span>Dashboard
         </li>
-        <li (click)="openCreateModal()">
+        <li (click)="openCreateModal(); onSidebarItemClick()">
           <span class="menu-icon">&#128197;</span>Create Event
         </li>
-        <li [class.active]="activeTab === 'events'" (click)="setTab('events')">
+        <li [class.active]="activeTab === 'events'" (click)="setTab('events'); onSidebarItemClick()">
           <span class="menu-icon">&#128203;</span>Manage Events
         </li>
-        <li [class.active]="registrationFilter === 'all'" (click)="showAllRegistrations()">
+        <li [class.active]="registrationFilter === 'all'" (click)="showAllRegistrations(); onSidebarItemClick()">
           <span class="menu-icon">&#129534;</span>All Registrations
         </li>
-        <li [class.active]="activeTab === 'analytics'" (click)="setTab('analytics')">
+        <li [class.active]="activeTab === 'analytics'" (click)="setTab('analytics'); onSidebarItemClick()">
           <span class="menu-icon">&#128200;</span>Analytics
         </li>
-        <li [class.active]="registrationFilter === 'approved'" (click)="showApprovedStudents()">
+        <li [class.active]="registrationFilter === 'approved'" (click)="showApprovedStudents(); onSidebarItemClick()">
           <span class="menu-icon">✅</span>Approved Students
         </li>
-        <li (click)="setTab('overview')">
+        <li (click)="setTab('overview'); onSidebarItemClick()">
           <span class="menu-icon">&#128172;</span>Feedback
         </li>
       </ul>
@@ -105,7 +149,7 @@
         </article>
       </section>
 
-      <section class="grid-two" *ngIf="activeTab === 'overview'">
+      <section class="grid-two1" *ngIf="activeTab === 'overview'">
         <article class="card table-card">
           <div class="card-head">
             <h3>Recent Events</h3>
@@ -168,18 +212,18 @@
         </article>
       </section>
 
-      <section class="grid-two bottom" *ngIf="activeTab === 'overview'">
+      <section class="grid-two1 bottom" *ngIf="activeTab === 'overview'">
         <article class="card hero-card">
           <div class="hero-stats">
-            <div>
+            <div class="hero-stat-block">
               <p>Average Participants</p>
               <h4>{{ averageParticipants }}</h4>
             </div>
-            <div>
+            <div class="hero-stat-block">
               <p>Total Registrations</p>
               <h4>{{ totalRegistrations }}</h4>
             </div>
-            <button class="pill-btn" (click)="setTab('registrations')">Manage</button>
+            <button class="pill-btn hero-manage-btn" (click)="setTab('registrations')">Manage</button>
           </div>
         </article>
 
@@ -246,7 +290,7 @@
         </article>
       </section>
 
-      <section class="grid-two" *ngIf="activeTab === 'registrations'">
+      <section class="grid-two1 full-width-view" *ngIf="activeTab === 'registrations'">
         <article class="card registrations-card">
           <div class="card-head">
             <h3>Registrations</h3>
@@ -303,7 +347,7 @@
         </article>
       </section>
 
-      <section class="grid-two" *ngIf="activeTab === 'analytics'">
+      <section class="grid-two1 full-width-view" *ngIf="activeTab === 'analytics'">
         <article class="card table-card">
           <div class="card-head">
             <h3>Analytics Snapshot</h3>
