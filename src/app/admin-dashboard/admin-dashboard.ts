@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { EventService, BackendEvent } from '../services/event.service';
 import { CreateEventComponent } from '../create-event/create-event.component';
 import { catchError, finalize, forkJoin, timeout } from 'rxjs';
+import { Auth } from '../auth/auth';
 
 
 
@@ -16,12 +17,15 @@ interface OrganizerEvent {
   name: string;
   dateTime: string;
   endDate?: string | null;
+  registrationDeadline?: string | null;
   location: string;
   organizer: string;
   contact: string;
   description: string;
   category?: string;
   teamSize?: number | null;
+  maxAttendees?: number;
+  collegeName?: string;
   status: 'Active' | 'Draft' | 'Past';
   registrations: number;
   participants: number;
@@ -45,6 +49,15 @@ interface Registration {
   rejectionReason?: string;
 }
 
+interface AdminNotification {
+  id: string;
+  studentName: string;
+  eventName: string;
+  createdAt: string;
+  message: string;
+  timeLabel: string;
+}
+
 
 
 @Component({
@@ -54,16 +67,24 @@ interface Registration {
   templateUrl: './admin-dashboard.html',
   styleUrls: ['./admin-dashboard.css']
 })
-export class AdminDashboard implements OnInit {
+export class AdminDashboard implements OnInit, OnDestroy {
 
   private readonly API_URL = '/api/events';
   private readonly REGISTRATIONS_API_URL = '/api/registrations';
+  private readonly NOTIFICATION_POLL_INTERVAL_MS = 12000;
+  private notificationPollTimer: ReturnType<typeof setInterval> | null = null;
+  private sidebarHoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
+  private knownRegistrationIds = new Set<string>();
+  private notificationStorageKey = 'admin-dashboard-last-seen-registration-at';
 
   // ✅ Inject ChangeDetectorRef to manually trigger UI update after async data loads
   constructor(
     private readonly http: HttpClient,
     private readonly eventService: EventService,
-    private readonly cdr: ChangeDetectorRef
+    private readonly cdr: ChangeDetectorRef,
+    private readonly elementRef: ElementRef<HTMLElement>,
+    private readonly auth: Auth,
+    private readonly router: Router
   ) {}
 
   openCreateModal(): void {
@@ -78,17 +99,19 @@ export class AdminDashboard implements OnInit {
       name: event.name,
       dateTime: event.dateTime,
       endDate: event.endDate || undefined,
+      registrationDeadline: event.registrationDeadline || undefined,
       location: event.location,
       organizer: event.organizer,
       contact: event.contact,
       description: event.description,
       category: event.category || undefined,
       teamSize: event.teamSize || undefined,
+      maxAttendees: event.maxAttendees || undefined,
       posterDataUrl: event.posterDataUrl || null,
       status: event.status as any,
       registrations: event.registrations,
       participants: event.participants,
-      collegeName: undefined // if needed from elsewhere
+      collegeName: event.collegeName || undefined
     };
     this.createEventVisible = true;
   }
@@ -119,6 +142,8 @@ export class AdminDashboard implements OnInit {
   userName: string = '';
   userAvatarUrl: string | null = null;
   isDarkMode: boolean = false;
+  isSidebarPinned = false;
+  isSidebarHovered = false;
   activeTab: DashboardTab = 'overview';
   showCreateEventModal = false;
   private manageHiddenEventIds = new Set<string>();
@@ -134,6 +159,9 @@ export class AdminDashboard implements OnInit {
   rejectionModalOpen = false;
   approveModalOpen = false;
   rejectModalOpen = false;
+  showNotifications = false;
+  unreadNotificationCount = 0;
+  notifications: AdminNotification[] = [];
   selectedRegistrationForRejection: Registration | null = null;
   selectedRegistration: Registration | null = null;
   rejectionReason: string = '';
@@ -153,6 +181,8 @@ export class AdminDashboard implements OnInit {
     const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
     this.userName = user.name || 'User';
     this.userAvatarUrl = user.profileImageUrl || null;
+    const userId = user.id || user._id || this.userName || 'admin';
+    this.notificationStorageKey = `admin-dashboard-last-seen-registration-at-${userId}`;
 
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark' || (savedTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -178,6 +208,9 @@ export class AdminDashboard implements OnInit {
 
         this.registrations = registrations;
         this.applyRegistrationFilters();
+        this.syncEventRegistrationStats(registrations);
+        this.initializeNotifications(registrations);
+        this.startNotificationPolling();
 
         this.isLoading = false;
 
@@ -194,6 +227,27 @@ export class AdminDashboard implements OnInit {
     });
   }
 
+  ngOnDestroy(): void {
+    if (this.notificationPollTimer !== null) {
+      clearInterval(this.notificationPollTimer);
+      this.notificationPollTimer = null;
+    }
+    if (this.sidebarHoverCloseTimer !== null) {
+      clearTimeout(this.sidebarHoverCloseTimer);
+      this.sidebarHoverCloseTimer = null;
+    }
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event): void {
+    if (!this.showNotifications) return;
+    const target = event.target as Node | null;
+    const wrapper = this.elementRef.nativeElement.querySelector('.notification-wrapper');
+    if (target && wrapper && !wrapper.contains(target)) {
+      this.showNotifications = false;
+    }
+  }
+
   toggleTheme(): void {
     this.isDarkMode = !this.isDarkMode;
     localStorage.setItem('theme', this.isDarkMode ? 'dark' : 'light');
@@ -204,6 +258,61 @@ export class AdminDashboard implements OnInit {
     this.activeTab = tab;
   }
 
+  get isSidebarVisible(): boolean {
+    return this.isSidebarPinned || this.isSidebarHovered;
+  }
+
+  toggleSidebar(): void {
+    this.isSidebarPinned = !this.isSidebarPinned;
+    if (this.isSidebarPinned) {
+      this.isSidebarHovered = true;
+    }
+  }
+
+  onSidebarMouseEnter(): void {
+    if (this.sidebarHoverCloseTimer !== null) {
+      clearTimeout(this.sidebarHoverCloseTimer);
+      this.sidebarHoverCloseTimer = null;
+    }
+    this.isSidebarHovered = true;
+  }
+
+  onSidebarMouseLeave(): void {
+    if (!this.isSidebarPinned) {
+      if (this.sidebarHoverCloseTimer !== null) {
+        clearTimeout(this.sidebarHoverCloseTimer);
+      }
+      this.sidebarHoverCloseTimer = setTimeout(() => {
+        this.isSidebarHovered = false;
+        this.sidebarHoverCloseTimer = null;
+      }, 120);
+    }
+  }
+
+  onSidebarItemClick(): void {
+    if (window.innerWidth <= 1100) {
+      this.isSidebarPinned = false;
+      this.isSidebarHovered = false;
+    }
+  }
+
+  toggleNotifications(): void {
+    this.showNotifications = !this.showNotifications;
+    if (this.showNotifications) {
+      this.markNotificationsAsRead();
+    }
+  }
+
+  clearAllNotifications(): void {
+    this.notifications = [];
+    this.markNotificationsAsRead(this.registrations);
+  }
+
+  logout(): void {
+    this.auth.logout();
+    this.router.navigate(['/login']);
+  }
+
   onManageClick(event: OrganizerEvent, targetTab: DashboardTab): void {
     this.manageHiddenEventIds.add(event.id);
     this.setTab(targetTab);
@@ -211,6 +320,113 @@ export class AdminDashboard implements OnInit {
 
   isManageHidden(event: OrganizerEvent): boolean {
     return this.manageHiddenEventIds.has(event.id);
+  }
+
+  private startNotificationPolling(): void {
+    if (this.notificationPollTimer !== null) {
+      clearInterval(this.notificationPollTimer);
+    }
+    this.notificationPollTimer = setInterval(() => {
+      this.pollLatestRegistrations();
+    }, this.NOTIFICATION_POLL_INTERVAL_MS);
+  }
+
+  private pollLatestRegistrations(): void {
+    this.http.get<Registration[]>(this.REGISTRATIONS_API_URL).subscribe({
+      next: (registrations) => {
+        this.handleRegistrationUpdates(registrations);
+      },
+      error: (err) => {
+        console.error('Notification poll failed', err);
+      }
+    });
+  }
+
+  private initializeNotifications(registrations: Registration[]): void {
+    this.knownRegistrationIds = new Set(registrations.map((reg) => reg.id));
+    const sortedRegistrations = [...registrations].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    // Always keep notification history visible in the panel.
+    this.notifications = sortedRegistrations.slice(0, 25).map((reg) => this.buildNotification(reg));
+
+    const lastSeenAt = localStorage.getItem(this.notificationStorageKey) || '';
+    if (!lastSeenAt) {
+      this.markNotificationsAsRead(registrations);
+      return;
+    }
+
+    const unread = sortedRegistrations
+      .filter((reg) => new Date(reg.createdAt).getTime() > new Date(lastSeenAt).getTime())
+      .map((reg) => this.buildNotification(reg));
+
+    this.unreadNotificationCount = unread.length;
+  }
+
+  private handleRegistrationUpdates(registrations: Registration[]): void {
+    const newRegistrations = registrations
+      .filter((reg) => !this.knownRegistrationIds.has(reg.id))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    if (newRegistrations.length > 0) {
+      const newNotifications = newRegistrations.map((reg) => this.buildNotification(reg));
+      this.notifications = [...newNotifications, ...this.notifications].slice(0, 25);
+      this.unreadNotificationCount += newNotifications.length;
+      const first = newRegistrations[0];
+      this.showSuccessToast(`${first.studentName} registered for ${first.eventName}.`);
+    }
+
+    this.knownRegistrationIds = new Set(registrations.map((reg) => reg.id));
+    this.registrations = registrations;
+    this.applyRegistrationFilters();
+    this.syncEventRegistrationStats(registrations);
+  }
+
+  private buildNotification(registration: Registration): AdminNotification {
+    return {
+      id: registration.id,
+      studentName: registration.studentName,
+      eventName: registration.eventName,
+      createdAt: registration.createdAt,
+      message: `${registration.studentName} registered for ${registration.eventName}`,
+      timeLabel: this.formatNotificationTime(registration.createdAt)
+    };
+  }
+
+  private formatNotificationTime(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString(undefined, {
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  private markNotificationsAsRead(sourceRegs: Registration[] = this.registrations): void {
+    this.unreadNotificationCount = 0;
+    const latest = sourceRegs
+      .map((reg) => reg.createdAt)
+      .filter(Boolean)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+    if (latest) {
+      localStorage.setItem(this.notificationStorageKey, latest);
+    }
+  }
+
+  private syncEventRegistrationStats(registrations: Registration[]): void {
+    this.events = this.events.map((event) => {
+      const eventRegistrations = registrations.filter((reg) => reg.eventId === event.id);
+      const approvedCount = eventRegistrations.filter((reg) => reg.status === 'APPROVED').length;
+      const activeCount = eventRegistrations.filter((reg) => reg.status !== 'REJECTED').length;
+      return {
+        ...event,
+        approvedCount,
+        registrations: activeCount
+      };
+    });
   }
 
 
@@ -379,6 +595,7 @@ export class AdminDashboard implements OnInit {
         if (idx >= 0) {
           this.registrations[idx] = updated;
           this.applyRegistrationFilter();
+          this.syncEventRegistrationStats(this.registrations);
         }
         this.closeApproveModal();
         this.showSuccessToast('Registration approved successfully!');
@@ -406,6 +623,7 @@ export class AdminDashboard implements OnInit {
         if (idx >= 0) {
           this.registrations[idx] = updated;
           this.applyRegistrationFilter();
+          this.syncEventRegistrationStats(this.registrations);
         }
         this.closeRejectModal();
         this.showSuccessToast('Registration rejected successfully!');

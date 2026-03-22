@@ -21,6 +21,9 @@ export class Auth {
 
   logout() {
     this.studentDashboardService.resetDashboardState();
-    localStorage.clear();
+    localStorage.removeItem('token');
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('role');
+    localStorage.removeItem('userName');
   }
 }

@@ -9,6 +9,7 @@ export interface BackendEvent {
   name: string;
   dateTime: string;
   endDate?: string | null;
+  registrationDeadline?: string | null;
   teamSize?: number | null;
   location: string;
   organizer: string;
