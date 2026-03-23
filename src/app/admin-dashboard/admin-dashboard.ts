@@ -1,22 +1,35 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { EventService, BackendEvent } from '../services/event.service';
+import { CreateEventComponent } from '../create-event/create-event.component';
+import { catchError, finalize, forkJoin, timeout } from 'rxjs';
+import { Auth } from '../auth/auth';
+
+
+
 type DashboardTab = 'overview' | 'events' | 'analytics' | 'registrations';
 
 interface OrganizerEvent {
   id: string;
   name: string;
   dateTime: string;
+  endDate?: string | null;
+  registrationDeadline?: string | null;
   location: string;
   organizer: string;
   contact: string;
   description: string;
   category?: string;
+  teamSize?: number | null;
+  maxAttendees?: number;
+  collegeName?: string;
   status: 'Active' | 'Draft' | 'Past';
   registrations: number;
   participants: number;
+  approvedCount: number;
   posterDataUrl?: string | null;
 }
 
@@ -36,34 +49,104 @@ interface Registration {
   rejectionReason?: string;
 }
 
-interface CreateEventForm {
-  name: string;
-  dateTime: string;
-  endDate: string;
-  location: string;
-  organizer: string;
-  contact: string;
-  description: string;
-  teamSize: number | null;
-  posterDataUrl: string | null;
-  category: string;
+interface AdminNotification {
+  id: string;
+  studentName: string;
+  eventName: string;
+  createdAt: string;
+  message: string;
+  timeLabel: string;
 }
+
+
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, RouterLink, FormsModule, CreateEventComponent],
   templateUrl: './admin-dashboard.html',
   styleUrls: ['./admin-dashboard.css']
 })
-export class AdminDashboard implements OnInit {
+export class AdminDashboard implements OnInit, OnDestroy {
 
   private readonly API_URL = '/api/events';
   private readonly REGISTRATIONS_API_URL = '/api/registrations';
-  constructor(private readonly http: HttpClient) {}
+  private readonly NOTIFICATION_POLL_INTERVAL_MS = 12000;
+  private notificationPollTimer: ReturnType<typeof setInterval> | null = null;
+  private sidebarHoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
+  private knownRegistrationIds = new Set<string>();
+  private notificationStorageKey = 'admin-dashboard-last-seen-registration-at';
+
+  // ✅ Inject ChangeDetectorRef to manually trigger UI update after async data loads
+  constructor(
+    private readonly http: HttpClient,
+    private readonly eventService: EventService,
+    private readonly cdr: ChangeDetectorRef,
+    private readonly elementRef: ElementRef<HTMLElement>,
+    private readonly auth: Auth,
+    private readonly router: Router
+  ) {}
+
+  openCreateModal(): void {
+    this.editingEvent = null;
+    this.createEventVisible = true;
+  }
+
+  openEditModal(event: OrganizerEvent): void {
+    // Map OrganizerEvent to BackendEvent for child component
+    this.editingEvent = {
+      id: event.id,
+      name: event.name,
+      dateTime: event.dateTime,
+      endDate: event.endDate || undefined,
+      registrationDeadline: event.registrationDeadline || undefined,
+      location: event.location,
+      organizer: event.organizer,
+      contact: event.contact,
+      description: event.description,
+      category: event.category || undefined,
+      teamSize: event.teamSize || undefined,
+      maxAttendees: event.maxAttendees || undefined,
+      posterDataUrl: event.posterDataUrl || null,
+      status: event.status as any,
+      registrations: event.registrations,
+      participants: event.participants,
+      collegeName: event.collegeName || undefined
+    };
+    this.createEventVisible = true;
+  }
+
+  handleEventSaved(savedEvent: BackendEvent): void {
+    // Refresh events list using service or direct API
+    this.refreshEvents();
+    this.createEventVisible = false;
+    this.showSuccessToast('Event saved successfully!');
+    this.setTab('events');
+  }
+
+  private refreshEvents(): void {
+    this.http.get<OrganizerEvent[]>(this.API_URL).subscribe({
+      next: (data) => {
+        this.events = data;
+        this.refreshEventStatuses();
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error refreshing events', err);
+      }
+    });
+  }
+
+
+
   userName: string = '';
+  userAvatarUrl: string | null = null;
+  isDarkMode: boolean = false;
+  isSidebarPinned = false;
+  isSidebarHovered = false;
   activeTab: DashboardTab = 'overview';
-  createModalOpen = false;
+  showCreateEventModal = false;
+  private manageHiddenEventIds = new Set<string>();
 
   events: OrganizerEvent[] = [];
   registrations: Registration[] = [];
@@ -72,96 +155,285 @@ export class AdminDashboard implements OnInit {
   registrationSearchText: string = '';
   registrationFilter: string = 'all';
   registrationSearchQuery: string = '';
+  dashboardSearchQuery: string = '';
   rejectionModalOpen = false;
   approveModalOpen = false;
   rejectModalOpen = false;
+  showNotifications = false;
+  unreadNotificationCount = 0;
+  notifications: AdminNotification[] = [];
   selectedRegistrationForRejection: Registration | null = null;
   selectedRegistration: Registration | null = null;
   rejectionReason: string = '';
+
+  // Create Event Component visibility
+  createEventVisible = false;
+  editingEvent: BackendEvent | null = null;
+
   showToast = false;
   toastMessage = '';
   toastType: 'success' | 'error' = 'success';
-  createForm: CreateEventForm = this.getEmptyCreateForm();
+
+  // ✅ Loading state so the template can show a spinner instead of 0
+  isLoading = true;
 
   ngOnInit(): void {
     const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
     this.userName = user.name || 'User';
-    this.fetchEvents();
-    this.fetchRegistrations();
+    this.userAvatarUrl = user.profileImageUrl || null;
+    const userId = user.id || user._id || this.userName || 'admin';
+    this.notificationStorageKey = `admin-dashboard-last-seen-registration-at-${userId}`;
+
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark' || (savedTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      this.isDarkMode = true;
+    }
+
+    // ✅ Use forkJoin to fire BOTH requests in parallel and wait for BOTH to complete
+    //    before updating any state. This ensures the stats are never shown as 0.
+    this.isLoading = true;
+    forkJoin({
+      events: this.http.get<OrganizerEvent[]>(this.API_URL),
+      registrations: this.http.get<Registration[]>(this.REGISTRATIONS_API_URL)
+    }).subscribe({
+      next: ({ events, registrations }) => {
+        // Add approvedCount to events
+        const eventsWithApproved = events.map(event => ({
+          ...event,
+          approvedCount: registrations.filter(r => r.eventId === event.id && r.status === 'APPROVED').length
+        }));
+        
+        this.events = eventsWithApproved;
+        this.refreshEventStatuses();
+
+        this.registrations = registrations;
+        this.applyRegistrationFilters();
+        this.syncEventRegistrationStats(registrations);
+        this.initializeNotifications(registrations);
+        this.startNotificationPolling();
+
+        this.isLoading = false;
+
+        // ✅ Tell Angular to re-check this component's bindings right now,
+        //    so totalEvents / activeEvents / totalRegistrations / averageParticipants
+        //    reflect real data on first paint instead of showing 0.
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.error('Error loading dashboard data', err);
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    if (this.notificationPollTimer !== null) {
+      clearInterval(this.notificationPollTimer);
+      this.notificationPollTimer = null;
+    }
+    if (this.sidebarHoverCloseTimer !== null) {
+      clearTimeout(this.sidebarHoverCloseTimer);
+      this.sidebarHoverCloseTimer = null;
+    }
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event): void {
+    if (!this.showNotifications) return;
+    const target = event.target as Node | null;
+    const wrapper = this.elementRef.nativeElement.querySelector('.notification-wrapper');
+    if (target && wrapper && !wrapper.contains(target)) {
+      this.showNotifications = false;
+    }
+  }
+
+  toggleTheme(): void {
+    this.isDarkMode = !this.isDarkMode;
+    localStorage.setItem('theme', this.isDarkMode ? 'dark' : 'light');
+    this.cdr.detectChanges();
   }
 
   setTab(tab: DashboardTab): void {
     this.activeTab = tab;
   }
 
-  openCreateModal(): void {
-    this.createModalOpen = true;
+  get isSidebarVisible(): boolean {
+    return this.isSidebarPinned || this.isSidebarHovered;
   }
 
-  closeCreateModal(): void {
-    this.createModalOpen = false;
-    this.resetCreateForm();
-  }
-
-  onPosterSelected(event: Event): void {
-    const input = event.target as HTMLInputElement | null;
-    const file = input?.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      this.createForm.posterDataUrl = null;
-      alert('Please choose an image file (JPG/PNG).');
-      input.value = '';
-      return;
+  toggleSidebar(): void {
+    this.isSidebarPinned = !this.isSidebarPinned;
+    if (this.isSidebarPinned) {
+      this.isSidebarHovered = true;
     }
+  }
 
-    const maxSizeBytes = 1.5 * 1024 * 1024;
-    if (file.size > maxSizeBytes) {
-      this.createForm.posterDataUrl = null;
-      alert('Please choose an image smaller than ~1.5MB.');
-      input.value = '';
-      return;
+  onSidebarMouseEnter(): void {
+    if (this.sidebarHoverCloseTimer !== null) {
+      clearTimeout(this.sidebarHoverCloseTimer);
+      this.sidebarHoverCloseTimer = null;
     }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      this.createForm.posterDataUrl = typeof reader.result === 'string' ? reader.result : null;
-    };
-    reader.onerror = () => {
-      this.createForm.posterDataUrl = null;
-      alert('Could not read that image file.');
-      input.value = '';
-    };
-    reader.readAsDataURL(file);
+    this.isSidebarHovered = true;
   }
 
-  removePoster(): void {
-    this.createForm.posterDataUrl = null;
-  }
-
-  fetchEvents(): void {
-    this.http.get<OrganizerEvent[]>(this.API_URL).subscribe({
-      next: (data) => {
-        this.events = data;
-        this.refreshEventStatuses();
-      },
-      error: (err) => {
-        console.error('Error fetching events', err);
+  onSidebarMouseLeave(): void {
+    if (!this.isSidebarPinned) {
+      if (this.sidebarHoverCloseTimer !== null) {
+        clearTimeout(this.sidebarHoverCloseTimer);
       }
-    });
+      this.sidebarHoverCloseTimer = setTimeout(() => {
+        this.isSidebarHovered = false;
+        this.sidebarHoverCloseTimer = null;
+      }, 120);
+    }
   }
 
-  fetchRegistrations(): void {
+  onSidebarItemClick(): void {
+    if (window.innerWidth <= 1100) {
+      this.isSidebarPinned = false;
+      this.isSidebarHovered = false;
+    }
+  }
+
+  toggleNotifications(): void {
+    this.showNotifications = !this.showNotifications;
+    if (this.showNotifications) {
+      this.markNotificationsAsRead();
+    }
+  }
+
+  clearAllNotifications(): void {
+    this.notifications = [];
+    this.markNotificationsAsRead(this.registrations);
+  }
+
+  logout(): void {
+    this.auth.logout();
+    this.router.navigate(['/login']);
+  }
+
+  onManageClick(event: OrganizerEvent, targetTab: DashboardTab): void {
+    this.manageHiddenEventIds.add(event.id);
+    this.setTab(targetTab);
+  }
+
+  isManageHidden(event: OrganizerEvent): boolean {
+    return this.manageHiddenEventIds.has(event.id);
+  }
+
+  private startNotificationPolling(): void {
+    if (this.notificationPollTimer !== null) {
+      clearInterval(this.notificationPollTimer);
+    }
+    this.notificationPollTimer = setInterval(() => {
+      this.pollLatestRegistrations();
+    }, this.NOTIFICATION_POLL_INTERVAL_MS);
+  }
+
+  private pollLatestRegistrations(): void {
     this.http.get<Registration[]>(this.REGISTRATIONS_API_URL).subscribe({
-      next: (data) => {
-        this.registrations = data;
-        this.applyRegistrationFilters();
+      next: (registrations) => {
+        this.handleRegistrationUpdates(registrations);
       },
       error: (err) => {
-        console.error('Error fetching registrations', err);
+        console.error('Notification poll failed', err);
       }
     });
   }
+
+  private initializeNotifications(registrations: Registration[]): void {
+    this.knownRegistrationIds = new Set(registrations.map((reg) => reg.id));
+    const sortedRegistrations = [...registrations].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    // Always keep notification history visible in the panel.
+    this.notifications = sortedRegistrations.slice(0, 25).map((reg) => this.buildNotification(reg));
+
+    const lastSeenAt = localStorage.getItem(this.notificationStorageKey) || '';
+    if (!lastSeenAt) {
+      this.markNotificationsAsRead(registrations);
+      return;
+    }
+
+    const unread = sortedRegistrations
+      .filter((reg) => new Date(reg.createdAt).getTime() > new Date(lastSeenAt).getTime())
+      .map((reg) => this.buildNotification(reg));
+
+    this.unreadNotificationCount = unread.length;
+  }
+
+  private handleRegistrationUpdates(registrations: Registration[]): void {
+    const newRegistrations = registrations
+      .filter((reg) => !this.knownRegistrationIds.has(reg.id))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    if (newRegistrations.length > 0) {
+      const newNotifications = newRegistrations.map((reg) => this.buildNotification(reg));
+      this.notifications = [...newNotifications, ...this.notifications].slice(0, 25);
+      this.unreadNotificationCount += newNotifications.length;
+      const first = newRegistrations[0];
+      this.showSuccessToast(`${first.studentName} registered for ${first.eventName}.`);
+    }
+
+    this.knownRegistrationIds = new Set(registrations.map((reg) => reg.id));
+    this.registrations = registrations;
+    this.applyRegistrationFilters();
+    this.syncEventRegistrationStats(registrations);
+  }
+
+  private buildNotification(registration: Registration): AdminNotification {
+    return {
+      id: registration.id,
+      studentName: registration.studentName,
+      eventName: registration.eventName,
+      createdAt: registration.createdAt,
+      message: `${registration.studentName} registered for ${registration.eventName}`,
+      timeLabel: this.formatNotificationTime(registration.createdAt)
+    };
+  }
+
+  private formatNotificationTime(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString(undefined, {
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  private markNotificationsAsRead(sourceRegs: Registration[] = this.registrations): void {
+    this.unreadNotificationCount = 0;
+    const latest = sourceRegs
+      .map((reg) => reg.createdAt)
+      .filter(Boolean)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+    if (latest) {
+      localStorage.setItem(this.notificationStorageKey, latest);
+    }
+  }
+
+  private syncEventRegistrationStats(registrations: Registration[]): void {
+    this.events = this.events.map((event) => {
+      const eventRegistrations = registrations.filter((reg) => reg.eventId === event.id);
+      const approvedCount = eventRegistrations.filter((reg) => reg.status === 'APPROVED').length;
+      const activeCount = eventRegistrations.filter((reg) => reg.status !== 'REJECTED').length;
+      return {
+        ...event,
+        approvedCount,
+        registrations: activeCount
+      };
+    });
+  }
+
+
+
+
+
+
 
   filterRegistrationsByStatus(status: 'All' | 'Pending' | 'Approved' | 'Rejected'): void {
     this.registrationStatusFilter = status;
@@ -206,8 +478,40 @@ export class AdminDashboard implements OnInit {
     this.applyRegistrationFilters();
   }
 
-  getFilteredRegistrations(): Registration[] {
+  applyDashboardSearch(): void {
+    // Reuse existing filtering behavior; dashboardSearchQuery is applied inside getters.
+    this.applyRegistrationFilters();
+  }
+
+  showApprovedStudents(): void {
+    this.registrationFilter = 'approved';
+    this.setTab('registrations');
+    this.registrationSearchQuery = '';
+    this.dashboardSearchQuery = '';
+    this.applyRegistrationFilter();
+  }
+
+  showAllRegistrations(): void {
+    this.registrationFilter = 'all';
+    this.setTab('registrations');
+    this.registrationSearchQuery = '';
+    this.dashboardSearchQuery = '';
+  }
+
+  getFilteredRegistrations(): any[] {
     let filtered = this.registrations;
+
+    const combinedSearch = `${this.registrationSearchQuery} ${this.dashboardSearchQuery}`.trim();
+    if (combinedSearch) {
+      const searchLower = combinedSearch.toLowerCase();
+      filtered = filtered.filter(
+        (r) =>
+          r.studentName.toLowerCase().includes(searchLower) ||
+          r.email.toLowerCase().includes(searchLower) ||
+          r.studentId.toLowerCase().includes(searchLower) ||
+          r.eventName.toLowerCase().includes(searchLower)
+      );
+    }
 
     if (this.registrationFilter !== 'all') {
       const statusMap: { [key: string]: string } = {
@@ -218,16 +522,39 @@ export class AdminDashboard implements OnInit {
       filtered = filtered.filter((r) => r.status === statusMap[this.registrationFilter]);
     }
 
-    if (this.registrationSearchQuery.trim()) {
-      const searchLower = this.registrationSearchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (r) =>
-          r.studentName.toLowerCase().includes(searchLower) ||
-          r.email.toLowerCase().includes(searchLower) ||
-          r.studentId.toLowerCase().includes(searchLower)
-      );
+    // Group by event ONLY for main Registrations tab (not for approved filter)
+    if (this.registrationFilter === 'all') {
+      const grouped = filtered.reduce((acc, reg) => {
+        if (!acc[reg.eventName]) {
+          acc[reg.eventName] = { eventName: reg.eventName, registrations: [], total: 0 };
+        }
+        acc[reg.eventName].registrations.push(reg);
+        acc[reg.eventName].total++;
+        return acc;
+      }, {} as { [key: string]: { eventName: string; registrations: Registration[]; total: number } });
+
+      return Object.values(grouped);
     }
 
+    return filtered;
+  }
+
+  getFilteredEvents(): OrganizerEvent[] {
+    let filtered = this.events.filter((e) => {
+      const query = this.dashboardSearchQuery.trim().toLowerCase();
+      return (
+        e.name.toLowerCase().includes(query) ||
+        e.location.toLowerCase().includes(query) ||
+        e.organizer.toLowerCase().includes(query) ||
+        (e.category ?? '').toLowerCase().includes(query)
+      );
+    });
+    // Sort by dateTime descending (newest first)
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.dateTime).getTime();
+      const dateB = new Date(b.dateTime).getTime();
+      return dateB - dateA;
+    });
     return filtered;
   }
 
@@ -235,7 +562,6 @@ export class AdminDashboard implements OnInit {
     this.selectedRegistration = registration;
     this.rejectionReason = '';
     this.rejectModalOpen = true;
-    // Focus the textarea after modal opens
     setTimeout(() => {
       const textarea = document.getElementById('rejectionReason') as HTMLTextAreaElement;
       if (textarea) {
@@ -269,6 +595,7 @@ export class AdminDashboard implements OnInit {
         if (idx >= 0) {
           this.registrations[idx] = updated;
           this.applyRegistrationFilter();
+          this.syncEventRegistrationStats(this.registrations);
         }
         this.closeApproveModal();
         this.showSuccessToast('Registration approved successfully!');
@@ -288,7 +615,7 @@ export class AdminDashboard implements OnInit {
     const reg = this.selectedRegistration;
     const reason = this.rejectionReason.trim();
 
-    this.http.patch<Registration>(`${this.REGISTRATIONS_API_URL}/${reg.id}/reject`, { 
+    this.http.patch<Registration>(`${this.REGISTRATIONS_API_URL}/${reg.id}/reject`, {
       reason: reason
     }).subscribe({
       next: (updated) => {
@@ -296,6 +623,7 @@ export class AdminDashboard implements OnInit {
         if (idx >= 0) {
           this.registrations[idx] = updated;
           this.applyRegistrationFilter();
+          this.syncEventRegistrationStats(this.registrations);
         }
         this.closeRejectModal();
         this.showSuccessToast('Registration rejected successfully!');
@@ -351,49 +679,7 @@ export class AdminDashboard implements OnInit {
     }, 3000);
   }
 
-  saveEvent(): void {
-    const name = this.createForm.name.trim();
-    if (
-      !name ||
-      !this.createForm.category ||
-      !this.createForm.dateTime.trim() ||
-      !this.createForm.location.trim()
-    ) {
-      alert('Please fill Event Name, Category, Date, and Location.');
-      return;
-    }
-
-    const payload = {
-      name,
-      dateTime: this.createForm.dateTime,
-      endDate: this.createForm.endDate.trim() || null,
-      location: this.createForm.location.trim(),
-      organizer: this.createForm.organizer.trim(),
-      contact: this.createForm.contact.trim(),
-      description: this.createForm.description.trim(),
-      teamSize: this.createForm.teamSize ?? null,
-      posterDataUrl: this.createForm.posterDataUrl,
-      category: this.createForm.category,
-      status: this.isPastEventDate(this.createForm.dateTime) ? 'Past' : 'Active',
-      registrations: 0,
-      participants: 0
-    };
-
-    this.http.post<OrganizerEvent>(this.API_URL, payload).subscribe({
-      next: (savedEvent) => {
-        this.events = [savedEvent, ...this.events];
-
-        this.createModalOpen = false;
-        this.resetCreateForm();
-        this.activeTab = 'events';
-      },
-      error: (err) => {
-        console.error('Error saving event', err);
-        const message = err?.error?.error ?? err?.error?.message ?? 'Could not save event. Please try again.';
-        alert(message);
-      }
-    });
-  }
+  // Remove duplicate handleEventSaved - already defined above
 
   deleteEvent(event: OrganizerEvent): void {
     const ok = window.confirm(`Delete "${event.name}"? This can't be undone.`);
@@ -461,6 +747,10 @@ export class AdminDashboard implements OnInit {
     return event.id;
   }
 
+  get totalStudents(): number {
+    return 1245;
+  }
+
   get totalEvents(): number {
     return this.events.length;
   }
@@ -479,7 +769,11 @@ export class AdminDashboard implements OnInit {
     return Math.round(total / this.events.length);
   }
 
-  getPendingRegistrationsCount(): number {
+getPendingApprovals(): number {
+    return this.getPendingCount();
+  }
+
+getPendingRegistrationsCount(): number {
     return this.getPendingCount();
   }
 
@@ -489,6 +783,13 @@ export class AdminDashboard implements OnInit {
 
   getRejectedRegistrationsCount(): number {
     return this.getRejectedCount();
+  }
+
+  get avatarText(): string {
+    const name = (this.userName || '').trim();
+    if (!name) return 'U';
+    const firstWord = name.split(/\s+/)[0] || 'U';
+    return firstWord.charAt(0).toUpperCase();
   }
 
   private refreshEventStatuses(): void {
@@ -532,23 +833,5 @@ export class AdminDashboard implements OnInit {
     return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
   }
 
-  private resetCreateForm(): void {
-    this.createForm = this.getEmptyCreateForm();
-  }
-
-  private getEmptyCreateForm(): CreateEventForm {
-    return {
-      name: '',
-      dateTime: '',
-      endDate: '',
-      location: '',
-      organizer: '',
-      contact: '',
-      description: '',
-      teamSize: null,
-      posterDataUrl: null,
-      category: ''
-    };
-  }
-
 }
+
