@@ -1,0 +1,218 @@
+<div class="backdrop" *ngIf="visible" (click)="close()" role="dialog" aria-modal="true">
+  <div class="dialog" (click)="$event.stopPropagation()">
+    <header class="dialog__header">
+      <div class="titleBlock">
+        <div class="title">{{ isEditMode ? 'Edit Event' : 'Create Event' }}</div>
+        <div class="subtitle">Fill in the details and publish in seconds.</div>
+      </div>
+      <button type="button" class="iconClose" (click)="close()" aria-label="Close">&times;</button>
+    </header>
+
+    <form class="dialog__body" #createEventForm="ngForm" (ngSubmit)="saveEvent(createEventForm)" novalidate>
+      <section class="poster">
+        <div class="poster__preview" *ngIf="createForm.posterDataUrl; else emptyPoster">
+          <img [src]="createForm.posterDataUrl" alt="Event poster preview" />
+          <button type="button" class="poster__remove" (click)="removePoster()">Remove</button>
+        </div>
+        <ng-template #emptyPoster>
+          <div class="poster__empty">
+            <div class="poster__icon">🖼️</div>
+            <div class="poster__copy">
+              <div class="poster__title">Poster</div>
+              <div class="poster__hint">JPG/PNG up to ~1.5MB</div>
+            </div>
+          </div>
+        </ng-template>
+
+        <label class="poster__upload">
+          <input id="eventPoster" type="file" accept="image/*" (change)="onPosterSelected($event)" />
+          <span class="poster__uploadBtn">{{ createForm.posterDataUrl ? 'Change poster' : 'Upload poster' }}</span>
+        </label>
+      </section>
+
+      <section class="grid">
+        <div class="field span-2">
+          <label for="eventName">
+            <span class="field-icon">🎉</span>
+            Event Name <span class="req">*</span>
+          </label>
+          <input
+            id="eventName"
+            type="text"
+            name="name"
+            #nameModel="ngModel"
+            [(ngModel)]="createForm.name"
+            placeholder="Annual Tech Fest 2025"
+            required
+          />
+          <div class="error" *ngIf="nameModel.invalid && (nameModel.touched || createEventForm.submitted)">
+            Event name is required.
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field">
+            <label for="eventCollege">
+              <span class="field-icon">🏫</span>
+              College Name
+            </label>
+            <input
+              id="eventCollege"
+              type="text"
+              name="collegeName"
+              [(ngModel)]="createForm.collegeName"
+              placeholder="Your College Name"
+            />
+          </div>
+          <div class="field">
+            <label for="eventCategory">
+              <span class="field-icon">📂</span>
+              Category <span class="req">*</span>
+            </label>
+            <select
+              id="eventCategory"
+              name="category"
+              #categoryModel="ngModel"
+              [(ngModel)]="createForm.category"
+              required
+            >
+              <option value="" disabled>Select Category</option>
+              <option value="Technology">Technology</option>
+              <option value="Cultural">Cultural</option>
+              <option value="Workshop">Workshop</option>
+              <option value="Career">Career</option>
+              <option value="Sports">Sports</option>
+              <option value="Seminar">Seminar</option>
+            </select>
+            <div class="error" *ngIf="categoryModel.invalid && (categoryModel.touched || createEventForm.submitted)">
+              Category is required.
+            </div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field">
+            <label for="eventLocation">
+              <span class="field-icon">📍</span>
+              Location <span class="req">*</span>
+            </label>
+            <input
+              id="eventLocation"
+              type="text"
+              name="location"
+              #locationModel="ngModel"
+              [(ngModel)]="createForm.location"
+              placeholder="Main Auditorium, Block A"
+              required
+            />
+            <div class="error" *ngIf="locationModel.invalid && (locationModel.touched || createEventForm.submitted)">
+              Location is required.
+            </div>
+          </div>
+          <div class="field date-group">
+            <label for="eventStartDate">
+              <span class="field-icon">📅</span>
+              Event Start Date <span class="req">*</span>
+            </label>
+            <input
+              id="eventStartDate"
+              type="date"
+              name="startDate"
+              #startDateModel="ngModel"
+              [(ngModel)]="createForm.dateTime"
+              required
+            />
+            <div class="error" *ngIf="startDateModel.invalid && (startDateModel.touched || createEventForm.submitted)">
+              Start date is required.
+            </div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field">
+            <label for="eventEndDate">
+              <span class="field-icon">📅</span>
+              Event End Date (Optional)
+            </label>
+            <input id="eventEndDate" type="date" name="endDate" [(ngModel)]="createForm.endDate" />
+          </div>
+          <div class="field">
+            <label for="eventRegistrationDeadline">
+              <span class="field-icon">⏰</span>
+              Registration Deadline
+            </label>
+            <input
+              id="eventRegistrationDeadline"
+              type="date"
+              name="registrationDeadline"
+              [(ngModel)]="createForm.registrationDeadline"
+            />
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field">
+            <label for="eventOrganizer">
+              <span class="field-icon">👥</span>
+              Organizer
+            </label>
+            <input
+              id="eventOrganizer"
+              type="text"
+              name="organizer"
+              [(ngModel)]="createForm.organizer"
+              placeholder="Student Council"
+            />
+          </div>
+          <div class="field">
+            <label for="eventContact">
+              <span class="field-icon">📞</span>
+              Contact
+            </label>
+            <input
+              id="eventContact"
+              type="text"
+              name="contact"
+              [(ngModel)]="createForm.contact"
+              placeholder="Email or phone"
+            />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="eventTeamSize">
+            <span class="field-icon">👥</span>
+            Team Size
+          </label>
+          <input id="eventTeamSize" type="number" name="teamSize" [(ngModel)]="createForm.teamSize" placeholder="4" min="1" />
+        </div>
+         <div class="field">
+          <label for="eventCapacity">
+            <span class="field-icon">👥</span>
+            Event capacity
+          </label>
+          <input id="eventCapacity" type="number" name="maxAttendees" [(ngModel)]="createForm.maxAttendees" placeholder="Example: 100" min="1" />
+        </div>
+
+
+        <div class="field span-2">
+          <label for="eventDescription">
+            <span class="field-icon">📝</span>
+            Description
+          </label>
+          <textarea
+            id="eventDescription"
+            name="description"
+            rows="5"
+            [(ngModel)]="createForm.description"
+            placeholder="What is this event about? Who should attend? Any rules? Add all important details..."
+          ></textarea>
+        </div>
+      </section>
+
+      <footer class="dialog__footer">
+        <button type="button" class="btn btn--ghost" (click)="close()">Cancel</button>
+        <button type="submit" class="btn btn--primary" [disabled]="isSavingEvent">
+          {{ isSavingEvent ? 'Saving...' : (isEditMode ? 'Save changes' : 'Create event') }}
+        </button>
+</footer>
