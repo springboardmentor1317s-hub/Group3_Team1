@@ -90,6 +90,8 @@ export interface StudentEventCard {
   registrations: number;
   maxAttendees: number;
   collegeName: string;
+  registered?: boolean;
+  endDate?: string | null;
 }
 
 export interface StudentNotificationItem {
@@ -100,6 +102,14 @@ export interface StudentNotificationItem {
   createdAt: string;
   icon: string;
   category: 'overview' | 'registration' | 'approval' | 'event';
+}
+
+export interface StudentEventReview {
+  eventId: string;
+  rating: number;
+  feedback: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface StudentDashboardSnapshot {
@@ -214,6 +224,27 @@ return this.http.put<StudentProfile>(`${this.apiUrl}/profile/me`, profileData, {
     return this.http.delete<{ message: string }>(`${this.apiUrl}/registrations/student/me/event/${eventId}`, { headers }).pipe(
       tap(() => this.invalidateDashboardCache())
     );
+  }
+
+  getMyEventReviews(eventIds: string[]): Observable<StudentEventReview[]> {
+    const headers = this.authService.getAuthHeaders();
+    const ids = (eventIds || []).map((id) => String(id)).filter(Boolean);
+    const query = ids.length ? `?eventIds=${encodeURIComponent(ids.join(','))}` : '';
+    return this.http.get<StudentEventReview[]>(`${this.apiUrl}/event-reviews/mine${query}`, { headers }).pipe(
+      catchError(() => of([]))
+    );
+  }
+
+  // Calls the backend to save the user's 1-5 star rating
+  submitEventRating(eventId: string, rating: number): Observable<StudentEventReview> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.post<StudentEventReview>(`${this.apiUrl}/event-reviews/rating`, { eventId, rating }, { headers });
+  }
+
+  // Calls the backend to save the user's text feedback
+  submitEventFeedback(eventId: string, feedback: string): Observable<StudentEventReview> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.post<StudentEventReview>(`${this.apiUrl}/event-reviews/feedback`, { eventId, feedback }, { headers });
   }
 
   invalidateDashboardCache(): void {
@@ -558,6 +589,7 @@ return this.http.put<StudentProfile>(`${this.apiUrl}/profile/me`, profileData, {
       category: event.category || 'Campus Event',
       location: event.location || 'Campus Venue',
       dateTime: event.dateTime,
+      endDate: event.endDate ?? null,
       dateLabel: date && !Number.isNaN(date.getTime())
         ? date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
         : event.dateTime,
@@ -568,6 +600,7 @@ return this.http.put<StudentProfile>(`${this.apiUrl}/profile/me`, profileData, {
       organizer: event.organizer || 'Campus Event Hub',
       contact: event.contact || 'Contact admin',
       status: this.eventService.convertToFrontendEvent(event).status,
+      registered: event.registered === true,
       registrations: event.registrations || 0,
       maxAttendees: event.maxAttendees || event.participants || 100,
       collegeName: event.collegeName || 'Campus Event Hub'

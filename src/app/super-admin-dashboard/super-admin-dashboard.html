@@ -2,9 +2,12 @@
 
   <!-- Header -->
   <div class="header">
-    <div>
-      <h2>Super Admin Dashboard</h2>
-      <p>System-wide analytics and administrative reports</p>
+    <div class="header-brand">
+      <img class="header-logo" src="/icon2.png" alt="Campus Event Hub">
+      <div>
+        <h2>Super Admin Dashboard</h2>
+        <p>System-wide analytics and administrative reports</p>
+      </div>
     </div>
     <div class="actions">
       <button class="btn1 btn-export">
@@ -25,21 +28,21 @@
       <div class="icon blue"><i class="fa-solid fa-user-shield"></i></div>
       <h4>Total Admins</h4>
       <h2>{{ totalAdmins }}</h2>
-      <span class="green">Approved Admins</span>
+      <span class="stat-note">Approved Admins</span>
     </div>
 
     <div class="card">
       <div class="icon purple"><i class="fa-solid fa-calendar-check"></i></div>
       <h4>Total Events</h4>
       <h2>{{ totalEvents }}</h2>
-      <span class="green">Across all admins</span>
+      <span class="stat-note">Across all admins</span>
     </div>
 
     <div class="card">
       <div class="icon green"><i class="fa-solid fa-users"></i></div>
       <h4>Total Students</h4>
       <h2>{{ totalStudents }}</h2>
-      <span class="green">this week</span>
+      <span class="stat-note">Across all colleges</span>
     </div>
 
   </div>
@@ -61,7 +64,7 @@
       <ul class="events">
         <li>
           <div class="event-left">
-            <div class="event-icon" style="background: #fee2e2; color: #dc2626;">
+            <div class="event-icon activity-high">
               <i class="fa-solid fa-user-tie"></i>
             </div>
             <div>
@@ -69,12 +72,12 @@
               <span>Created 5 events · Last active 2h ago</span>
             </div>
           </div>
-          <span class="tag">High Activity</span>
+          <span class="tag tag-high">High Activity</span>
         </li>
 
         <li>
           <div class="event-left">
-            <div class="event-icon" style="background: #fef3c7; color: #d97706;">
+            <div class="event-icon activity-medium">
               <i class="fa-solid fa-user-tie"></i>
             </div>
             <div>
@@ -82,12 +85,12 @@
               <span>Created 3 events · Last active 1d ago</span>
             </div>
           </div>
-          <span class="tag">Medium Activity</span>
+          <span class="tag tag-medium">Medium Activity</span>
         </li>
 
         <li>
           <div class="event-left">
-            <div class="event-icon" style="background: #e0e7ff; color: #4f46e5;">
+            <div class="event-icon activity-high">
               <i class="fa-solid fa-user-tie"></i>
             </div>
             <div>
@@ -95,7 +98,7 @@
               <span>Created 8 events · Last active 10m ago</span>
             </div>
           </div>
-          <span class="tag">High Activity</span>
+          <span class="tag tag-high">High Activity</span>
         </li>
       </ul>
     </div>

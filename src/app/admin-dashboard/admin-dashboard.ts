@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -86,6 +86,8 @@ export class AdminDashboard implements OnInit, OnDestroy {
     private readonly auth: Auth,
     private readonly router: Router
   ) {}
+
+  @ViewChild('dashboardSearchInput') private dashboardSearchInput?: ElementRef<HTMLInputElement>;
 
   openCreateModal(): void {
     this.editingEvent = null;
@@ -481,6 +483,15 @@ export class AdminDashboard implements OnInit, OnDestroy {
   applyDashboardSearch(): void {
     // Reuse existing filtering behavior; dashboardSearchQuery is applied inside getters.
     this.applyRegistrationFilters();
+  }
+
+  onDashboardSearchClick(): void {
+    this.applyDashboardSearch();
+    const input = this.dashboardSearchInput?.nativeElement;
+    if (input) {
+      input.focus();
+      input.select();
+    }
   }
 
   showApprovedStudents(): void {

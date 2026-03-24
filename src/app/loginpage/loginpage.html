@@ -8,6 +8,7 @@
             <span class="brand-campus">Campus</span>
             <span class="brand-eventhub">Event Hub</span>
           </span>
+          <span class="brand-tag">Smart Campus Events</span>
         </div>
       </a>
 
@@ -20,52 +21,113 @@
 
   <div class="page-content">
     <div class="auth-shell">
-      <div class="card">
-        <div class="icon">
-          <img class="icon-img" src="assets/icon login.png" alt="Login icon">
-        </div>
-
-        <h2>Welcome Back</h2>
-        <p class="subtitle">Login to your account</p>
-
-        <form (ngSubmit)="login()">
-          <label>Email Address</label>
-          <input type="email" [(ngModel)]="user.email" name="email" placeholder="Enter your email" required>
-
-          <label>Password</label>
-          <div class="password-box">
-            <input [type]="show ? 'text' : 'password'" [(ngModel)]="user.password" name="password"
-              placeholder="Enter your password" required>
-            <i class="fa-solid" [class.fa-eye]="!show" [class.fa-eye-slash]="show" (click)="show = !show"></i>
+      <div class="auth-layout">
+        <section class="card card-form">
+          <div class="chip">Secure Access Portal</div>
+          <h2>Welcome Back</h2>
+          <p class="subtitle">Sign in to continue managing events, registrations and approvals.</p>
+          <div class="trust-row" aria-hidden="true">
+            <span class="trust-pill">Encrypted Session</span>
+            <span class="trust-pill">Role-Safe Access</span>
+            <span class="trust-pill">Audit Ready</span>
           </div>
 
-          <label>Login As</label>
-          <select [(ngModel)]="user.role" name="role">
-            <option value="student">Student</option>
-            <option value="college_admin">College Admin</option>
-            <option value="super_admin">Super Admin</option>
-          </select>
+          <form (ngSubmit)="login()">
+            <label>Email Address</label>
+            <input type="email" [(ngModel)]="user.email" name="email" placeholder="Enter your email" required>
 
-          <div class="form-row">
-            <label class="checkbox">
-              <input type="checkbox" name="remember">
-              <span>Remember me</span>
-            </label>
-            <a class="forgot" routerLink="/forgot">Forgot password?</a>
+            <label>Password</label>
+            <div class="password-box">
+              <input [type]="show ? 'text' : 'password'" [(ngModel)]="user.password" name="password"
+                placeholder="Enter your password" required>
+              <i class="fa-solid" [class.fa-eye]="!show" [class.fa-eye-slash]="show" (click)="show = !show"></i>
+            </div>
+
+            <label>Login As</label>
+            <select [(ngModel)]="user.role" name="role">
+              <option value="student">Student</option>
+              <option value="college_admin">College Admin</option>
+              <option value="super_admin">Super Admin</option>
+            </select>
+
+            <!-- <div class="form-row">
+              <label class="checkbox">
+                <input type="checkbox" name="remember">
+                <span>Remember me</span>
+              </label>
+              <a class="forgot" routerLink="/forgot">Forgot password?</a>
+            </div> -->
+
+            <button type="submit" [disabled]="isLoggingIn">
+              {{ isLoggingIn ? 'Loading dashboard...' : 'Login' }}
+            </button>
+            <p class="error" *ngIf="errorMessage" role="alert" aria-live="assertive">
+              {{ errorMessage }}
+            </p>
+
+            <p class="link">
+              Don't have an account?
+              <a routerLink="/register">Create Account</a>
+            </p>
+          </form>
+
+          <div class="meta-strip" aria-hidden="true">
+            <div class="meta-item">
+              <span class="meta-head">Uptime</span>
+              <strong>99.9%</strong>
+            </div>
+            <div class="meta-item">
+              <span class="meta-head">Secure Login</span>
+              <strong>Multi Role</strong>
+            </div>
+            <div class="meta-item">
+              <span class="meta-head">Sync</span>
+              <strong>Real-time</strong>
+            </div>
+          </div>
+        </section>
+
+        <aside class="card card-highlight" aria-hidden="true">
+          <p class="eyebrow">Campus Event Hub</p>
+          <h3>One place for complete campus event operations</h3>
+          <p class="highlight-text">
+            Track registrations in real time, manage approvals faster, and keep every event update synced for students and admins.
+          </p>
+
+          <div class="highlight-grid">
+            <div class="highlight-item">
+              <span class="count">24/7</span>
+              <span class="label">Instant Access</span>
+            </div>
+            <div class="highlight-item">
+              <span class="count">100+</span>
+              <span class="label">Events Managed</span>
+            </div>
+            <div class="highlight-item">
+              <span class="count">Secure</span>
+              <span class="label">Role Based Login</span>
+            </div>
+            <div class="highlight-item">
+              <span class="count">Live</span>
+              <span class="label">Dashboard Updates</span>
+            </div>
           </div>
 
-          <button type="submit" [disabled]="isLoggingIn">
-            {{ isLoggingIn ? 'Loading dashboard...' : 'Login' }}
-          </button>
-          <p class="error" *ngIf="errorMessage" role="alert" aria-live="assertive">
-            {{ errorMessage }}
-          </p>
-
-          <p class="link">
-            Don't have an account?
-            <a routerLink="/register">Create Account</a>
-          </p>
-        </form>
+          <div class="process-list">
+            <div class="process-item">
+              <span class="dot"></span>
+              <span>Authenticate with your role-specific credentials</span>
+            </div>
+            <div class="process-item">
+              <span class="dot"></span>
+              <span>Open dashboards with live registrations and actions</span>
+            </div>
+            <div class="process-item">
+              <span class="dot"></span>
+              <span>Approve and monitor campus events with full visibility</span>
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
   </div>
