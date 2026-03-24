@@ -19,6 +19,22 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: false
   },
+  phone: {
+    type: String,
+    default: ""
+  },
+  location: {
+    type: String,
+    default: ""
+  },
+  department: {
+    type: String,
+    default: ""
+  },
+  profileImageUrl: {
+    type: String,
+    default: ""
+  },
   password: {
     type: String,
     required: true

@@ -24,8 +24,7 @@ exports.getDashboardStats = async (req, res) => {
     });
 
   } catch (error) {
-    console.log("Dashboard error:", error);
-    res.status(500).json({ message: "Server Error" });
+    res.status(500).json({ message: "Failed to load dashboard stats" });
   }
 };
 
@@ -42,8 +41,7 @@ exports.getAdminApprovalRequests = async (req, res) => {
 
     res.json(users);
   } catch (error) {
-    console.log("Admin requests error:", error);
-    res.status(500).json({ message: "Server Error" });
+    res.status(500).json({ message: "Failed to load admin requests" });
   }
 };
 
@@ -70,8 +68,7 @@ exports.approveAdminRequest = async (req, res) => {
 
     res.json({ message: "Admin request approved", user });
   } catch (error) {
-    console.log("Approve admin error:", error);
-    res.status(500).json({ message: "Server Error" });
+    res.status(500).json({ message: "Failed to approve admin" });
   }
 };
 

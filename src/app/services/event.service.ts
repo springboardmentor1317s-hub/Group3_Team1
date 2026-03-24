@@ -8,6 +8,9 @@ export interface BackendEvent {
   id: string;
   name: string;
   dateTime: string;
+  endDate?: string | null;
+  registrationDeadline?: string | null;
+  teamSize?: number | null;
   location: string;
   organizer: string;
   contact: string;
@@ -64,6 +67,21 @@ export class EventService {
       tap((newEvent) => {
         const currentEvents = this.eventsSubject.value;
         this.eventsSubject.next([newEvent, ...currentEvents]);
+      })
+    );
+  }
+
+  updateEvent(id: string, event: Partial<BackendEvent>): Observable<BackendEvent> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.put<BackendEvent>(`${this.apiUrl}/events/${id}`, event, { headers }).pipe(
+      tap((updatedEvent) => {
+        const currentEvents = this.eventsSubject.value;
+        const index = currentEvents.findIndex(e => e.id === updatedEvent.id);
+        if (index > -1) {
+          const newEvents = [...currentEvents];
+          newEvents[index] = updatedEvent;
+          this.eventsSubject.next(newEvents);
+        }
       })
     );
   }

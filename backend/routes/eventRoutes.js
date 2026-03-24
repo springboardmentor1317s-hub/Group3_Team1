@@ -1,17 +1,27 @@
 const express = require("express");
 const router = express.Router();
 const Event = require("../models/Event");
+const Registration = require("../models/Registration");
 const jwt = require("jsonwebtoken");
 const protect = require("../middleware/authMiddleware");
 
-function toClient(eventDoc, currentUserId = null) {
+function toClient(eventDoc, options = {}) {
   const obj = eventDoc.toObject({ versionKey: false });
   const attendeeIds = obj.attendeeIds ?? [];
+  const registrationsCount = typeof options.registrationsCount === "number"
+    ? options.registrationsCount
+    : attendeeIds.length;
+  const isRegistered = typeof options.registered === "boolean"
+    ? options.registered
+    : false;
 
   return {
     id: obj._id.toString(),
     name: obj.name,
     dateTime: obj.dateTime,
+    endDate: obj.endDate || "",
+    registrationDeadline: obj.registrationDeadline || "",
+    teamSize: obj.teamSize ?? null,
     location: obj.location,
     organizer: obj.organizer,
     contact: obj.contact,
@@ -20,13 +30,11 @@ function toClient(eventDoc, currentUserId = null) {
     posterDataUrl: obj.posterDataUrl ?? null,
     status: obj.status,
     participants: obj.participants ?? 0,
-    registrations: attendeeIds.length,
+    registrations: registrationsCount,
     maxAttendees: obj.maxAttendees || 100,
     collegeName: obj.collegeName,
     attendeeIds,
-    registered: currentUserId
-      ? attendeeIds.some((id) => String(id) === String(currentUserId))
-      : false
+    registered: isRegistered
   };
 }
 
@@ -47,7 +55,46 @@ router.get("/", async (req, res) => {
   try {
     const currentUserId = getUserIdFromRequest(req);
     const events = await Event.find().sort({ createdAt: -1 });
-    res.json(events.map((event) => toClient(event, currentUserId)));
+
+    const eventIds = events.map((event) => String(event._id));
+
+    const registrationCounts = await Registration.aggregate([
+      {
+        $match: {
+          eventId: { $in: eventIds },
+          status: { $ne: "REJECTED" }
+        }
+      },
+      {
+        $group: {
+          _id: "$eventId",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const countMap = new Map(
+      registrationCounts.map((row) => [String(row._id), row.count])
+    );
+
+    let registeredSet = new Set();
+    if (currentUserId) {
+      const userRegs = await Registration.find({
+        studentId: String(currentUserId),
+        eventId: { $in: eventIds },
+        status: { $ne: "REJECTED" }
+      }).select("eventId");
+      registeredSet = new Set(userRegs.map((r) => String(r.eventId)));
+    }
+
+    res.json(
+      events.map((event) =>
+        toClient(event, {
+          registrationsCount: countMap.get(String(event._id)) || 0,
+          registered: registeredSet.has(String(event._id))
+        })
+      )
+    );
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -65,7 +112,41 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "Name, date, location, and category are required." });
     }
 
-    const newEvent = new Event(req.body);
+    const teamSizeValue = req.body?.teamSize;
+    const maxAttendeesValue = req.body?.maxAttendees;
+
+    const payload = {
+      name,
+      dateTime,
+      endDate: String(req.body?.endDate ?? "").trim(),
+      registrationDeadline: String(req.body?.registrationDeadline ?? "").trim(),
+      location,
+      organizer: String(req.body?.organizer ?? "").trim(),
+      contact: String(req.body?.contact ?? "").trim(),
+      description: String(req.body?.description ?? "").trim(),
+      category,
+      posterDataUrl: req.body?.posterDataUrl ?? null,
+      status: String(req.body?.status ?? "Active").trim() || "Active",
+      registrations: Number(req.body?.registrations ?? 0) || 0,
+      participants: Number(req.body?.participants ?? 0) || 0,
+      collegeName: String(req.body?.collegeName ?? "").trim(),
+      teamSize: teamSizeValue === "" || teamSizeValue === null || teamSizeValue === undefined
+        ? null
+        : Number(teamSizeValue),
+      maxAttendees: maxAttendeesValue === "" || maxAttendeesValue === null || maxAttendeesValue === undefined
+        ? 100
+        : Number(maxAttendeesValue)
+    };
+
+    if (payload.teamSize !== null && (!Number.isFinite(payload.teamSize) || payload.teamSize < 1)) {
+      return res.status(400).json({ error: "teamSize must be a positive number." });
+    }
+
+    if (!Number.isFinite(payload.maxAttendees) || payload.maxAttendees < 1) {
+      return res.status(400).json({ error: "maxAttendees must be a positive number." });
+    }
+
+    const newEvent = new Event(payload);
     const created = await newEvent.save();
     res.status(201).json(toClient(created));
   } catch (error) {
@@ -114,5 +195,88 @@ router.delete("/:id", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+async function updateEvent(req, res) {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ message: "Event not found" });
+
+    const allowedFields = [
+      "name",
+      "dateTime",
+      "endDate",
+      "registrationDeadline",
+      "location",
+      "organizer",
+      "contact",
+      "description",
+      "category",
+      "posterDataUrl",
+      "status",
+      "teamSize",
+      "collegeName",
+      "maxAttendees"
+    ];
+
+    const updates = {};
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    }
+
+    const nextName = String(updates.name ?? event.name ?? "").trim();
+    const nextDateTime = String(updates.dateTime ?? event.dateTime ?? "").trim();
+    const nextLocation = String(updates.location ?? event.location ?? "").trim();
+    const nextCategory = String(updates.category ?? event.category ?? "").trim();
+
+    if (!nextName || !nextDateTime || !nextLocation || !nextCategory) {
+      return res.status(400).json({ error: "Name, date, location, and category are required." });
+    }
+
+    if (updates.teamSize !== undefined) {
+      if (updates.teamSize === "" || updates.teamSize === null) {
+        updates.teamSize = null;
+      } else {
+        updates.teamSize = Number(updates.teamSize);
+        if (!Number.isFinite(updates.teamSize) || updates.teamSize < 1) {
+          return res.status(400).json({ error: "teamSize must be a positive number." });
+        }
+      }
+    }
+
+    if (updates.maxAttendees !== undefined) {
+      updates.maxAttendees = Number(updates.maxAttendees);
+      if (!Number.isFinite(updates.maxAttendees) || updates.maxAttendees < 1) {
+        return res.status(400).json({ error: "maxAttendees must be a positive number." });
+      }
+    }
+
+    const updated = await Event.findByIdAndUpdate(req.params.id, updates, {
+      new: true,
+      runValidators: true
+    });
+
+    if (!updated) return res.status(404).json({ message: "Event not found" });
+
+    const registrationsCount = await Registration.countDocuments({
+      eventId: String(updated._id),
+      status: { $ne: "REJECTED" }
+    });
+
+    res.json(
+      toClient(updated, {
+        registrationsCount
+      })
+    );
+  } catch (error) {
+    const statusCode = error.name === "ValidationError" ? 400 : 500;
+    res.status(statusCode).json({ error: error.message });
+  }
+}
+
+// Update Event
+router.put("/:id", updateEvent);
+router.patch("/:id", updateEvent);
 
 module.exports = router;
