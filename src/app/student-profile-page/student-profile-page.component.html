@@ -29,7 +29,13 @@
     </div>
   </header>
 
-  <main class="profile-main">
+<main class="profile-main">
+  <div class="toast-container" *ngIf="showToast">
+    <div class="toast" [ngClass]="{'toast-success': toastType === 'success', 'toast-error': toastType === 'error'}">
+      <span class="material-icons">{{ toastType === 'success' ? 'check_circle' : (toastType === 'error' ? 'error' : 'info') }}</span>
+      {{ toastMessage }}
+    </div>
+  </div>
     <p *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</p>
 
     <section *ngIf="loading" class="state-card">Loading profile details...</section>
@@ -74,32 +80,97 @@
               <p class="card-kicker">Verified Identity</p>
               <h2>Profile Details</h2>
             </div>
-            <span class="card-icon material-icons">badge</span>
-          </div>
-          <div class="info-list">
-            <div>
-              <span>Full Name</span>
-              <strong>{{ student.name }}</strong>
+            <div class="card-header-actions">
+              <button *ngIf="!isEditing" (click)="startEditing()" class="button-edit">
+                <span class="material-icons">edit</span>
+                <span>Edit Profile</span>
+              </button>
+              <ng-container *ngIf="isEditing">
+                <button (click)="saveProfile()" [disabled]="saveInProgress || !hasChanges" class="button-save">
+                  <span class="material-icons">{{ saveInProgress ? 'hourglass_top' : 'save' }}</span>
+                  <span>{{ saveInProgress ? 'Saving...' : 'Save Changes' }}</span>
+                </button>
+                <button (click)="cancelEditing()" [disabled]="saveInProgress" class="button-cancel">
+                  <span class="material-icons">cancel</span>
+                  <span>Cancel</span>
+                </button>
+              </ng-container>
             </div>
+          </div>
+  <div class="info-list" *ngIf="profile">
+            <!-- Non-editable fields -->
             <div>
               <span>User ID</span>
-              <strong>{{ student.userId }}</strong>
+              <strong>{{ profile.userId }}</strong>
             </div>
             <div>
-              <span>Email Address</span>
-              <strong>{{ student.email }}</strong>
+              <span>Email</span>
+              <strong>{{ profile.email }}</strong>
             </div>
             <div>
               <span>Role</span>
-              <strong>{{ student.role }}</strong>
+              <strong>{{ profile.role }}</strong>
             </div>
             <div>
+              <span>Joined</span>
+              <strong>{{ profile.createdAt | date: 'fullDate' }}</strong>
+            </div>
+
+            <!-- Editable fields -->
+            <div *ngIf="!isEditing || editableProfile">
+              <span>Name</span>
+              <strong *ngIf="!isEditing">{{ profile.name }}</strong>
+              <input *ngIf="isEditing" [(ngModel)]="editableProfile!.name" class="editable-input" />
+            </div>
+            <div *ngIf="!isEditing || editableProfile">
               <span>College</span>
-              <strong>{{ student.college || 'Not available' }}</strong>
+              <strong *ngIf="!isEditing">{{ profile.college || 'Not set' }}</strong>
+              <input *ngIf="isEditing" [(ngModel)]="editableProfile!.college" class="editable-input" />
             </div>
-            <div>
-              <span>Joined On</span>
-              <strong>{{ student.createdAt | date: 'fullDate' }}</strong>
+
+            <!-- Current Address Section -->
+            <div class="address-section">
+              <span>Current Address</span>
+              <div *ngIf="!isEditing" class="address-display">
+                <strong>{{ profile.currentAddress?.line1 }}</strong>
+                <p>{{ profile.currentAddress?.line2 }}<br>{{ profile.currentAddress?.townVillage }}, {{ profile.currentAddress?.district }}<br>{{ profile.currentAddress?.state }} - {{ profile.currentAddress?.pincode }}</p>
+              </div>
+              <div *ngIf="isEditing" class="address-form">
+                <input [(ngModel)]="editableProfile!.currentAddress!.line1" placeholder="Address Line 1" class="editable-input full-width" />
+                <input [(ngModel)]="editableProfile!.currentAddress!.line2" placeholder="Address Line 2" class="editable-input full-width" />
+                <div class="address-row">
+                  <input [(ngModel)]="editableProfile!.currentAddress!.townVillage" placeholder="Town/Village" class="editable-input" />
+                  <input [(ngModel)]="editableProfile!.currentAddress!.district" placeholder="District" class="editable-input" />
+                </div>
+                <div class="address-row">
+                  <input [(ngModel)]="editableProfile!.currentAddress!.pincode" placeholder="Pincode" class="editable-input short" />
+                  <input [(ngModel)]="editableProfile!.currentAddress!.state" placeholder="State" class="editable-input short" />
+                </div>
+                <select [(ngModel)]="editableProfile!.currentAddress!.country" class="editable-input full-width">
+                  <option value="India">India</option>
+                  <option value="USA">USA</option>
+                  <!-- Add more countries -->
+                </select>
+              </div>
+            </div>
+
+            <!-- Academic Section -->
+            <div *ngIf="isEditing" class="academic-section">
+              <h4>Academic Details</h4>
+              <div class="form-row">
+                <select [(ngModel)]="editableProfile!.department" class="editable-input">
+                  <option value="">Select Department</option>
+                  <option value="Computer Science Engineering (CSE)">CSE</option>
+                  <option value="Information Technology (IT)">IT</option>
+                  <option value="Civil Engineering (CE)">CE</option>
+                  <option value="Mechanical Engineering (ME)">ME</option>
+                  <option value="Mathematics">Mathematics</option>
+                  <option value="Geography">Geography</option>
+                  <option value="Other">Other</option>
+                </select>
+                <input *ngIf="editableProfile!.department === 'Other'" [(ngModel)]="editableProfile!.department" placeholder="Enter department" class="editable-input" />
+              </div>
+              <!-- Similar for course, year, semester -->
             </div>
           </div>
         </article>

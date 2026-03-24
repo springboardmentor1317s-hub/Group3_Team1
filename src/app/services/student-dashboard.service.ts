@@ -6,11 +6,39 @@ import { BackendEvent, EventService } from './event.service';
 
 export interface StudentProfile {
   id: string;
+  _id: string;
   name: string;
   userId: string;
   email: string;
   role: string;
   college: string;
+  phone: string;
+  currentAddress: {
+    line1: string;
+    line2: string;
+    pincode: string;
+    country: string;
+    state: string;
+    district: string;
+    townVillage: string;
+  };
+  permanentAddress: {
+    line1: string;
+    line2: string;
+    pincode: string;
+    country: string;
+    state: string;
+    district: string;
+    townVillage: string;
+    sameAsCurrent: boolean;
+  };
+  department: string;
+  course: string;
+  year: string;
+  semester: string;
+  heardFrom: string;
+  location: string;
+  profileImageUrl: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -163,6 +191,15 @@ export class StudentDashboardService {
     }
 
     return this.registrationsRequest$;
+  }
+
+  updateProfile(profileData: Partial<StudentProfile>): Observable<StudentProfile> {
+    const headers = this.authService.getAuthHeaders();
+return this.http.put<StudentProfile>(`${this.apiUrl}/profile/me`, profileData, { headers }).pipe(
+      tap(() => {
+        this.invalidateDashboardCache();
+      })
+    );
   }
 
   registerForEvent(eventId: string): Observable<StudentRegistrationRecord> {
