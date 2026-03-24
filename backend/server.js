@@ -9,6 +9,7 @@ const debugRoutes = require('./routes/debugRoutes');
 const superAdminRoutes = require('./routes/superAdminRoutes'); 
 const registrationRoutes = require('./routes/registrationRoutes');
 const profileRoutes = require('./routes/profileRoutes');
+const eventReviewRoutes = require('./routes/eventReviewRoutes');
 const app = express();
 
 app.use(cors());
@@ -20,6 +21,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/superadmin', superAdminRoutes); 
 app.use("/api/events", eventRoutes);
 app.use('/api/registrations', registrationRoutes);
+app.use('/api/event-reviews', eventReviewRoutes);
 
 app.get('/', (req, res) => {
   res.send('Backend Running Successfully');

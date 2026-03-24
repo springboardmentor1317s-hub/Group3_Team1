@@ -21,13 +21,22 @@
     </nav>
     <div class="top-actions">
       <input
+        #dashboardSearchInput
         class="top-search"
         type="text"
         placeholder="Search..."
         [(ngModel)]="dashboardSearchQuery"
         (input)="applyDashboardSearch()"
       />
-      <button class="icon-btn" aria-label="Search" title="Search">&#128269;</button>
+      <button
+        type="button"
+        class="icon-btn"
+        aria-label="Search"
+        title="Search"
+        (click)="onDashboardSearchClick()"
+      >
+        &#128269;
+      </button>
       <div class="notification-wrapper" (click)="$event.stopPropagation()">
         <button class="icon-btn notification-btn" aria-label="Notifications" title="Notifications" (click)="toggleNotifications()">
           &#128276;
