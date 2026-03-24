@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
 import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
+import { finalize, timeout } from 'rxjs';
 import {
   StudentDashboardService,
   StudentDashboardSnapshot,
@@ -24,16 +25,24 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
   registrations: StudentRegistrationRecord[] = [];
   filteredRegistrations: StudentRegistrationRecord[] = [];
   notifications: StudentNotificationItem[] = [];
+  ratingDraftByEventId: Record<string, number> = {};
+  savedRatingByEventId: Record<string, number> = {};
+  feedbackDraftByEventId: Record<string, string> = {};
+  savedFeedbackByEventId: Record<string, string> = {};
+  feedbackOpenEventIds = new Set<string>();
   loading = true;
   notificationsLoading = true;
   notificationsDropdownOpen = false;
   errorMessage = '';
   actionEventId = '';
+  reviewActionEventId = '';
   searchQuery = '';
   selectedStatus = 'All';
   selectedDate = '';
   readonly statusOptions = ['All', 'PENDING', 'APPROVED', 'REJECTED'];
   private notificationsRefreshTimer: ReturnType<typeof setInterval> | null = null;
+  feedbackSavedEventIds = new Set<string>();
+  private feedbackSavedTimerByEventId: Record<string, ReturnType<typeof setTimeout>> = {};
 
   constructor(
     private studentDashboardService: StudentDashboardService,
@@ -52,6 +61,11 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
       clearInterval(this.notificationsRefreshTimer);
       this.notificationsRefreshTimer = null;
     }
+
+    for (const timer of Object.values(this.feedbackSavedTimerByEventId)) {
+      clearTimeout(timer);
+    }
+    this.feedbackSavedTimerByEventId = {};
   }
 
   get studentName(): string {
@@ -64,6 +78,10 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
 
   get remainingNotifications(): StudentNotificationItem[] {
     return this.notifications.slice(1);
+  }
+
+  get ratingChoices(): number[] {
+    return [1, 2, 3, 4, 5];
   }
 
   get totalRegistrations(): number {
@@ -181,6 +199,151 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
     return this.studentDashboardService.formatRegistrationStatus(status);
   }
 
+  isEventCompleted(registration: StudentRegistrationRecord): boolean {
+    const event = registration.event;
+    const statusValue = String(event?.status || '').toLowerCase();
+    if (statusValue === 'past' || statusValue === 'completed') {
+      return true;
+    }
+
+    const eventTimestamp = event?.dateTime ? new Date(event.dateTime).getTime() : Number.NaN;
+    if (!Number.isNaN(eventTimestamp)) {
+      return eventTimestamp < Date.now();
+    }
+
+    return false;
+  }
+
+  shouldShowRating(registration: StudentRegistrationRecord): boolean {
+    return registration.status === 'APPROVED' && this.isEventCompleted(registration);
+  }
+
+  getSavedRating(eventId: string): number | null {
+    const value = this.savedRatingByEventId[eventId];
+    return typeof value === 'number' && value > 0 ? value : null;
+  }
+
+  getSavedFeedback(eventId: string): string {
+    return this.savedFeedbackByEventId[eventId] || '';
+  }
+
+  getDraftRating(eventId: string): number {
+    const saved = this.getSavedRating(eventId);
+    if (saved) {
+      return saved;
+    }
+    return this.ratingDraftByEventId[eventId] || 0;
+  }
+
+  setDraftRating(eventId: string, rating: number): void {
+    if (rating < 1 || rating > 5) return;
+    if (this.getSavedRating(eventId)) return;
+    this.ratingDraftByEventId[eventId] = rating;
+  }
+
+  submitRating(registration: StudentRegistrationRecord): void {
+    const eventId = registration.eventId;
+    const draft = this.ratingDraftByEventId[eventId] || 0;
+    if (draft < 1 || draft > 5) {
+      return;
+    }
+
+    this.errorMessage = '';
+
+    // Optimistically update the UI immediately
+    this.savedRatingByEventId[eventId] = draft;
+    delete this.ratingDraftByEventId[eventId];
+    
+    const storageKey = this.getRatingsStorageKey();
+    if (storageKey) {
+      try {
+        const existing = this.readRatingsFromStorage(storageKey);
+        existing[eventId] = draft;
+        localStorage.setItem(storageKey, JSON.stringify(existing));
+      } catch {}
+    }
+
+    this.reviewActionEventId = eventId;
+    // Call the backend service to save the rating in the database in the background
+    this.studentDashboardService.submitEventRating(eventId, draft).pipe(
+      timeout(8000),
+      finalize(() => {
+        if (this.reviewActionEventId === eventId) {
+          this.reviewActionEventId = '';
+        }
+      })
+    ).subscribe({
+      next: (review) => {
+        if (review && review.feedback) {
+          this.savedFeedbackByEventId[eventId] = review.feedback;
+        }
+      },
+      error: (error) => {
+        this.errorMessage = error?.error?.message || 'Failed to save rating to database.';
+        console.error('Failed to save rating to DB', error);
+      }
+    });
+  }
+
+  toggleFeedback(eventId: string): void {
+    if (this.feedbackOpenEventIds.has(eventId)) {
+      this.feedbackOpenEventIds.delete(eventId);
+      return;
+    }
+
+    const existing = this.getSavedFeedback(eventId);
+    if (!this.feedbackDraftByEventId[eventId]) {
+      this.feedbackDraftByEventId[eventId] = existing;
+    }
+    this.feedbackOpenEventIds.add(eventId);
+  }
+
+  submitFeedback(registration: StudentRegistrationRecord): void {
+    const eventId = registration.eventId;
+    const draft = String(this.feedbackDraftByEventId[eventId] || '').trim();
+    if (draft.length < 3) {
+      return;
+    }
+
+    this.errorMessage = '';
+
+    // Optimistic UI update
+    this.savedFeedbackByEventId[eventId] = draft;
+    this.markFeedbackSaved(eventId);
+
+    this.reviewActionEventId = eventId;
+    // Send to database in background
+    this.studentDashboardService.submitEventFeedback(eventId, draft).pipe(
+      timeout(8000),
+      finalize(() => {
+        if (this.reviewActionEventId === eventId) {
+          this.reviewActionEventId = '';
+        }
+      })
+    ).subscribe({
+      next: () => {},
+      error: (error) => {
+        this.errorMessage = error?.error?.message || 'Failed to save feedback to database.';
+        console.error('Failed to save feedback to DB', error);
+      }
+    });
+  }
+
+  private markFeedbackSaved(eventId: string): void {
+    this.feedbackSavedEventIds.add(eventId);
+
+    const existingTimer = this.feedbackSavedTimerByEventId[eventId];
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    this.feedbackSavedTimerByEventId[eventId] = setTimeout(() => {
+      this.feedbackSavedEventIds.delete(eventId);
+      this.feedbackOpenEventIds.delete(eventId);
+      delete this.feedbackSavedTimerByEventId[eventId];
+    }, 1000);
+  }
+
   formatNotificationTime(value: string): string {
     const timestamp = new Date(value).getTime();
     if (Number.isNaN(timestamp)) {
@@ -238,6 +401,7 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
     if (cachedRegistrations.length) {
       this.registrations = cachedRegistrations;
       this.applyFilters();
+      this.loadSavedReviews();
       this.loading = false;
     }
 
@@ -250,6 +414,7 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
     this.registrations = snapshot.registrations || [];
     this.notifications = snapshot.notifications || [];
     this.applyFilters();
+    this.loadSavedReviews();
     this.loading = false;
     this.notificationsLoading = false;
   }
@@ -263,5 +428,65 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
         error: () => undefined
       });
     }, 8000);
+  }
+
+  private loadSavedReviews(): void {
+    const eventIds = (this.registrations || []).map((item) => String(item.eventId)).filter(Boolean);
+    if (!eventIds.length) {
+      this.savedRatingByEventId = {};
+      this.savedFeedbackByEventId = {};
+      return;
+    }
+
+    // 1. Instantly load ratings from local storage fallback to avoid UI flickering
+    const storageKey = this.getRatingsStorageKey();
+    if (storageKey) {
+      try {
+        const localRatings = this.readRatingsFromStorage(storageKey);
+        for (const [k, v] of Object.entries(localRatings)) {
+          if (v) this.savedRatingByEventId[k] = v;
+        }
+      } catch {}
+    }
+
+    // 2. Fetch the actual ratings AND feedback from the database
+    this.studentDashboardService.getMyEventReviews(eventIds).subscribe({
+      next: (reviews) => {
+        for (const review of reviews || []) {
+          const eventId = String(review.eventId);
+          if (!eventId) continue;
+          if (review.rating) {
+            this.savedRatingByEventId[eventId] = review.rating;
+          }
+          if (review.feedback) {
+            this.savedFeedbackByEventId[eventId] = review.feedback;
+          }
+        }
+      }
+    });
+  }
+
+  private getRatingsStorageKey(): string | null {
+    const userId = this.profile?.userId || JSON.parse(localStorage.getItem('currentUser') || '{}')?.userId;
+    if (!userId) return null;
+    return `eventRatings:${String(userId)}`;
+  }
+
+  private readRatingsFromStorage(storageKey: string): Record<string, number> {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return {};
+    try {
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return {};
+      const result: Record<string, number> = {};
+      for (const [key, value] of Object.entries(parsed)) {
+        if (typeof value === 'number' && value >= 1 && value <= 5) {
+          result[String(key)] = value;
+        }
+      }
+      return result;
+    } catch {
+      return {};
+    }
   }
 }
