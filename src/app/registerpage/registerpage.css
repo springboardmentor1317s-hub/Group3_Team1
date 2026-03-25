@@ -135,6 +135,13 @@ app-site-footer {
   transition: transform 0.25s ease;
 }
 
+.brand-block:link,
+.brand-block:visited,
+.brand-block:hover,
+.brand-block:active {
+  color: #000;
+}
+
 .brand-block:hover {
   transform: translateY(-1px);
 }
@@ -174,7 +181,7 @@ app-site-footer {
 
 .brand-campus,
 .brand-eventhub {
-  color: var(--ink-1);
+  color: #000;
 }
 
 .brand-tag {
