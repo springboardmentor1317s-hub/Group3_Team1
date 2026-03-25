@@ -8,6 +8,7 @@
             <span class="brand-campus">Campus</span>
             <span class="brand-eventhub">Event Hub</span>
           </span>
+          <span class="brand-tag">Smart Campus Events</span>
         </div>
       </a>
 
@@ -20,79 +21,141 @@
 
   <div class="page-content">
     <div class="auth-shell signup-shell">
-      <div class="card">
-        <div class="icon">
-          <img class="icon-img" src="assets/icon register.png" alt="Register icon">
-        </div>
-        <h1>Create Account</h1>
-        <p class="subtitle">Fill the form to get started</p>
-
-        <div *ngIf="errorMessage" class="error-message">
-          {{ errorMessage }}
-        </div>
-
-        <form class="signup-form" (ngSubmit)="register()">
-          <div class="field">
-            <label>Full Name</label>
-            <input type="text"
-              placeholder="Full Name"
-              [(ngModel)]="user.fullName"
-              name="fullName"
-              required>
+      <div class="auth-layout">
+        <section class="card card-form">
+          <div class="chip">New Account Setup</div>
+          <h1>Create Account</h1>
+          <p class="subtitle">Register to access event workflows, approvals, and campus dashboard tools.</p>
+          <div class="trust-row" aria-hidden="true">
+            <span class="trust-pill">Verified Roles</span>
+            <span class="trust-pill">Secure Registration</span>
+            <span class="trust-pill">Fast Onboarding</span>
           </div>
 
-          <div class="field">
-            <label>Email Address</label>
-            <input type="email"
-              placeholder="Email Address"
-              [(ngModel)]="user.email"
-              name="email"
-              required>
+          <div *ngIf="errorMessage" class="error-message">
+            {{ errorMessage }}
           </div>
 
-          <div class="field">
-            <label>College/University</label>
-            <input type="text"
-              placeholder="College / University"
-              [(ngModel)]="user.college"
-              name="college">
+          <form class="signup-form" (ngSubmit)="register()">
+            <div class="field">
+              <label>Full Name</label>
+              <input type="text"
+                placeholder="Full Name"
+                [(ngModel)]="user.fullName"
+                name="fullName"
+                required>
+            </div>
+
+            <div class="field">
+              <label>Email Address</label>
+              <input type="email"
+                placeholder="Email Address"
+                [(ngModel)]="user.email"
+                name="email"
+                required>
+            </div>
+
+            <div class="field">
+              <label>College/University</label>
+              <input type="text"
+                placeholder="College / University"
+                [(ngModel)]="user.college"
+                name="college">
+            </div>
+
+            <div class="field">
+              <label>Role</label>
+              <select [(ngModel)]="user.role" name="role">
+                <option value="student">Student</option>
+                <option value="college_admin">College Admin</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Password</label>
+              <input type="password"
+                placeholder="Password"
+                [(ngModel)]="user.password"
+                name="password"
+                required>
+            </div>
+
+            <div class="field">
+              <label>Confirm Password</label>
+              <input type="password"
+                placeholder="Confirm Password"
+                [(ngModel)]="user.confirmPassword"
+                name="confirmPassword"
+                required>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit">Register</button>
+
+              <p class="link">
+                Already have an account?
+                <a routerLink="/login">Login</a>
+              </p>
+            </div>
+          </form>
+
+          <div class="meta-strip" aria-hidden="true">
+            <div class="meta-item">
+              <span class="meta-head">Setup Time</span>
+              <strong>2 Min</strong>
+            </div>
+            <div class="meta-item">
+              <span class="meta-head">Activation</span>
+              <strong>Instant</strong>
+            </div>
+            <div class="meta-item">
+              <span class="meta-head">Account Type</span>
+              <strong>Student/Admin</strong>
+            </div>
+          </div>
+        </section>
+
+        <aside class="card card-highlight" aria-hidden="true">
+          <p class="eyebrow">Campus Event Hub</p>
+          <h3>Professional onboarding for campus collaboration</h3>
+          <p class="highlight-text">
+            Build your profile once and access role-based event tools with a structured, secure, and scalable setup.
+          </p>
+
+          <div class="highlight-grid">
+            <div class="highlight-item">
+              <span class="count">Quick</span>
+              <span class="label">Form Completion</span>
+            </div>
+            <div class="highlight-item">
+              <span class="count">Smart</span>
+              <span class="label">Role Mapping</span>
+            </div>
+            <div class="highlight-item">
+              <span class="count">Safe</span>
+              <span class="label">Credential Handling</span>
+            </div>
+            <div class="highlight-item">
+              <span class="count">Ready</span>
+              <span class="label">Dashboard Access</span>
+            </div>
           </div>
 
-          <div class="field">
-            <label>Role</label>
-            <select [(ngModel)]="user.role" name="role">
-              <option value="student">Student</option>
-              <option value="college_admin">College Admin</option>
-            </select>
+          <div class="process-list">
+            <div class="process-item">
+              <span class="dot"></span>
+              <span>Submit identity and organization details</span>
+            </div>
+            <div class="process-item">
+              <span class="dot"></span>
+              <span>Register account with selected role permissions</span>
+            </div>
+            <div class="process-item">
+              <span class="dot"></span>
+              <span>Proceed to role-specific experience and operations</span>
+            </div>
           </div>
-
-          <div class="field">
-            <label>Password</label>
-            <input type="password"
-              placeholder="Password"
-              [(ngModel)]="user.password"
-              name="password"
-              required>
-          </div>
-
-          <div class="field">
-            <label>Confirm Password</label>
-            <input type="password"
-              placeholder="Confirm Password"
-              [(ngModel)]="user.confirmPassword"
-              name="confirmPassword"
-              required>
-          </div>
-
-          <div class="form-actions">
-            <button type="submit">Register</button>
-
-            <p class="link">
-              Already have an account?
-              <a routerLink="/login">Login</a>
-            </p>
-          </div>
-        </form>
+        </aside>
       </div>
     </div>
   </div>
