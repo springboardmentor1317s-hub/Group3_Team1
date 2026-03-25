@@ -470,7 +470,7 @@
 .layout {
   margin-top: 14px;
   display: grid;
-  grid-template-columns: 118px minmax(0, 1fr);
+  grid-template-columns: 240px minmax(0, 1fr);
   gap: 18px;
   position: relative;
   z-index: 1;
@@ -478,13 +478,13 @@
 }
 
 .layout.sidebar-expanded {
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 240px minmax(0, 1fr);
 }
 
 .sidebar {
   background: #6b5ce2;
   border: none;
-  width: 220px;
+  width: 100%;
   padding: 14px 10px;
   display: flex;
   flex-direction: column;
@@ -492,10 +492,12 @@
   min-height: 86px;
   max-height: calc(100vh - 170px);
   overflow: visible;
-  transform: translateX(-102px);
+  transform: translateX(0);
   box-shadow: 0 14px 26px rgba(92, 76, 150, 0.18);
   backdrop-filter: blur(12px);
   transition: transform 0.3s ease, padding 0.22s ease;
+  position: sticky;
+  top: 18px;
 }
 
 .sidebar.expanded {
@@ -626,8 +628,8 @@
   flex-direction: column;
   gap: 22px;
   min-width: 0;
-  width: min(1320px, 100%);
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
 }
 
 .summary-cards {
