@@ -200,6 +200,11 @@
   padding-bottom: 2rem;
 }
 
+app-site-footer {
+  display: block;
+  margin: 0 -1.1rem -1.1rem;
+}
+
 .hero-panel {
   position: relative;
   display: block;
@@ -1529,6 +1534,10 @@
 @media (max-width: 820px) {
   .student-shell {
     padding: 0 0.75rem 0.75rem;
+  }
+
+  app-site-footer {
+    margin: 0 -0.75rem -0.75rem;
   }
 
   .luxury-header {
