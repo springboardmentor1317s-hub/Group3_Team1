@@ -71,49 +71,17 @@
     <section *ngIf="loading" class="state-card">Loading events...</section>
 
     <section class="event-grid" *ngIf="!loading && filteredEvents.length > 0">
-      <article class="event-card" *ngFor="let event of filteredEvents; trackBy: trackById" [attr.id]="'event-' + event.id">
-        <div
-          class="card-cover"
-          [style.background-image]="event.imageUrl ? 'linear-gradient(180deg, rgba(15, 23, 42, 0.18), rgba(15, 23, 42, 0.76)), url(' + event.imageUrl + ')' : null"
-        ></div>
 
-        <div class="card-body">
-          <div class="meta-row">
-            <span class="seats-pill"><span class="material-icons">groups</span>{{ event.registrations }}/{{ event.maxAttendees }} seats</span>
-            <span class="contact-pill"><span class="material-icons">call</span>{{ event.contact }}</span>
-          </div>
+      <div class="event-card-stack" *ngFor="let event of filteredEvents; trackBy: trackById">
+        <app-event-card
+          [event]="event"
+          [registerLabel]="getRegisterLabel(event)"
+          [registerDisabled]="event.status !== 'Open' || actionEventId === event.id"
+          [showRegisterButton]="true"
+          (registerClicked)="registerForEvent(event)"
+        ></app-event-card>
+      </div>
 
-          <h3>{{ event.title }}</h3>
-          <p class="event-description" [class.expanded]="isEventDescriptionExpanded(event.id)">{{ event.description }}</p>
-          <button
-            *ngIf="event.description.length > 120"
-            type="button"
-            class="description-toggle"
-            (click)="toggleEventDescription(event.id)"
-          >
-            {{ isEventDescriptionExpanded(event.id) ? 'View less' : 'View more' }}
-          </button>
-
-          <div class="detail-grid">
-            <span class="category-pill subtle">{{ event.category }}</span>
-            <span><span class="material-icons">calendar_today</span>{{ event.dateLabel }}</span>
-            <span><span class="material-icons">schedule</span>{{ event.timeLabel }}</span>
-            <span><span class="material-icons">location_on</span>{{ event.location }}</span>
-            <span><span class="material-icons">apartment</span>{{ event.collegeName }}</span>
-            <span><span class="material-icons">person</span>{{ event.organizer || 'Campus Event Hub' }}</span>
-            <span><span class="material-icons">call</span>{{ event.contact }}</span>
-          </div>
-
-          <button
-            type="button"
-            class="register-btn"
-            [disabled]="event.status !== 'Open' || actionEventId === event.id"
-            (click)="registerForEvent(event)"
-          >
-            {{ getRegisterLabel(event) }}
-          </button>
-        </div>
-      </article>
     </section>
 
     <section *ngIf="!loading && filteredEvents.length === 0" class="state-card">
