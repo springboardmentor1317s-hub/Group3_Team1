@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
 import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
+import { EventCardComponent } from '../shared/event-card/event-card.component';
 import { finalize, timeout } from 'rxjs';
 import {
   StudentDashboardService,
@@ -25,7 +26,7 @@ interface DashboardStat {
 @Component({
   selector: 'app-student-dashboard-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, StudentHeaderComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, StudentHeaderComponent, EventCardComponent],
   templateUrl: './student-dashboard-page.component.html',
   styleUrls: ['./student-dashboard-page.component.scss']
 })
@@ -62,7 +63,6 @@ export class StudentDashboardPageComponent implements OnInit {
   errorMessage = '';
   silentRefreshing = false;
   activeTab: 'dashboard' | 'events' | 'registrations' | 'feedback' = 'dashboard';
-  expandedEventIds = new Set<string>();
   private notificationsRefreshTimer: ReturnType<typeof setInterval> | null = null;
   private feedbackSavedTimerByEventId: Record<string, ReturnType<typeof setTimeout>> = {};
 
@@ -229,23 +229,6 @@ export class StudentDashboardPageComponent implements OnInit {
   openNotifications(event?: Event): void {
     event?.stopPropagation();
     this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
-  }
-
-  viewEvent(event: StudentEventCard): void {
-    this.router.navigate(['/student-events'], { queryParams: { focus: event.id } });
-  }
-
-  toggleEventDescription(eventId: string): void {
-    if (this.expandedEventIds.has(eventId)) {
-      this.expandedEventIds.delete(eventId);
-      return;
-    }
-
-    this.expandedEventIds.add(eventId);
-  }
-
-  isEventDescriptionExpanded(eventId: string): boolean {
-    return this.expandedEventIds.has(eventId);
   }
 
   registerForEvent(event: StudentEventCard): void {

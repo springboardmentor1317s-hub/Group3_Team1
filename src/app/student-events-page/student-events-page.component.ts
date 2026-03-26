@@ -1,3 +1,4 @@
+
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -5,16 +6,18 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
 import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
+import { EventCardComponent } from '../shared/event-card/event-card.component';
 import {
   StudentDashboardService,
   StudentEventCard,
   StudentNotificationItem
 } from '../services/student-dashboard.service';
 
+
 @Component({
   selector: 'app-student-events-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, StudentHeaderComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, StudentHeaderComponent, EventCardComponent],
   templateUrl: './student-events-page.component.html',
   styleUrls: ['./student-events-page.component.scss']
 })
@@ -175,18 +178,9 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
     return 'Register Now';
   }
 
-  toggleEventDescription(eventId: string): void {
-    if (this.expandedEventIds.has(eventId)) {
-      this.expandedEventIds.delete(eventId);
-      return;
-    }
 
-    this.expandedEventIds.add(eventId);
-  }
 
-  isEventDescriptionExpanded(eventId: string): boolean {
-    return this.expandedEventIds.has(eventId);
-  }
+
 
   @HostListener('document:click')
   closeNotificationsDropdown(): void {
