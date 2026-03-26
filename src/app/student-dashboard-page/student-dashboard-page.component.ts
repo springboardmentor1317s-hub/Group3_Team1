@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
 import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
+import { EventCardComponent } from '../shared/event-card/event-card.component';
 import { finalize, timeout } from 'rxjs';
 import {
   StudentDashboardService,
@@ -11,7 +12,8 @@ import {
   StudentDashboardSnapshot,
   StudentNotificationItem,
   StudentProfile,
-  StudentRegistrationRecord
+  StudentRegistrationRecord,
+  StudentEventReview
 } from '../services/student-dashboard.service';
 
 interface DashboardStat {
@@ -24,7 +26,7 @@ interface DashboardStat {
 @Component({
   selector: 'app-student-dashboard-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, EventCardComponent],
   templateUrl: './student-dashboard-page.component.html',
   styleUrls: ['./student-dashboard-page.component.scss']
 })
@@ -40,6 +42,7 @@ export class StudentDashboardPageComponent implements OnInit {
   savedRatingByEventId: Record<string, number> = {};
   feedbackDraftByEventId: Record<string, string> = {};
   savedFeedbackByEventId: Record<string, string> = {};
+  eventRatingSummaryByEventId: Record<string, { average: number; count: number }> = {};
   feedbackOpenEventIds = new Set<string>();
   feedbackSavedEventIds = new Set<string>();
   statsState = {
@@ -61,9 +64,11 @@ export class StudentDashboardPageComponent implements OnInit {
   errorMessage = '';
   silentRefreshing = false;
   activeTab: 'dashboard' | 'events' | 'registrations' | 'feedback' = 'dashboard';
-  expandedEventIds = new Set<string>();
   private notificationsRefreshTimer: ReturnType<typeof setInterval> | null = null;
+  private ratingRefreshTimer: ReturnType<typeof setInterval> | null = null;
   private feedbackSavedTimerByEventId: Record<string, ReturnType<typeof setTimeout>> = {};
+  private loadingRatingSummaryEventIds = new Set<string>();
+  private ratingSummaryRetryCountByEventId: Record<string, number> = {};
 
   constructor(
     private studentDashboardService: StudentDashboardService,
@@ -83,12 +88,17 @@ export class StudentDashboardPageComponent implements OnInit {
     this.prefillFromCache();
     this.loadDashboard();
     this.startNotificationsRefresh();
+    this.startRatingsRefresh();
   }
 
   ngOnDestroy(): void {
     if (this.notificationsRefreshTimer) {
       clearInterval(this.notificationsRefreshTimer);
       this.notificationsRefreshTimer = null;
+    }
+    if (this.ratingRefreshTimer) {
+      clearInterval(this.ratingRefreshTimer);
+      this.ratingRefreshTimer = null;
     }
 
     for (const timer of Object.values(this.feedbackSavedTimerByEventId)) {
@@ -99,6 +109,18 @@ export class StudentDashboardPageComponent implements OnInit {
 
   get studentName(): string {
     return this.profile?.name || JSON.parse(localStorage.getItem('currentUser') || '{}')?.name || 'Student';
+  }
+
+  get profilePhotoUrl(): string {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    const value = String(
+      currentUser.profileImageUrl
+      || currentUser.profilePhotoUrl
+      || currentUser.avatarUrl
+      || currentUser.photoUrl
+      || ''
+    ).trim();
+    return value || '';
   }
 
   get displayedEvents(): StudentEventCard[] {
@@ -182,6 +204,7 @@ export class StudentDashboardPageComponent implements OnInit {
 
       return matchesQuery && matchesCategory && matchesCollege && matchesDate;
     });
+
   }
 
   clearFilters(): void {
@@ -206,7 +229,7 @@ export class StudentDashboardPageComponent implements OnInit {
     }
 
     if (tab === 'feedback') {
-      document.getElementById('feedback-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      this.router.navigate(['/student-feedback']);
       return;
     }
 
@@ -230,25 +253,8 @@ export class StudentDashboardPageComponent implements OnInit {
     this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
   }
 
-  viewEvent(event: StudentEventCard): void {
-    this.router.navigate(['/student-events'], { queryParams: { focus: event.id } });
-  }
-
-  toggleEventDescription(eventId: string): void {
-    if (this.expandedEventIds.has(eventId)) {
-      this.expandedEventIds.delete(eventId);
-      return;
-    }
-
-    this.expandedEventIds.add(eventId);
-  }
-
-  isEventDescriptionExpanded(eventId: string): boolean {
-    return this.expandedEventIds.has(eventId);
-  }
-
   registerForEvent(event: StudentEventCard): void {
-    if (event.status !== 'Open') {
+    if (event.status !== 'Open' || this.isEventExpired(event)) {
       return;
     }
 
@@ -274,41 +280,48 @@ export class StudentDashboardPageComponent implements OnInit {
   }
 
   getRegisterLabel(event: StudentEventCard): string {
-    if (event.status === 'Registered') {
+    const normalizedStatus = String(event.status || '').toLowerCase();
+    if (this.isEventExpired(event)) {
+      return 'Event Closed';
+    }
+    if (normalizedStatus === 'registered') {
       return 'Registered';
     }
     if (this.actionEventId === event.id) {
       return 'Joining...';
     }
-    if (event.status === 'Full') {
+    if (normalizedStatus === 'full') {
       return 'Full';
     }
-    if (event.status === 'Closed') {
+    if (normalizedStatus === 'closed') {
       return 'Closed';
     }
     return 'Register Now';
   }
 
   isEventRegistered(event: StudentEventCard): boolean {
-    return event.registered === true || event.status === 'Registered';
+    return event.registered === true || String(event.status || '').toLowerCase() === 'registered';
   }
 
   isEventCompleted(event: StudentEventCard): boolean {
-    const endTimestamp = event.endDate ? new Date(event.endDate).getTime() : Number.NaN;
-    if (!Number.isNaN(endTimestamp)) {
-      return endTimestamp < Date.now();
-    }
-
-    const startTimestamp = event.dateTime ? new Date(event.dateTime).getTime() : Number.NaN;
-    if (!Number.isNaN(startTimestamp)) {
-      return startTimestamp < Date.now();
-    }
-
-    return event.status === 'Closed';
+    return this.isEventExpired(event);
   }
 
   shouldShowRating(event: StudentEventCard): boolean {
     return this.isEventRegistered(event) && this.isEventCompleted(event);
+  }
+
+  getEventRatingAverage(eventId: string): number | null {
+    const summary = this.eventRatingSummaryByEventId[eventId];
+    return summary ? summary.average : null;
+  }
+
+  getEventRatingCount(eventId: string): number {
+    return this.eventRatingSummaryByEventId[eventId]?.count || 0;
+  }
+
+  isRatingSummaryLoading(eventId: string): boolean {
+    return this.loadingRatingSummaryEventIds.has(eventId);
   }
 
   getSavedRating(eventId: string): number | null {
@@ -527,10 +540,92 @@ export class StudentDashboardPageComponent implements OnInit {
   }
 
   private setEvents(events: StudentEventCard[]): void {
-    this.allEvents = [...events].sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
+    this.allEvents = [...events].sort((a, b) => this.getEventTimestamp(b) - this.getEventTimestamp(a));
     this.categories = ['All', ...Array.from(new Set(this.allEvents.map((event) => event.category).filter(Boolean) as string[]))];
     this.colleges = ['All', ...Array.from(new Set(this.allEvents.map((event) => event.collegeName).filter(Boolean) as string[]))];
     this.applyFilters();
+    this.loadVisibleEventRatingSummaries(this.allEvents, true);
+  }
+
+  private loadVisibleEventRatingSummaries(sourceEvents: StudentEventCard[] = this.displayedEvents, forceRefresh = false): void {
+    const ids = sourceEvents
+      .filter((event) => this.isEventCompleted(event))
+      .map((event) => String(event.id))
+      .filter((id) => !!id)
+      .filter((id) => forceRefresh || !this.eventRatingSummaryByEventId[id]);
+
+    if (!ids.length) {
+      return;
+    }
+
+    for (const id of ids) {
+      this.loadingRatingSummaryEventIds.add(id);
+    }
+
+    this.studentDashboardService.getEventRatingSummaries(ids).pipe(
+      timeout(7000)
+    ).subscribe({
+      next: (summaries) => {
+        const byEventId = new Map<string, { average: number; count: number }>();
+        for (const item of summaries || []) {
+          byEventId.set(String(item.eventId), {
+            average: Number(item.average || 0),
+            count: Number(item.count || 0)
+          });
+        }
+
+        for (const id of ids) {
+          this.eventRatingSummaryByEventId[id] = byEventId.get(id) || { average: 0, count: 0 };
+          this.loadingRatingSummaryEventIds.delete(id);
+          this.ratingSummaryRetryCountByEventId[id] = 0;
+        }
+      },
+      error: () => {
+        for (const id of ids) {
+          this.loadingRatingSummaryEventIds.delete(id);
+          const retries = (this.ratingSummaryRetryCountByEventId[id] || 0) + 1;
+          this.ratingSummaryRetryCountByEventId[id] = retries;
+          if (retries <= 2) {
+            setTimeout(() => this.loadVisibleEventRatingSummaries(sourceEvents, true), 1200 * retries);
+          } else {
+            this.eventRatingSummaryByEventId[id] = { average: 0, count: 0 };
+          }
+        }
+      }
+    });
+  }
+
+  private getEventTimestamp(event: StudentEventCard): number {
+    const timestamp = new Date(event.dateTime).getTime();
+    return Number.isNaN(timestamp) ? 0 : timestamp;
+  }
+
+  private isEventExpired(event: StudentEventCard): boolean {
+    const normalizedStatus = String(event.status || '').toLowerCase();
+    if (normalizedStatus === 'closed' || normalizedStatus === 'completed' || normalizedStatus === 'past') {
+      return true;
+    }
+
+    const parseDate = (value?: string | null): number => {
+      if (!value) return Number.NaN;
+      const trimmed = String(value).trim();
+      if (!trimmed) return Number.NaN;
+      const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(trimmed);
+      const parsed = new Date(isDateOnly ? `${trimmed}T23:59:59.999` : trimmed).getTime();
+      return Number.isNaN(parsed) ? Number.NaN : parsed;
+    };
+
+    const endTimestamp = parseDate(event.endDate);
+    if (!Number.isNaN(endTimestamp)) {
+      return endTimestamp < Date.now();
+    }
+
+    const startTimestamp = parseDate(event.dateTime);
+    if (!Number.isNaN(startTimestamp)) {
+      return startTimestamp < Date.now();
+    }
+
+    return false;
   }
 
   private startNotificationsRefresh(): void {
@@ -541,6 +636,12 @@ export class StudentDashboardPageComponent implements OnInit {
         },
         error: () => void 0
       });
+    }, 8000);
+  }
+
+  private startRatingsRefresh(): void {
+    this.ratingRefreshTimer = setInterval(() => {
+      this.loadVisibleEventRatingSummaries(this.allEvents, true);
     }, 8000);
   }
 

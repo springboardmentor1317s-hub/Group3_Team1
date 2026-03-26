@@ -1,11 +1,13 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
 import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
+import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
 import {
   StudentDashboardService,
+  StudentNotificationItem,
   StudentProfile,
   StudentRegistrationRecord
 } from '../services/student-dashboard.service';
@@ -13,31 +15,31 @@ import {
 @Component({
   selector: 'app-student-profile-page',
   standalone: true,
-  imports: [CommonModule, RouterModule, SiteFooterComponent, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, StudentHeaderComponent],
   templateUrl: './student-profile-page.component.html',
   styleUrls: ['./student-profile-page.component.scss']
 })
-export class StudentProfilePageComponent implements OnInit {
-  toastMessage = '';
-  toastType: 'success' | 'error' | 'info' | null = null;
-  showToast = false;
-
-  showToastNotification(message: string, type: 'success' | 'error' | 'info'): void {
-    this.toastMessage = message;
-    this.toastType = type;
-    this.showToast = true;
-    setTimeout(() => {
-      this.showToast = false;
-    }, 4000);
-  }
+export class StudentProfilePageComponent implements OnInit, OnDestroy {
   profile: StudentProfile | null = null;
   registrations: StudentRegistrationRecord[] = [];
+  notifications: StudentNotificationItem[] = [];
   loading = true;
-  errorMessage = '';
   isEditing = false;
-  saveInProgress = false;
-  editableProfile: Partial<StudentProfile> | null = null;
-  sameAsCurrentAddress = false;
+  isSaving = false;
+  errorMessage = '';
+  editError = '';
+  selectedProfileImage: string | null = null;
+  editForm = {
+    name: '',
+    email: '',
+    college: '',
+    phone: '',
+    location: '',
+    department: ''
+  };
+  notificationsLoading = true;
+  notificationsDropdownOpen = false;
+  private notificationsRefreshTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private studentDashboardService: StudentDashboardService,
@@ -48,6 +50,15 @@ export class StudentProfilePageComponent implements OnInit {
   ngOnInit(): void {
     this.prefillFromCache();
     this.loadProfile();
+    this.loadNotifications();
+    this.startNotificationsRefresh();
+  }
+
+  ngOnDestroy(): void {
+    if (this.notificationsRefreshTimer) {
+      clearInterval(this.notificationsRefreshTimer);
+      this.notificationsRefreshTimer = null;
+    }
   }
 
   get approvedCount(): number {
@@ -60,6 +71,13 @@ export class StudentProfilePageComponent implements OnInit {
 
   get studentName(): string {
     return this.profile?.name || JSON.parse(localStorage.getItem('currentUser') || '{}')?.name || 'Student';
+  }
+
+  get profilePhotoUrl(): string {
+    if (this.selectedProfileImage) return this.selectedProfileImage;
+    if (this.profile?.profileImageUrl) return this.profile.profileImageUrl;
+    const seedName = this.profile?.name || this.studentName;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(seedName)}&background=1d4ed8&color=fff&bold=true`;
   }
 
   loadProfile(): void {
@@ -77,14 +95,14 @@ export class StudentProfilePageComponent implements OnInit {
     this.studentDashboardService.getProfile().subscribe({
       next: (profile) => {
         this.profile = profile;
-        this.editableProfile = { ...profile };
+        this.syncEditForm(profile);
         profileLoaded = true;
         finishLoadingIfReady();
       },
       error: (error) => {
         this.profile = this.studentDashboardService.getCachedProfile();
         if (this.profile) {
-          this.editableProfile = { ...this.profile };
+          this.syncEditForm(this.profile);
         }
         profileLoaded = true;
         if (!this.profile) {
@@ -106,88 +124,16 @@ export class StudentProfilePageComponent implements OnInit {
         finishLoadingIfReady();
       }
     });
-  }
 
-  startEditing(): void {
-    this.isEditing = true;
-    if (this.profile) {
-      this.editableProfile = { ...this.profile };
-    }
-    this.sameAsCurrentAddress = !!this.profile?.permanentAddress?.sameAsCurrent;
-  }
-
-  onSameAsCurrentChange(): void {
-    if (this.sameAsCurrentAddress && this.editableProfile && this.editableProfile.currentAddress) {
-      this.editableProfile.permanentAddress = {
-        ...this.editableProfile.currentAddress,
-        sameAsCurrent: true
-      };
-    }
-  }
-
-  cancelEditing(): void {
-    if (this.profile) {
-      this.editableProfile = { ...this.profile };
-    }
-    this.isEditing = false;
-  }
-
-  get hasChanges(): boolean {
-    if (!this.profile || !this.editableProfile) return false;
-    return this.profile.name !== this.editableProfile.name || 
-           this.profile.email !== this.editableProfile.email;
-  }
-
-  saveProfile(): void {
-    if (!this.editableProfile) {
-      this.showToastNotification('No profile data available', 'error');
-      return;
-    }
-
-    // Client-side validation
-    if (!this.editableProfile.name?.trim() || !this.editableProfile.email?.trim()) {
-      this.showToastNotification('Name and email are required fields', 'error');
-      this.saveInProgress = false;
-      return;
-    }
-
-    if (!this.hasChanges) {
-      this.showToastNotification('No changes detected', 'info');
-      this.isEditing = false;
-      return;
-    }
-
-    this.saveInProgress = true;
-    this.errorMessage = '';
-
-    const profileData: Partial<StudentProfile> = {
-      name: this.editableProfile.name.trim(),
-      email: this.editableProfile.email.trim()
-    };
-
-    this.studentDashboardService.updateProfile(profileData).subscribe({
-      next: (updatedProfile) => {
-        this.profile = updatedProfile;
-        this.editableProfile = { ...updatedProfile };
-        this.isEditing = false;
-        this.saveInProgress = false;
-
-        // Update localStorage currentUser for global sync
-        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-        const updatedUser = { ...currentUser, name: updatedProfile.name, email: updatedProfile.email };
-        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-
-        this.showToastNotification('Profile updated successfully!', 'success');
-        
-        // Refresh dashboard to reflect changes everywhere
-        this.studentDashboardService.refreshDashboardSnapshot().subscribe();
+    this.studentDashboardService.getMyProfileDetails().subscribe({
+      next: (details) => {
+        this.profile = {
+          ...(this.profile || ({} as StudentProfile)),
+          ...details
+        };
+        this.syncEditForm(this.profile);
       },
-      error: (error) => {
-        const errorMsg = error?.error?.message || 'Failed to save profile. Please try again.';
-        this.errorMessage = errorMsg;
-        this.showToastNotification(errorMsg, 'error');
-        this.saveInProgress = false;
-      }
+      error: () => undefined
     });
   }
 
@@ -201,14 +147,15 @@ export class StudentProfilePageComponent implements OnInit {
       return;
     }
     if (path === 'feedback') {
-      this.router.navigate(['/new-student-dashboard'], { fragment: 'feedback-section' });
+      this.router.navigate(['/student-feedback']);
       return;
     }
     this.router.navigate(['/student-registrations']);
   }
 
-  openNotifications(): void {
-    this.router.navigate(['/new-student-dashboard'], { fragment: 'notifications-section' });
+  openNotifications(event?: Event): void {
+    event?.stopPropagation();
+    this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
   }
 
   logout(): void {
@@ -224,21 +171,177 @@ export class StudentProfilePageComponent implements OnInit {
     return this.studentDashboardService.formatRegistrationStatus(status);
   }
 
+  startEdit(): void {
+    if (!this.profile) return;
+    this.isEditing = true;
+    this.editError = '';
+    this.selectedProfileImage = this.profile.profileImageUrl || null;
+    this.syncEditForm(this.profile);
+  }
+
+  cancelEdit(): void {
+    this.isEditing = false;
+    this.editError = '';
+    this.selectedProfileImage = this.profile?.profileImageUrl || null;
+    if (this.profile) {
+      this.syncEditForm(this.profile);
+    }
+  }
+
+  saveProfile(): void {
+    if (!this.profile || this.isSaving) return;
+
+    const payload = {
+      name: this.editForm.name.trim(),
+      email: this.editForm.email.trim(),
+      college: this.editForm.college.trim(),
+      phone: this.editForm.phone.trim(),
+      location: this.editForm.location.trim(),
+      department: this.editForm.department.trim(),
+      profileImageUrl: this.selectedProfileImage || ''
+    };
+
+    if (!payload.name || !payload.email) {
+      this.editError = 'Name and email are required.';
+      return;
+    }
+
+    this.isSaving = true;
+    this.editError = '';
+
+    this.studentDashboardService.updateMyProfile(payload).subscribe({
+      next: (updated) => {
+        this.profile = {
+          ...this.profile!,
+          ...updated
+        };
+        this.isSaving = false;
+        this.isEditing = false;
+        this.selectedProfileImage = this.profile.profileImageUrl || null;
+        this.syncEditForm(this.profile);
+        this.persistCurrentUser(this.profile);
+      },
+      error: (error) => {
+        this.isSaving = false;
+        this.editError = error?.error?.message || 'Unable to save profile right now.';
+      }
+    });
+  }
+
+  onPhotoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      this.editError = 'Please choose an image file (JPG/PNG).';
+      input.value = '';
+      return;
+    }
+
+    const maxSizeBytes = 1.5 * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      this.editError = 'Please choose an image smaller than 1.5MB.';
+      input.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      this.selectedProfileImage = typeof reader.result === 'string' ? reader.result : null;
+      this.editError = '';
+    };
+    reader.onerror = () => {
+      this.editError = 'Could not read image file.';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  removePhoto(): void {
+    this.selectedProfileImage = null;
+  }
+
+  @HostListener('document:click')
+  closeNotificationsDropdown(): void {
+    this.notificationsDropdownOpen = false;
+  }
+
   private prefillFromCache(): void {
     const cachedProfile = this.studentDashboardService.getCachedProfile();
     const cachedRegistrations = this.studentDashboardService.getCachedRegistrations();
+    const cachedNotifications = this.studentDashboardService.getCachedNotifications();
 
     if (cachedProfile) {
       this.profile = cachedProfile;
-      this.editableProfile = { ...cachedProfile };
+      this.syncEditForm(cachedProfile);
     }
 
     if (cachedRegistrations.length) {
       this.registrations = cachedRegistrations;
     }
 
+    if (cachedNotifications.length) {
+      this.notifications = cachedNotifications;
+      this.notificationsLoading = false;
+    }
+
     if (this.profile || this.registrations.length) {
       this.loading = false;
     }
+  }
+
+  private syncEditForm(profile: StudentProfile): void {
+    this.editForm = {
+      name: String(profile?.name || ''),
+      email: String(profile?.email || ''),
+      college: String(profile?.college || ''),
+      phone: String(profile?.phone || ''),
+      location: String(profile?.location || ''),
+      department: String(profile?.department || '')
+    };
+    this.selectedProfileImage = profile?.profileImageUrl || null;
+  }
+
+  private persistCurrentUser(profile: StudentProfile): void {
+    const existing = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    const merged = {
+      ...existing,
+      name: profile.name || existing.name,
+      email: profile.email || existing.email,
+      college: profile.college || existing.college,
+      role: profile.role || existing.role,
+      phone: profile.phone ?? existing.phone,
+      location: profile.location ?? existing.location,
+      department: profile.department ?? existing.department,
+      profileImageUrl: profile.profileImageUrl ?? existing.profileImageUrl
+    };
+    localStorage.setItem('currentUser', JSON.stringify(merged));
+  }
+
+  private loadNotifications(): void {
+    this.notificationsLoading = true;
+
+    this.studentDashboardService.refreshDashboardSnapshot().subscribe({
+      next: (snapshot) => {
+        this.notifications = snapshot.notifications || [];
+        this.notificationsLoading = false;
+      },
+      error: () => {
+        this.notifications = this.studentDashboardService.getCachedNotifications();
+        this.notificationsLoading = false;
+      }
+    });
+  }
+
+  private startNotificationsRefresh(): void {
+    this.notificationsRefreshTimer = setInterval(() => {
+      this.studentDashboardService.refreshDashboardSnapshot().subscribe({
+        next: (snapshot) => {
+          this.notifications = snapshot.notifications || [];
+          this.notificationsLoading = false;
+        },
+        error: () => void 0
+      });
+    }, 8000);
   }
 }
