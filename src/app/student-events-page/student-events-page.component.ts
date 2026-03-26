@@ -1,29 +1,30 @@
 
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
 import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
+import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
 import { EventCardComponent } from '../shared/event-card/event-card.component';
 import {
   StudentDashboardService,
-  StudentEventCard
+  StudentEventCard,
+  StudentNotificationItem
 } from '../services/student-dashboard.service';
 
 
 @Component({
   selector: 'app-student-events-page',
   standalone: true,
-
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, EventCardComponent],
-
+  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, StudentHeaderComponent, EventCardComponent],
   templateUrl: './student-events-page.component.html',
   styleUrls: ['./student-events-page.component.scss']
 })
-export class StudentEventsPageComponent implements OnInit {
+export class StudentEventsPageComponent implements OnInit, OnDestroy {
   events: StudentEventCard[] = [];
   filteredEvents: StudentEventCard[] = [];
+  notifications: StudentNotificationItem[] = [];
   categories: string[] = ['All'];
   colleges: string[] = ['All'];
   searchQuery = '';
@@ -31,10 +32,13 @@ export class StudentEventsPageComponent implements OnInit {
   selectedCollege = 'All';
   selectedDate = '';
   loading = true;
+  notificationsLoading = true;
+  notificationsDropdownOpen = false;
   actionEventId = '';
   errorMessage = '';
   expandedEventIds = new Set<string>();
   private focusEventId = '';
+  private notificationsRefreshTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private studentDashboardService: StudentDashboardService,
@@ -51,6 +55,15 @@ export class StudentEventsPageComponent implements OnInit {
 
     this.prefillFromCache();
     this.loadEvents();
+    this.loadNotifications();
+    this.startNotificationsRefresh();
+  }
+
+  ngOnDestroy(): void {
+    if (this.notificationsRefreshTimer) {
+      clearInterval(this.notificationsRefreshTimer);
+      this.notificationsRefreshTimer = null;
+    }
   }
 
   get studentName(): string {
@@ -150,8 +163,9 @@ export class StudentEventsPageComponent implements OnInit {
     }
   }
 
-  openNotifications(): void {
-    this.router.navigate(['/new-student-dashboard'], { fragment: 'notifications-section' });
+  openNotifications(event?: Event): void {
+    event?.stopPropagation();
+    this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
   }
 
   logout(): void {
@@ -179,6 +193,11 @@ export class StudentEventsPageComponent implements OnInit {
 
 
 
+  @HostListener('document:click')
+  closeNotificationsDropdown(): void {
+    this.notificationsDropdownOpen = false;
+  }
+
   trackById(_: number, item: StudentEventCard): string {
     return item.id;
   }
@@ -195,9 +214,16 @@ export class StudentEventsPageComponent implements OnInit {
 
   private prefillFromCache(): void {
     const cachedEvents = this.studentDashboardService.getCachedEvents();
+    const cachedNotifications = this.studentDashboardService.getCachedNotifications();
+
     if (cachedEvents.length) {
       this.setEvents(cachedEvents);
       this.loading = false;
+    }
+
+    if (cachedNotifications.length) {
+      this.notifications = cachedNotifications;
+      this.notificationsLoading = false;
     }
   }
 
@@ -211,5 +237,32 @@ export class StudentEventsPageComponent implements OnInit {
   private getEventTimestamp(event: StudentEventCard): number {
     const timestamp = new Date(event.dateTime).getTime();
     return Number.isNaN(timestamp) ? 0 : timestamp;
+  }
+
+  private loadNotifications(): void {
+    this.notificationsLoading = true;
+
+    this.studentDashboardService.refreshDashboardSnapshot().subscribe({
+      next: (snapshot) => {
+        this.notifications = snapshot.notifications || [];
+        this.notificationsLoading = false;
+      },
+      error: () => {
+        this.notifications = this.studentDashboardService.getCachedNotifications();
+        this.notificationsLoading = false;
+      }
+    });
+  }
+
+  private startNotificationsRefresh(): void {
+    this.notificationsRefreshTimer = setInterval(() => {
+      this.studentDashboardService.refreshDashboardSnapshot().subscribe({
+        next: (snapshot) => {
+          this.notifications = snapshot.notifications || [];
+          this.notificationsLoading = false;
+        },
+        error: () => void 0
+      });
+    }, 8000);
   }
 }

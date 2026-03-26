@@ -73,20 +73,30 @@
 
             <div class="field">
               <label>Password</label>
-              <input type="password"
-                placeholder="Password"
-                [(ngModel)]="user.password"
-                name="password"
-                required>
+              <div class="password-box">
+                <input [type]="showPassword ? 'text' : 'password'"
+                  placeholder="Password"
+                  [(ngModel)]="user.password"
+                  name="password"
+                  required>
+                <button type="button" class="password-toggle" (click)="showPassword = !showPassword">
+                  <i class="fa-solid" [class.fa-eye]="!showPassword" [class.fa-eye-slash]="showPassword"></i>
+                </button>
+              </div>
             </div>
 
             <div class="field">
               <label>Confirm Password</label>
-              <input type="password"
-                placeholder="Confirm Password"
-                [(ngModel)]="user.confirmPassword"
-                name="confirmPassword"
-                required>
+              <div class="password-box">
+                <input [type]="showConfirmPassword ? 'text' : 'password'"
+                  placeholder="Confirm Password"
+                  [(ngModel)]="user.confirmPassword"
+                  name="confirmPassword"
+                  required>
+                <button type="button" class="password-toggle" (click)="showConfirmPassword = !showConfirmPassword">
+                  <i class="fa-solid" [class.fa-eye]="!showConfirmPassword" [class.fa-eye-slash]="showConfirmPassword"></i>
+                </button>
+              </div>
             </div>
 
             <div class="form-actions">
@@ -160,4 +170,12 @@
     </div>
   </div>
   <app-site-footer></app-site-footer>
+
+  <div class="popup-backdrop" *ngIf="isPopupOpen" (click)="closePopup()">
+    <div class="popup-card" (click)="$event.stopPropagation()" role="alertdialog" aria-modal="true">
+      <h3>Validation Message</h3>
+      <p>{{ popupMessage }}</p>
+      <button type="button" class="popup-btn" (click)="closePopup()">OK</button>
+    </div>
+  </div>
 </div>

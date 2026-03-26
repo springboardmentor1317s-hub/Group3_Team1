@@ -2,6 +2,29 @@
   box-sizing: border-box;
 }
 
+body.homepage-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(109, 126, 191, 0.7) rgba(227, 233, 249, 0.85);
+}
+
+body.homepage-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+body.homepage-scrollbar::-webkit-scrollbar-track {
+  background: rgba(227, 233, 249, 0.78);
+}
+
+body.homepage-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(124, 136, 194, 0.92), rgba(91, 108, 178, 0.8));
+  border: 2px solid rgba(227, 233, 249, 0.78);
+}
+
+body.homepage-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(108, 122, 191, 0.96), rgba(76, 93, 170, 0.86));
+}
+
 img {
   max-width: 100%;
   height: auto;

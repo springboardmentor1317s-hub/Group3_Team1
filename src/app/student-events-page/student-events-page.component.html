@@ -1,39 +1,13 @@
 <div class="events-shell">
-  <header class="luxury-header">
-    <div class="header-inner">
-      <button class="brand-block" type="button" (click)="navigate('dashboard')">
-        <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub">
-        <div class="brand-copy">
-          <span class="brand-name">Campus Event Hub</span>
-          <span class="eyebrow">Student Lounge</span>
-        </div>
-      </button>
-
-      <nav class="header-nav">
-        <button type="button" class="nav-link" (click)="navigate('dashboard')">Dashboard</button>
-        <button type="button" class="nav-link active">Events</button>
-        <button type="button" class="nav-link" (click)="navigate('registrations')">My Registrations</button>
-        <button type="button" class="nav-link" (click)="navigate('feedback')">Feedback</button>
-      </nav>
-
-      <div class="header-actions">
-        <button type="button" class="profile-chip" (click)="navigate('profile')">
-          <img *ngIf="profilePhotoUrl as photo; else eventsAvatarFallback" class="profile-chip-avatar" [src]="photo" [alt]="studentName">
-          <ng-template #eventsAvatarFallback>
-            <span class="material-icons">account_circle</span>
-          </ng-template>
-          <span class="profile-chip-name">{{ studentName }}</span>
-        </button>
-        <button type="button" class="notification-btn" (click)="openNotifications()" aria-label="Notifications">
-          <span class="material-icons">notifications</span>
-        </button>
-        <button type="button" class="logout-btn" (click)="logout()">
-          <span class="material-icons">logout</span>
-          <span>Logout</span>
-        </button>
-      </div>
-    </div>
-  </header>
+  <app-student-header
+    activeTab="events"
+    [studentName]="studentName"
+    notificationMode="dropdown"
+    [notifications]="notifications"
+    [notificationsLoading]="notificationsLoading"
+    [notificationsOpen]="notificationsDropdownOpen"
+    (notificationToggle)="openNotifications($event)"
+  />
 
   <main class="events-main">
     <section class="intro-card">

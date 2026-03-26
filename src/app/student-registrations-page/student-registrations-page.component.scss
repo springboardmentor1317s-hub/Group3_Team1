@@ -1049,3 +1049,338 @@
     width: 100%;
   }
 }
+
+/* Shared student dashboard header */
+.registrations-shell {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-top: 106px !important;
+}
+
+.registrations-main {
+  padding-left: 1.1rem;
+  padding-right: 1.1rem;
+}
+
+.registrations-shell > .luxury-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  left: 50%;
+  right: 50%;
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  margin-bottom: 1rem;
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(249, 251, 255, 0.975), rgba(220, 230, 250, 0.92));
+  backdrop-filter: blur(26px) saturate(170%);
+  box-shadow: 0 18px 40px rgba(18, 31, 60, 0.15), 0 30px 66px rgba(56, 76, 145, 0.14);
+}
+
+.registrations-shell > .luxury-header::before {
+  content: "";
+  position: absolute;
+  inset: 8px 10px 10px;
+  border-radius: 22px;
+  background: radial-gradient(circle at 14% 20%, rgba(255, 239, 205, 0.76), rgba(255, 239, 205, 0.14) 24%, transparent 46%), radial-gradient(circle at 82% 24%, rgba(255, 255, 255, 0.34), transparent 30%), linear-gradient(135deg, rgba(239, 244, 255, 0.97), rgba(212, 223, 249, 0.93) 44%, rgba(184, 200, 237, 0.88) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 -1px 0 rgba(146, 165, 223, 0.42), inset 18px 0 44px rgba(255, 230, 188, 0.12), 0 20px 38px rgba(72, 91, 162, 0.18);
+  pointer-events: none;
+}
+
+.registrations-shell > .luxury-header::after {
+  content: "";
+  display: block;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(90, 103, 246, 0), rgba(84, 108, 255, 0.82), rgba(214, 132, 192, 0.72), rgba(244, 192, 112, 0.74), rgba(90, 103, 246, 0));
+}
+
+.registrations-shell > .luxury-header .header-inner {
+  position: relative;
+  width: 100%;
+  min-height: 86px;
+  margin: 0;
+  padding: 16px 14px 14px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+}
+
+.registrations-shell > .luxury-header .brand-block {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  justify-self: start;
+  padding: 10px 18px 10px 10px;
+  position: relative;
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(255, 252, 245, 0.88), rgba(230, 237, 255, 0.72) 56%, rgba(216, 227, 252, 0.58) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 14px 28px rgba(24, 38, 74, 0.12);
+  color: #10203c;
+}
+
+.registrations-shell > .luxury-header .brand-block::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 23px;
+  background: radial-gradient(circle at 14% 24%, rgba(255, 223, 168, 0.22), transparent 32%), linear-gradient(135deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.08));
+  pointer-events: none;
+}
+
+.registrations-shell > .luxury-header .brand-block::after {
+  content: "";
+  width: 1px;
+  height: 50px;
+  background: linear-gradient(180deg, rgba(102, 124, 195, 0), rgba(102, 124, 195, 0.86), rgba(223, 173, 89, 0.42), rgba(102, 124, 195, 0));
+}
+
+.registrations-shell > .luxury-header .brand-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  padding: 4px;
+  border-radius: 21px;
+  background: radial-gradient(circle at 24% 18%, rgba(255, 255, 255, 0.99), rgba(255, 244, 216, 0.94) 22%, rgba(210, 223, 252, 0.99) 100%);
+  border: 1px solid rgba(252, 246, 232, 0.9);
+  box-shadow: 0 22px 36px rgba(18, 31, 63, 0.24), 0 0 0 7px rgba(239, 242, 255, 0.68), 0 0 26px rgba(221, 176, 93, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.97);
+  filter: drop-shadow(0 4px 8px rgba(14, 24, 52, 0.12)) contrast(1.08) saturate(1.08);
+}
+
+.registrations-shell > .luxury-header .brand-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.registrations-shell > .luxury-header .brand-name {
+  display: flex;
+  align-items: baseline;
+  gap: 0.32rem;
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: -0.06em;
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.34), 0 10px 20px rgba(26, 40, 86, 0.14);
+}
+
+.registrations-shell > .luxury-header .brand-campus,
+.registrations-shell > .luxury-header .brand-eventhub {
+  color: transparent;
+  background: linear-gradient(135deg, #06132e 0%, #12275b 26%, #263d7b 54%, #6f4b1d 78%, #cf9443 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.registrations-shell > .luxury-header .eyebrow {
+  display: none;
+}
+
+/* Homepage header theme alignment */
+.luxury-header {
+  border: 0;
+  border-radius: 0;
+  background: linear-gradient(180deg, rgba(249, 251, 255, 0.975), rgba(220, 230, 250, 0.92));
+  backdrop-filter: blur(26px) saturate(170%);
+  box-shadow:
+    0 18px 40px rgba(18, 31, 60, 0.15),
+    0 30px 66px rgba(56, 76, 145, 0.14);
+}
+
+.luxury-header::before {
+  content: "";
+  position: absolute;
+  inset: 8px 10px 10px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 14% 20%, rgba(255, 239, 205, 0.76), rgba(255, 239, 205, 0.14) 24%, transparent 46%),
+    radial-gradient(circle at 82% 24%, rgba(255, 255, 255, 0.34), transparent 30%),
+    linear-gradient(135deg, rgba(239, 244, 255, 0.97), rgba(212, 223, 249, 0.93) 44%, rgba(184, 200, 237, 0.88) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(146, 165, 223, 0.42),
+    inset 18px 0 44px rgba(255, 230, 188, 0.12),
+    0 20px 38px rgba(72, 91, 162, 0.18);
+  pointer-events: none;
+}
+
+.luxury-header::after {
+  content: "";
+  display: block;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(90, 103, 246, 0), rgba(84, 108, 255, 0.82), rgba(214, 132, 192, 0.72), rgba(244, 192, 112, 0.74), rgba(90, 103, 246, 0));
+}
+
+.header-inner {
+  position: relative;
+  min-height: 86px;
+  padding: 16px 14px 14px;
+}
+
+.brand-block {
+  gap: 14px;
+  padding: 10px 18px 10px 10px;
+  position: relative;
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, rgba(255, 252, 245, 0.88), rgba(230, 237, 255, 0.72) 56%, rgba(216, 227, 252, 0.58) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 14px 28px rgba(24, 38, 74, 0.12);
+  color: #10203c;
+}
+
+.brand-block::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 23px;
+  background:
+    radial-gradient(circle at 14% 24%, rgba(255, 223, 168, 0.22), transparent 32%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.08));
+  pointer-events: none;
+}
+
+.brand-block::after {
+  content: "";
+  width: 1px;
+  height: 50px;
+  background: linear-gradient(180deg, rgba(102, 124, 195, 0), rgba(102, 124, 195, 0.86), rgba(223, 173, 89, 0.42), rgba(102, 124, 195, 0));
+}
+
+.brand-logo {
+  width: 64px;
+  height: 64px;
+  padding: 4px;
+  object-fit: contain;
+  border-radius: 21px;
+  background:
+    radial-gradient(circle at 24% 18%, rgba(255, 255, 255, 0.99), rgba(255, 244, 216, 0.94) 22%, rgba(210, 223, 252, 0.99) 100%);
+  border: 1px solid rgba(252, 246, 232, 0.9);
+  box-shadow:
+    0 22px 36px rgba(18, 31, 63, 0.24),
+    0 0 0 7px rgba(239, 242, 255, 0.68),
+    0 0 26px rgba(221, 176, 93, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.97);
+}
+
+.brand-copy {
+  position: relative;
+  z-index: 1;
+}
+
+.eyebrow {
+  color: #6c7b9e;
+}
+
+.brand-name {
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: transparent;
+  background: linear-gradient(135deg, #06132e 0%, #12275b 26%, #263d7b 54%, #6f4b1d 78%, #cf9443 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.34),
+    0 10px 20px rgba(26, 40, 86, 0.14);
+}
+
+.header-nav {
+  padding: 6px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(248, 250, 255, 0.94), rgba(224, 232, 248, 0.88));
+  border: 1px solid rgba(129, 146, 203, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 16px 32px rgba(47, 64, 125, 0.14);
+}
+
+.nav-link {
+  color: #1f2f54;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  color: #0d1f45;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(239, 243, 255, 0.95));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 12px 24px rgba(16, 32, 60, 0.12);
+}
+
+.header-actions {
+  padding: 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(245, 248, 255, 0.76), rgba(220, 229, 248, 0.52));
+  border: 1px solid rgba(151, 170, 223, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 14px 30px rgba(27, 42, 90, 0.13);
+}
+
+.profile-chip,
+.notification-btn {
+  background: linear-gradient(180deg, rgba(251, 252, 255, 0.98), rgba(228, 236, 252, 0.98));
+  color: #18327d;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 12px 22px rgba(16, 32, 60, 0.12);
+}
+
+.profile-chip-name {
+  color: #18327d;
+}
+
+.logout-btn {
+  background: linear-gradient(135deg, #1b2f7d 0%, #4a60ee 34%, #8660f4 66%, #e3a05b 100%);
+  box-shadow: 0 20px 36px rgba(72, 84, 196, 0.36);
+}
+
+/* Final homepage parity */
+.luxury-header {
+  margin: 0 !important;
+  max-width: none !important;
+  width: 100% !important;
+}
+
+/* Use the shared dashboard header edge-to-edge and keep content spacing below it */
+.registrations-shell {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  padding-top: 126px !important;
+}
+
+.registrations-main {
+  padding-left: 1.1rem;
+  padding-right: 1.1rem;
+}
+
+app-site-footer {
+  margin: 0 !important;
+}
+
+@media (max-width: 820px) {
+  .registrations-shell {
+    padding-top: 138px !important;
+  }
+
+  .registrations-main {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
