@@ -140,9 +140,12 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
 
   get statusLabel(): string {
     if (!this.event) return 'Open';
-    if (this.event.status === 'Registered') return 'Registered';
-    if (this.event.status === 'Closed') return 'Closed';
-    if (this.event.status === 'Full') return 'Full';
+    if (this.isEventExpired(this.event)) return 'Closed';
+
+    const normalizedStatus = String(this.event.status || '').toLowerCase();
+    if (normalizedStatus === 'registered') return 'Registered';
+    if (normalizedStatus === 'closed') return 'Closed';
+    if (normalizedStatus === 'full') return 'Full';
     return 'Open';
   }
 
@@ -166,7 +169,7 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
 
   get registerDisabled(): boolean {
     if (!this.event) return true;
-    return this.event.status !== 'Open' || this.actionEventId === this.event.id;
+    return this.isEventExpired(this.event) || this.event.status !== 'Open' || this.actionEventId === this.event.id;
   }
 
   get canShowFeedbackPanel(): boolean {
@@ -209,10 +212,13 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
 
   getRegisterLabel(): string {
     if (!this.event) return 'Register Now';
-    if (this.event.status === 'Registered') return 'Registered';
+    if (this.isEventExpired(this.event)) return 'Closed';
+
+    const normalizedStatus = String(this.event.status || '').toLowerCase();
+    if (normalizedStatus === 'registered') return 'Registered';
     if (this.actionEventId === this.event.id) return 'Joining...';
-    if (this.event.status === 'Full') return 'Full';
-    if (this.event.status === 'Closed') return 'Closed';
+    if (normalizedStatus === 'full') return 'Full';
+    if (normalizedStatus === 'closed') return 'Closed';
     return 'Register Now';
   }
 
@@ -621,19 +627,35 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
   }
 
   private isEventCompleted(): boolean {
-    if (!this.event) return false;
+    return !!this.event && this.isEventExpired(this.event);
+  }
 
-    const endTimestamp = this.event.endDate ? new Date(this.event.endDate).getTime() : Number.NaN;
+  private isEventExpired(event: StudentEventCard): boolean {
+    const normalizedStatus = String(event.status || '').toLowerCase();
+    if (normalizedStatus === 'closed' || normalizedStatus === 'completed' || normalizedStatus === 'past') {
+      return true;
+    }
+
+    const parseDate = (value?: string | null): number => {
+      if (!value) return Number.NaN;
+      const trimmed = String(value).trim();
+      if (!trimmed) return Number.NaN;
+      const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(trimmed);
+      const parsed = new Date(isDateOnly ? `${trimmed}T23:59:59.999` : trimmed).getTime();
+      return Number.isNaN(parsed) ? Number.NaN : parsed;
+    };
+
+    const endTimestamp = parseDate(event.endDate);
     if (!Number.isNaN(endTimestamp)) {
       return endTimestamp < Date.now();
     }
 
-    const startTimestamp = this.event.dateTime ? new Date(this.event.dateTime).getTime() : Number.NaN;
+    const startTimestamp = parseDate(event.dateTime);
     if (!Number.isNaN(startTimestamp)) {
       return startTimestamp < Date.now();
     }
 
-    return this.event.status === 'Closed';
+    return false;
   }
 
   private getDefaultAvatarUrl(name: string): string {
