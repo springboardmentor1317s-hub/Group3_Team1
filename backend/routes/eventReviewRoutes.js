@@ -8,5 +8,8 @@ router.get("/mine", protect, controller.getMyReviews);
 router.post("/rating", protect, controller.upsertRating);
 router.post("/feedback", protect, controller.upsertFeedback);
 
+router.get("/", controller.getAllReviews);
+
 module.exports = router;
+
 

@@ -1,4 +1,7 @@
-﻿<div class="app" [class.dark]="isDarkMode">
+﻿
+
+
+<div class="app" [class.dark]="isDarkMode">
   <div class="bg-orb orb-1"></div>
   <div class="bg-orb orb-2"></div>
   <div class="bg-orb orb-3"></div>
@@ -17,7 +20,8 @@
       <button class="nav-link" [class.active]="activeTab === 'overview'" (click)="setTab('overview')">Dashboard</button>
       <button class="nav-link" (click)="openCreateModal()">Create Event</button>
       <button class="nav-link" [class.active]="activeTab === 'events'" (click)="setTab('events')">Manage Events</button>
-      <button class="nav-link" (click)="setTab('overview')">Feedback</button>
+      <!-- ✅ Changed: Now opens feedback tab instead of overview -->
+      <button class="nav-link" [class.active]="activeTab === 'feedback'" (click)="setTab('feedback')">Feedback</button>
     </nav>
     <div class="top-actions">
       <input
@@ -120,14 +124,16 @@
         <li [class.active]="registrationFilter === 'approved'" (click)="showApprovedStudents(); onSidebarItemClick()">
           <span class="menu-icon">✅</span>Approved Students
         </li>
-        <li (click)="setTab('overview'); onSidebarItemClick()">
+        <!-- ✅ Changed: Now goes to feedback tab -->
+        <li [class.active]="activeTab === 'feedback'" (click)="setTab('feedback'); onSidebarItemClick()">
           <span class="menu-icon">&#128172;</span>Feedback
         </li>
       </ul>
     </aside>
 
     <main class="content">
-      <section class="summary-cards">
+      <!-- ✅ DASHBOARD TAB - NO FEEDBACK HERE -->
+      <section class="summary-cards" *ngIf="activeTab === 'overview'">
         <article class="card stat">
           <div class="stat-icon purple">&#128227;</div>
           <div>
@@ -242,15 +248,15 @@
             <button class="ghost-btn" (click)="setTab('registrations')">View All</button>
           </div>
           <div class="reg-list">
-            <div class="reg-item" *ngFor="let reg of registrations">
+            <div class="reg-item" *ngFor="let reg of registrations | slice:0:5">
               <div class="avatar small"></div>
               <div>
                 <h4>{{ reg.studentName }} <span *ngIf="reg.status === 'APPROVED'" class="status-approved">Approved</span></h4>
                 <p style="font-size: 1rem;">{{ reg.college }}</p>
               </div>
               <div class="row-actions">
-                <button class="pill-btn" (click)="approveRegistration(reg)">Approve</button>
-                <button class="pill-btn pending" (click)="openRejectModal(reg)">Reject</button>
+                <button class="pill-btn" (click)="approveRegistration(reg)" *ngIf="reg.status !== 'APPROVED'">Approve</button>
+                <button class="pill-btn pending" (click)="openRejectModal(reg)" *ngIf="reg.status !== 'REJECTED'">Reject</button>
               </div>
             </div>
             <div class="reg-item" *ngIf="registrations.length === 0">
@@ -265,6 +271,108 @@
         </article>
       </section>
 
+      <!-- ✅ FEEDBACK TAB - ONLY SHOWS WHEN activeTab === 'feedback' -->
+      <section class="summary-cards" *ngIf="activeTab === 'feedback'">
+        <article class="card stat">
+          <div class="stat-icon feedback-icon">⭐</div>
+          <div>
+            <p>Average Rating</p>
+            <h3>{{ isLoading ? '...' : averageRating.toFixed(1) }}</h3>
+            <p style="font-size: 0.85rem; color: var(--muted); margin-top: 4px;">
+              {{ totalFeedbacks }} {{ totalFeedbacks === 1 ? 'review' : 'reviews' }}
+            </p>
+          </div>
+        </article>
+        <article class="card stat">
+          <div class="stat-icon purple">📊</div>
+          <div>
+            <p>Total Feedback</p>
+            <h3>{{ isLoading ? '...' : totalFeedbacks }}</h3>
+          </div>
+        </article>
+        <article class="card stat">
+          <div class="stat-icon teal">👍</div>
+          <div>
+            <p>5 Star Reviews</p>
+            <h3>{{ isLoading ? '...' : getFeedbackCountByRating(5) }}</h3>
+          </div>
+        </article>
+        <article class="card stat">
+          <div class="stat-icon lavender">📈</div>
+          <div>
+            <p>Response Rate</p>
+            <h3>{{ events.length > 0 && totalFeedbacks > 0 ? ((totalFeedbacks / events.length) * 100).toFixed(0) : 0 }}%</h3>
+          </div>
+        </article>
+      </section>
+
+      <section class="grid-two1" *ngIf="activeTab === 'feedback'">
+        <article class="card feedback-detailed-card">
+          <div class="card-head">
+            <h3>Student Feedback</h3>
+            <span class="muted">{{ averageRating.toFixed(1) }} / 5.0</span>
+          </div>
+          
+          <div class="feedback-summary">
+            <div class="rating-overview">
+              <div class="rating-number">{{ averageRating.toFixed(1) }}</div>
+              <div class="rating-stars">{{ averageRatingStars }}</div>
+              <div class="rating-count">{{ totalFeedbacks }} reviews</div>
+            </div>
+            
+            <div class="rating-breakdown">
+              <div class="rating-bar-item" *ngFor="let num of [5, 4, 3, 2, 1]">
+                <span class="rating-label">{{ num }}⭐</span>
+                <div class="rating-bar">
+                  <div 
+                    class="rating-bar-fill" 
+                    [style.width.%]="totalFeedbacks > 0 ? (getFeedbackCountByRating(num) / totalFeedbacks * 100) : 0">
+                  </div>
+                </div>
+                <span class="rating-count-small">{{ getFeedbackCountByRating(num) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="recent-feedback-list" *ngIf="getRecentFeedbacks(5).length > 0">
+            <h4 style="font-size: 0.95rem; margin: 16px 0 8px; color: var(--muted);">Recent Feedback</h4>
+            <div class="feedback-item" *ngFor="let fb of getRecentFeedbacks(5)">
+              <div class="feedback-header">
+                <span class="feedback-rating">{{ fb.rating }}⭐</span>
+                <span class="feedback-date">{{ formatDateTime(fb.createdAt) }}</span>
+              </div>
+              <p class="feedback-text">{{ fb.feedback }}</p>
+            </div>
+          </div>
+
+          <div class="empty-feedback" *ngIf="totalFeedbacks === 0">
+            <div class="empty-icon">💬</div>
+            <p>No feedback yet</p>
+            <span class="muted">Students haven't submitted feedback</span>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <h3>All Feedback Comments</h3>
+            <span class="muted">Latest first</span>
+          </div>
+          <div class="all-feedback-list">
+            <div class="feedback-item" *ngFor="let fb of getRecentFeedbacks(20)">
+              <div class="feedback-header">
+                <span class="feedback-rating">{{ fb.rating }}⭐</span>
+                <span class="feedback-date">{{ formatDateTime(fb.createdAt) }}</span>
+              </div>
+              <p class="feedback-text">{{ fb.feedback }}</p>
+            </div>
+            <div class="empty-feedback" *ngIf="totalFeedbacks === 0">
+              <p>No comments available</p>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- EVENTS TAB -->
       <section class="grid-two" *ngIf="activeTab === 'events'">
         <article class="card table-card">
           <div class="card-head">
@@ -272,14 +380,14 @@
             <button class="ghost-btn" (click)="openCreateModal()">Create Event</button>
           </div>
           <div class="table">
-<div class="table-row head">
+            <div class="table-row head">
               <span class="name-col">Event Name</span>
               <span class="date-col">Date</span>
               <span class="status-col">Status</span>
               <span class="participants-col">Participants</span>
               <span class="actions-col">Actions</span>
             </div>
-<div class="table-row" *ngFor="let e of getFilteredEvents()">
+            <div class="table-row" *ngFor="let e of getFilteredEvents()">
               <span class="name-col">{{ e.name }}</span>
               <span class="date-col">{{ formatDateTime(e.dateTime) }}</span>
               <span class="status-col">{{ e.status }}</span>
@@ -299,6 +407,7 @@
         </article>
       </section>
 
+      <!-- REGISTRATIONS TAB -->
       <section class="grid-two1 full-width-view" *ngIf="activeTab === 'registrations'">
         <article class="card registrations-card">
           <div class="card-head">
@@ -328,8 +437,8 @@
                       <p>{{ reg.college }}</p>
                     </div>
                     <div class="row-actions">
-                      <button class="pill-btn" (click)="approveRegistration(reg)">Approve</button>
-                      <button class="pill-btn pending" (click)="openRejectModal(reg)">Reject</button>
+                      <button class="pill-btn" (click)="approveRegistration(reg)" *ngIf="reg.status !== 'APPROVED'">Approve</button>
+                      <button class="pill-btn pending" (click)="openRejectModal(reg)" *ngIf="reg.status !== 'REJECTED'">Reject</button>
                     </div>
                   </div>
                 </div>
@@ -356,6 +465,7 @@
         </article>
       </section>
 
+      <!-- ANALYTICS TAB -->
       <section class="grid-two1 full-width-view" *ngIf="activeTab === 'analytics'">
         <article class="card table-card">
           <div class="card-head">
@@ -393,6 +503,7 @@
     </main>
   </div>
 
+  <!-- Modals remain the same... -->
   <div class="modal-backdrop" *ngIf="approveModalOpen" (click)="closeApproveModal()">
     <div
       class="modal approve-modal"
