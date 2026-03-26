@@ -10,7 +10,7 @@ import { Auth } from '../auth/auth';
 
 
 
-type DashboardTab = 'overview' | 'events' | 'analytics' | 'registrations';
+type DashboardTab = 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback';
 
 interface OrganizerEvent {
   id: string;
@@ -58,6 +58,25 @@ interface AdminNotification {
   timeLabel: string;
 }
 
+interface EventReviewSummary {
+  studentId: string;
+  rating: number | null;
+  feedback: string;
+  updatedAt: string;
+}
+
+interface EventRating {
+  eventId: string;
+  eventName: string;
+  dateTime: string;
+  location: string;
+  category: string;
+  collegeName: string;
+  averageRating: number | null;
+  totalReviews: number;
+  reviews: EventReviewSummary[];
+  expanded?: boolean;
+}
 
 
 @Component({
@@ -77,7 +96,12 @@ export class AdminDashboard implements OnInit, OnDestroy {
   private knownRegistrationIds = new Set<string>();
   private notificationStorageKey = 'admin-dashboard-last-seen-registration-at';
 
-  // ✅ Inject ChangeDetectorRef to manually trigger UI update after async data loads
+  private readonly REVIEWS_API_URL = '/api/event-reviews/admin/event-ratings';
+  userCollege: string = '';
+  eventRatings: EventRating[] = [];
+  isLoadingRatings = false;
+  ratingsError: string | null = null;
+
   constructor(
     private readonly http: HttpClient,
     private readonly eventService: EventService,
@@ -95,7 +119,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
   }
 
   openEditModal(event: OrganizerEvent): void {
-    // Map OrganizerEvent to BackendEvent for child component
     this.editingEvent = {
       id: event.id,
       name: event.name,
@@ -119,7 +142,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
   }
 
   handleEventSaved(savedEvent: BackendEvent): void {
-    // Refresh events list using service or direct API
     this.refreshEvents();
     this.createEventVisible = false;
     this.showSuccessToast('Event saved successfully!');
@@ -138,8 +160,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
       }
     });
   }
-
-
 
   userName: string = '';
   userAvatarUrl: string | null = null;
@@ -168,7 +188,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
   selectedRegistration: Registration | null = null;
   rejectionReason: string = '';
 
-  // Create Event Component visibility
   createEventVisible = false;
   editingEvent: BackendEvent | null = null;
 
@@ -176,12 +195,19 @@ export class AdminDashboard implements OnInit, OnDestroy {
   toastMessage = '';
   toastType: 'success' | 'error' = 'success';
 
-  // ✅ Loading state so the template can show a spinner instead of 0
   isLoading = true;
 
   ngOnInit(): void {
     const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
     this.userName = user.name || 'User';
+
+    // ✅ FIX 1: Try all possible key names for college in the stored user object
+    this.userCollege = user.collegeName || user.college || user.institution || '';
+
+    // Debug log — open browser console to verify the value
+    console.log('[AdminDashboard] currentUser from localStorage:', user);
+    console.log('[AdminDashboard] userCollege resolved as:', this.userCollege);
+
     this.userAvatarUrl = user.profileImageUrl || null;
     const userId = user.id || user._id || this.userName || 'admin';
     this.notificationStorageKey = `admin-dashboard-last-seen-registration-at-${userId}`;
@@ -191,22 +217,28 @@ export class AdminDashboard implements OnInit, OnDestroy {
       this.isDarkMode = true;
     }
 
-    // ✅ Use forkJoin to fire BOTH requests in parallel and wait for BOTH to complete
-    //    before updating any state. This ensures the stats are never shown as 0.
     this.isLoading = true;
     forkJoin({
       events: this.http.get<OrganizerEvent[]>(this.API_URL),
       registrations: this.http.get<Registration[]>(this.REGISTRATIONS_API_URL)
     }).subscribe({
       next: ({ events, registrations }) => {
-        // Add approvedCount to events
         const eventsWithApproved = events.map(event => ({
           ...event,
           approvedCount: registrations.filter(r => r.eventId === event.id && r.status === 'APPROVED').length
         }));
-        
+
         this.events = eventsWithApproved;
         this.refreshEventStatuses();
+
+        // ✅ FIX 1b: If userCollege is still empty, infer it from the admin's own events
+        if (!this.userCollege && this.events.length > 0) {
+          const firstWithCollege = this.events.find(e => e.collegeName);
+          if (firstWithCollege) {
+            this.userCollege = firstWithCollege.collegeName!;
+            console.log('[AdminDashboard] Inferred collegeName from events:', this.userCollege);
+          }
+        }
 
         this.registrations = registrations;
         this.applyRegistrationFilters();
@@ -215,10 +247,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
         this.startNotificationPolling();
 
         this.isLoading = false;
-
-        // ✅ Tell Angular to re-check this component's bindings right now,
-        //    so totalEvents / activeEvents / totalRegistrations / averageParticipants
-        //    reflect real data on first paint instead of showing 0.
         this.cdr.detectChanges();
       },
       error: (err) => {
@@ -227,6 +255,46 @@ export class AdminDashboard implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  loadEventRatings(): void {
+    this.isLoadingRatings = true;
+    this.ratingsError = null;
+
+    if (!this.userCollege) {
+      this.ratingsError = 'College name not found. Please check your profile.';
+      this.isLoadingRatings = false;
+      this.cdr.detectChanges();
+      return;
+    }
+
+    const params = `?collegeName=${encodeURIComponent(this.userCollege)}`;
+
+    const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    const token = user?.token || localStorage.getItem('token');
+
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    console.log('[AdminDashboard] Loading ratings for college:', this.userCollege);
+
+    this.http.get<EventRating[]>(`${this.REVIEWS_API_URL}${params}`, { headers })
+      .subscribe({
+        next: (data) => {
+          this.eventRatings = data.map(r => ({ ...r, expanded: false }));
+          this.isLoadingRatings = false;
+          console.log('[AdminDashboard] Ratings loaded:', this.eventRatings.length, 'events');
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error('Error loading event ratings:', err);
+          this.ratingsError = `Failed to load ratings: ${err?.error?.message || err.message || 'Unknown error'}`;
+          this.isLoadingRatings = false;
+          this.cdr.detectChanges();
+        }
+      });
   }
 
   ngOnDestroy(): void {
@@ -258,6 +326,13 @@ export class AdminDashboard implements OnInit, OnDestroy {
 
   setTab(tab: DashboardTab): void {
     this.activeTab = tab;
+
+    // ✅ FIX 2: ALWAYS reload ratings when switching to feedback tab
+    //    (previously: only loaded if eventRatings.length === 0 — which meant
+    //     an empty result was cached forever and never retried)
+    if (tab === 'feedback') {
+      this.loadEventRatings();
+    }
   }
 
   get isSidebarVisible(): boolean {
@@ -320,6 +395,16 @@ export class AdminDashboard implements OnInit, OnDestroy {
     this.setTab(targetTab);
   }
 
+  toggleReviews(rating: EventRating): void {
+    rating.expanded = !rating.expanded;
+  }
+
+  getStars(rating: number | null): string {
+    if (rating === null) return '—';
+    const full = Math.round(rating);
+    return '★'.repeat(full) + '☆'.repeat(5 - full);
+  }
+
   isManageHidden(event: OrganizerEvent): boolean {
     return this.manageHiddenEventIds.has(event.id);
   }
@@ -350,7 +435,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
-    // Always keep notification history visible in the panel.
     this.notifications = sortedRegistrations.slice(0, 25).map((reg) => this.buildNotification(reg));
 
     const lastSeenAt = localStorage.getItem(this.notificationStorageKey) || '';
@@ -431,12 +515,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
     });
   }
 
-
-
-
-
-
-
   filterRegistrationsByStatus(status: 'All' | 'Pending' | 'Approved' | 'Rejected'): void {
     this.registrationStatusFilter = status;
     this.applyRegistrationFilters();
@@ -481,7 +559,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
   }
 
   applyDashboardSearch(): void {
-    // Reuse existing filtering behavior; dashboardSearchQuery is applied inside getters.
     this.applyRegistrationFilters();
   }
 
@@ -533,7 +610,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
       filtered = filtered.filter((r) => r.status === statusMap[this.registrationFilter]);
     }
 
-    // Group by event ONLY for main Registrations tab (not for approved filter)
     if (this.registrationFilter === 'all') {
       const grouped = filtered.reduce((acc, reg) => {
         if (!acc[reg.eventName]) {
@@ -560,7 +636,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
         (e.category ?? '').toLowerCase().includes(query)
       );
     });
-    // Sort by dateTime descending (newest first)
     filtered.sort((a, b) => {
       const dateA = new Date(a.dateTime).getTime();
       const dateB = new Date(b.dateTime).getTime();
@@ -575,9 +650,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
     this.rejectModalOpen = true;
     setTimeout(() => {
       const textarea = document.getElementById('rejectionReason') as HTMLTextAreaElement;
-      if (textarea) {
-        textarea.focus();
-      }
+      if (textarea) textarea.focus();
     }, 100);
   }
 
@@ -676,21 +749,15 @@ export class AdminDashboard implements OnInit, OnDestroy {
     this.toastMessage = message;
     this.toastType = 'success';
     this.showToast = true;
-    setTimeout(() => {
-      this.showToast = false;
-    }, 3000);
+    setTimeout(() => { this.showToast = false; }, 3000);
   }
 
   private showErrorToast(message: string): void {
     this.toastMessage = message;
     this.toastType = 'error';
     this.showToast = true;
-    setTimeout(() => {
-      this.showToast = false;
-    }, 3000);
+    setTimeout(() => { this.showToast = false; }, 3000);
   }
-
-  // Remove duplicate handleEventSaved - already defined above
 
   deleteEvent(event: OrganizerEvent): void {
     const ok = window.confirm(`Delete "${event.name}"? This can't be undone.`);
@@ -780,11 +847,11 @@ export class AdminDashboard implements OnInit, OnDestroy {
     return Math.round(total / this.events.length);
   }
 
-getPendingApprovals(): number {
+  getPendingApprovals(): number {
     return this.getPendingCount();
   }
 
-getPendingRegistrationsCount(): number {
+  getPendingRegistrationsCount(): number {
     return this.getPendingCount();
   }
 
@@ -843,6 +910,4 @@ getPendingRegistrationsCount(): number {
     if (Number.isNaN(parsed.getTime())) return null;
     return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
   }
-
 }
-
