@@ -5,7 +5,6 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
 import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
-import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
 import { EventCardComponent } from '../shared/event-card/event-card.component';
 import { timeout } from 'rxjs';
 import {
@@ -19,7 +18,7 @@ import {
 @Component({
   selector: 'app-student-events-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, StudentHeaderComponent, EventCardComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, EventCardComponent],
   templateUrl: './student-events-page.component.html',
   styleUrls: ['./student-events-page.component.scss']
 })

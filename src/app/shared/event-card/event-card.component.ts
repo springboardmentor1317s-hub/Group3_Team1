@@ -48,15 +48,15 @@ export class EventCardComponent {
 
   get registrationDeadlineText(): string {
     const rawEvent = this.event as StudentEventCard & Record<string, unknown>;
-    const label = typeof rawEvent.registrationDeadlineLabel === 'string'
-      ? rawEvent.registrationDeadlineLabel.trim()
+    const label = typeof rawEvent['registrationDeadlineLabel'] === 'string'
+      ? String(rawEvent['registrationDeadlineLabel']).trim()
       : '';
     if (label) {
       return label;
     }
 
     const rawDate =
-      (typeof rawEvent.registrationDeadline === 'string' ? rawEvent.registrationDeadline : '') ||
+      (typeof rawEvent['registrationDeadline'] === 'string' ? String(rawEvent['registrationDeadline']) : '') ||
       (typeof rawEvent['registration_deadline'] === 'string' ? String(rawEvent['registration_deadline']) : '') ||
       (typeof rawEvent['lastRegistrationDate'] === 'string' ? String(rawEvent['lastRegistrationDate']) : '') ||
       (typeof rawEvent.endDate === 'string' ? rawEvent.endDate : '');

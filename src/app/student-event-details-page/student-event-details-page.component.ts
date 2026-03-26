@@ -135,11 +135,11 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
   get registrationDeadlineText(): string {
     const event = this.event as (StudentEventCard & Record<string, unknown>) | null;
     if (!event) return 'Not specified';
-    const label = typeof event.registrationDeadlineLabel === 'string' ? event.registrationDeadlineLabel.trim() : '';
+    const label = typeof event['registrationDeadlineLabel'] === 'string' ? String(event['registrationDeadlineLabel']).trim() : '';
     if (label) return label;
 
     const rawDate =
-      (typeof event.registrationDeadline === 'string' ? event.registrationDeadline : '') ||
+      (typeof event['registrationDeadline'] === 'string' ? String(event['registrationDeadline']) : '') ||
       (typeof event['registration_deadline'] === 'string' ? String(event['registration_deadline']) : '') ||
       (typeof event['lastRegistrationDate'] === 'string' ? String(event['lastRegistrationDate']) : '') ||
       (typeof event.endDate === 'string' ? event.endDate : '');
