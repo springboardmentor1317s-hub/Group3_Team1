@@ -142,6 +142,15 @@
   color: #0f172a;
 }
 
+.profile-chip-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid rgba(15, 23, 42, 0.18);
+  background: #dbeafe;
+}
+
 .notification-btn {
   position: relative;
   justify-content: center;

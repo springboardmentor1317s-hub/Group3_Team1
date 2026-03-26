@@ -102,6 +102,18 @@ export class StudentDashboardPageComponent implements OnInit {
     return this.profile?.name || JSON.parse(localStorage.getItem('currentUser') || '{}')?.name || 'Student';
   }
 
+  get profilePhotoUrl(): string {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    const value = String(
+      currentUser.profileImageUrl
+      || currentUser.profilePhotoUrl
+      || currentUser.avatarUrl
+      || currentUser.photoUrl
+      || ''
+    ).trim();
+    return value || '';
+  }
+
   get displayedEvents(): StudentEventCard[] {
     return this.filteredEvents.slice(0, 3);
   }
@@ -511,10 +523,15 @@ export class StudentDashboardPageComponent implements OnInit {
   }
 
   private setEvents(events: StudentEventCard[]): void {
-    this.allEvents = [...events].sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
+    this.allEvents = [...events].sort((a, b) => this.getEventTimestamp(b) - this.getEventTimestamp(a));
     this.categories = ['All', ...Array.from(new Set(this.allEvents.map((event) => event.category).filter(Boolean) as string[]))];
     this.colleges = ['All', ...Array.from(new Set(this.allEvents.map((event) => event.collegeName).filter(Boolean) as string[]))];
     this.applyFilters();
+  }
+
+  private getEventTimestamp(event: StudentEventCard): number {
+    const timestamp = new Date(event.dateTime).getTime();
+    return Number.isNaN(timestamp) ? 0 : timestamp;
   }
 
   private startNotificationsRefresh(): void {

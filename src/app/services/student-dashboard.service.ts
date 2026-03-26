@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, catchError, forkJoin, map, of, shareReplay, tap, throwError } from 'rxjs';
+import { Observable, catchError, forkJoin, map, of, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 import { BackendEvent, EventService } from './event.service';
 
@@ -11,6 +11,10 @@ export interface StudentProfile {
   email: string;
   role: string;
   college: string;
+  phone?: string;
+  location?: string;
+  department?: string;
+  profileImageUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -53,6 +57,8 @@ export interface StudentEventCard {
   category: string;
   location: string;
   dateTime: string;
+  registrationDeadline?: string | null;
+  registrationDeadlineLabel?: string;
   dateLabel: string;
   timeLabel: string;
   imageUrl: string | null;
@@ -77,11 +83,36 @@ export interface StudentNotificationItem {
 }
 
 export interface StudentEventReview {
+  id?: string;
+  reviewId?: string;
+  userId?: string;
+  studentId?: string;
   eventId: string;
   rating: number;
   feedback: string;
   createdAt: string;
   updatedAt: string;
+  studentName?: string;
+  reviewerName?: string;
+  userName?: string;
+  profilePhotoUrl?: string;
+  avatarUrl?: string;
+  profileImage?: string;
+  photoUrl?: string;
+}
+
+export interface StudentEventComment {
+  id: string;
+  eventId: string;
+  parentCommentId: string | null;
+  authorId: string;
+  name: string;
+  avatarUrl: string;
+  text: string;
+  likes: string[];
+  createdAt: string;
+  updatedAt: string;
+  replies?: StudentEventComment[];
 }
 
 export interface StudentDashboardSnapshot {
@@ -133,6 +164,7 @@ export class StudentDashboardService {
     if (!this.snapshotRequest$) {
       const headers = this.authService.getAuthHeaders();
       this.snapshotRequest$ = this.http.get<StudentDashboardSnapshot>(`${this.apiUrl}/student/dashboard`, { headers }).pipe(
+        switchMap((snapshot) => this.enrichSnapshotFromDatabaseEvents(snapshot)),
         catchError(() => this.buildFallbackSnapshot()),
         tap((snapshot) => {
           this.setSnapshotCache(snapshot);
@@ -208,6 +240,136 @@ export class StudentDashboardService {
   submitEventFeedback(eventId: string, feedback: string): Observable<StudentEventReview> {
     const headers = this.authService.getAuthHeaders();
     return this.http.post<StudentEventReview>(`${this.apiUrl}/event-reviews/feedback`, { eventId, feedback }, { headers });
+  }
+
+  getMyProfileDetails(): Observable<StudentProfile> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.get<StudentProfile>(`${this.apiUrl}/profile/me`, { headers }).pipe(
+      catchError(() => this.getProfile())
+    );
+  }
+
+  updateMyProfile(payload: {
+    name?: string;
+    email?: string;
+    college?: string;
+    phone?: string;
+    location?: string;
+    department?: string;
+    profileImageUrl?: string;
+  }): Observable<StudentProfile> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.put<StudentProfile>(`${this.apiUrl}/profile/me`, payload, { headers }).pipe(
+      tap(() => this.invalidateDashboardCache())
+    );
+  }
+
+  getEventReviews(eventId: string): Observable<StudentEventReview[]> {
+    const headers = this.authService.getAuthHeaders();
+    const normalizedId = String(eventId || '').trim();
+    if (!normalizedId) {
+      return of([]);
+    }
+
+    return this.http.get<StudentEventReview[]>(`${this.apiUrl}/event-reviews/event/${encodeURIComponent(normalizedId)}`, { headers }).pipe(
+      catchError(() =>
+        this.http.get<StudentEventReview[]>(`${this.apiUrl}/event-reviews?eventId=${encodeURIComponent(normalizedId)}`, { headers }).pipe(
+          catchError(() => this.getMyEventReviews([normalizedId]))
+        )
+      )
+    );
+  }
+
+  deleteMyEventReview(eventId: string): Observable<void> {
+    const headers = this.authService.getAuthHeaders();
+    const normalizedId = String(eventId || '').trim();
+    if (!normalizedId) {
+      return of(void 0);
+    }
+
+    return this.http.delete<void>(`${this.apiUrl}/event-reviews/event/${encodeURIComponent(normalizedId)}/mine`, { headers }).pipe(
+      catchError(() =>
+        this.http.delete<void>(`${this.apiUrl}/event-reviews/mine/${encodeURIComponent(normalizedId)}`, { headers }).pipe(
+          catchError(() =>
+            this.http.delete<void>(`${this.apiUrl}/event-reviews/${encodeURIComponent(normalizedId)}/mine`, { headers }).pipe(
+              catchError(() => of(void 0))
+            )
+          )
+        )
+      )
+    );
+  }
+
+  getEventComments(eventId: string): Observable<StudentEventComment[]> {
+    const headers = this.authService.getAuthHeaders();
+    const normalizedId = String(eventId || '').trim();
+    if (!normalizedId) {
+      return of([]);
+    }
+
+    return this.http.get<StudentEventComment[]>(`${this.apiUrl}/event-comments/event/${encodeURIComponent(normalizedId)}`, { headers }).pipe(
+      catchError(() => of([]))
+    );
+  }
+
+  postEventComment(eventId: string, text: string, parentCommentId?: string | null): Observable<StudentEventComment> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.post<StudentEventComment>(`${this.apiUrl}/event-comments`, {
+      eventId,
+      text,
+      parentCommentId: parentCommentId || null
+    }, { headers });
+  }
+
+  updateEventComment(commentId: string, text: string): Observable<StudentEventComment> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.put<StudentEventComment>(`${this.apiUrl}/event-comments/${encodeURIComponent(commentId)}`, { text }, { headers });
+  }
+
+  deleteEventComment(commentId: string): Observable<{ message: string }> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.delete<{ message: string }>(`${this.apiUrl}/event-comments/${encodeURIComponent(commentId)}`, { headers });
+  }
+
+  toggleEventCommentLike(commentId: string): Observable<StudentEventComment> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.post<StudentEventComment>(`${this.apiUrl}/event-comments/${encodeURIComponent(commentId)}/like`, {}, { headers });
+  }
+
+  private enrichSnapshotFromDatabaseEvents(snapshot: StudentDashboardSnapshot): Observable<StudentDashboardSnapshot> {
+    return this.eventService.fetchEvents().pipe(
+      map((dbEvents) => ({
+        ...snapshot,
+        events: this.mergeEventsWithDatabase(snapshot.events || [], dbEvents || [])
+      })),
+      catchError(() => of(snapshot))
+    );
+  }
+
+  private mergeEventsWithDatabase(events: StudentEventCard[], dbEvents: BackendEvent[]): StudentEventCard[] {
+    const eventById = new Map<string, BackendEvent>();
+    for (const dbEvent of dbEvents) {
+      eventById.set(String(dbEvent.id), dbEvent);
+    }
+
+    return events.map((event) => {
+      const dbEvent = eventById.get(String(event.id));
+      if (!dbEvent) {
+        return event;
+      }
+
+      const registrationDeadline = dbEvent.registrationDeadline ?? event.registrationDeadline ?? null;
+      const deadlineDate = registrationDeadline ? new Date(registrationDeadline) : null;
+      const registrationDeadlineLabel = deadlineDate && !Number.isNaN(deadlineDate.getTime())
+        ? deadlineDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : event.registrationDeadlineLabel || 'Not specified';
+
+      return {
+        ...event,
+        registrationDeadline,
+        registrationDeadlineLabel
+      };
+    });
   }
 
   invalidateDashboardCache(): void {
@@ -400,13 +562,32 @@ export class StudentDashboardService {
   }
 
   private setSnapshotCache(snapshot: StudentDashboardSnapshot): void {
-    this.cachedSnapshot = snapshot;
-    this.cachedProfile = snapshot.profile;
-    this.cachedEvents = snapshot.events || [];
-    this.cachedRegistrations = snapshot.registrations || [];
-    this.cachedStats = snapshot.stats || this.cachedStats;
-    this.cachedNotifications = snapshot.notifications || [];
-    localStorage.setItem(this.snapshotStorageKey, JSON.stringify(snapshot));
+    const normalizedEvents = (snapshot.events || []).map((event) => this.normalizeEventCard(event));
+    const normalizedSnapshot: StudentDashboardSnapshot = {
+      ...snapshot,
+      events: normalizedEvents
+    };
+
+    this.cachedSnapshot = normalizedSnapshot;
+    this.cachedProfile = normalizedSnapshot.profile;
+    this.cachedEvents = normalizedSnapshot.events || [];
+    this.cachedRegistrations = normalizedSnapshot.registrations || [];
+    this.cachedStats = normalizedSnapshot.stats || this.cachedStats;
+    this.cachedNotifications = normalizedSnapshot.notifications || [];
+    localStorage.setItem(this.snapshotStorageKey, JSON.stringify(normalizedSnapshot));
+  }
+
+  private normalizeEventCard(event: StudentEventCard): StudentEventCard {
+    const registrationDeadlineDate = event.registrationDeadline ? new Date(event.registrationDeadline) : null;
+    const registrationDeadlineLabel = event.registrationDeadlineLabel
+      || (registrationDeadlineDate && !Number.isNaN(registrationDeadlineDate.getTime())
+        ? registrationDeadlineDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : 'Not specified');
+
+    return {
+      ...event,
+      registrationDeadlineLabel
+    };
   }
 
   private restoreSnapshotFromStorage(): void {
@@ -423,7 +604,7 @@ export class StudentDashboardService {
       }
 
       this.cachedProfile = snapshot.profile || null;
-      this.cachedEvents = Array.isArray(snapshot.events) ? snapshot.events : [];
+      this.cachedEvents = Array.isArray(snapshot.events) ? snapshot.events.map((event) => this.normalizeEventCard(event)) : [];
       this.cachedRegistrations = Array.isArray(snapshot.registrations) ? snapshot.registrations : [];
       this.cachedStats = snapshot.stats || this.cachedStats;
       this.cachedNotifications = Array.isArray(snapshot.notifications) ? snapshot.notifications : [];
@@ -544,6 +725,7 @@ export class StudentDashboardService {
 
   private mapEvent(event: BackendEvent): StudentEventCard {
     const date = event.dateTime ? new Date(event.dateTime) : null;
+    const registrationDeadlineDate = event.registrationDeadline ? new Date(event.registrationDeadline) : null;
 
     return {
       id: event.id,
@@ -552,6 +734,10 @@ export class StudentDashboardService {
       category: event.category || 'Campus Event',
       location: event.location || 'Campus Venue',
       dateTime: event.dateTime,
+      registrationDeadline: event.registrationDeadline ?? null,
+      registrationDeadlineLabel: registrationDeadlineDate && !Number.isNaN(registrationDeadlineDate.getTime())
+        ? registrationDeadlineDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : 'Not specified',
       endDate: event.endDate ?? null,
       dateLabel: date && !Number.isNaN(date.getTime())
         ? date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })

@@ -20,7 +20,7 @@ exports.updateMyProfile = async (req, res) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: "Not authorized" });
 
-    const { name, email, phone, location, department, profileImageUrl } = req.body || {};
+    const { name, email, college, phone, location, department, profileImageUrl } = req.body || {};
 
     if (email) {
       const existing = await User.findOne({ email, _id: { $ne: userId } });
@@ -32,6 +32,7 @@ exports.updateMyProfile = async (req, res) => {
     const update = {
       ...(name !== undefined ? { name } : {}),
       ...(email !== undefined ? { email } : {}),
+      ...(college !== undefined ? { college } : {}),
       ...(phone !== undefined ? { phone } : {}),
       ...(location !== undefined ? { location } : {}),
       ...(department !== undefined ? { department } : {}),

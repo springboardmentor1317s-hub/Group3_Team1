@@ -70,6 +70,17 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
     return JSON.parse(localStorage.getItem('currentUser') || '{}')?.name || 'Student';
   }
 
+  get profilePhotoUrl(): string {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    return String(
+      currentUser.profileImageUrl
+      || currentUser.profilePhotoUrl
+      || currentUser.avatarUrl
+      || currentUser.photoUrl
+      || ''
+    ).trim();
+  }
+
   loadEvents(): void {
     this.errorMessage = '';
 
@@ -217,10 +228,15 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
   }
 
   private setEvents(events: StudentEventCard[]): void {
-    this.events = [...events].sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
+    this.events = [...events].sort((a, b) => this.getEventTimestamp(b) - this.getEventTimestamp(a));
     this.categories = ['All', ...Array.from(new Set(this.events.map((event) => event.category).filter(Boolean)))];
     this.colleges = ['All', ...Array.from(new Set(this.events.map((event) => event.collegeName).filter(Boolean)))];
     this.applyFilters();
+  }
+
+  private getEventTimestamp(event: StudentEventCard): number {
+    const timestamp = new Date(event.dateTime).getTime();
+    return Number.isNaN(timestamp) ? 0 : timestamp;
   }
 
   private loadNotifications(): void {
