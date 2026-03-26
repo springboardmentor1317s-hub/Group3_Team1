@@ -8,6 +8,14 @@ function normalizeText(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
+}
+
+function isValidUserId(value) {
+  return /^(?=.{3,40}$)[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$/.test(String(value || "").trim());
+}
+
 function toNotificationDate(value) {
   if (!value) {
     return new Date(0).toISOString();
@@ -319,12 +327,30 @@ exports.toggleRegistration = async (req, res) => {
 // ================= SIGNUP =================
 exports.signup = async (req, res) => {
   try {
-    const { name, userId, email, password, role, college } = req.body;
+    const { name, userId, password, role, college } = req.body;
+    const email = normalizeText(req.body.email);
+    const normalizedUserId = normalizeText(userId);
 
-    console.log("Signup request:", { name, userId, email, role, college });
+    console.log("Signup request:", { name, userId: normalizedUserId, email, role, college });
+
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ message: "Name is required" });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ message: "Please provide a valid email address" });
+    }
+
+    if (!isValidUserId(normalizedUserId)) {
+      return res.status(400).json({ message: "Please provide a valid user ID" });
+    }
+
+    if (!password || String(password).length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters long" });
+    }
 
     // Check if userId already exists
-    const existingUserId = await User.findOne({ userId });
+    const existingUserId = await User.findOne({ userId: normalizedUserId });
     if (existingUserId) {
       return res.status(400).json({ message: "UserId already taken" });
     }
@@ -340,8 +366,8 @@ exports.signup = async (req, res) => {
     const isCollegeAdmin = normalizedRole === "college_admin" || normalizedRole === "admin";
 
     const user = await User.create({
-      name,
-      userId,
+      name: String(name).trim(),
+      userId: normalizedUserId,
       email,
       college,
       password: hashedPassword,
@@ -362,12 +388,23 @@ exports.signup = async (req, res) => {
 // ================= LOGIN =================
 exports.login = async (req, res) => {
   try {
-    const { identifier, password } = req.body;
+    const { password } = req.body;
+    const identifier = String(req.body.identifier || "").trim();
+    const normalizedIdentifier = normalizeText(identifier);
 
-    // identifier can be email OR userId
-    const user = await User.findOne({
-      $or: [{ email: identifier }, { userId: identifier }]
-    });
+    if (!identifier) {
+      return res.status(400).json({ message: "Email or user ID is required" });
+    }
+
+    if (!isValidEmail(identifier)) {
+      return res.status(400).json({ message: "Please provide a valid email address" });
+    }
+
+    if (!password) {
+      return res.status(400).json({ message: "Password is required" });
+    }
+
+    const user = await User.findOne({ email: normalizedIdentifier });
 
     if (!user) {
       return res.status(400).json({ message: "User not found" });

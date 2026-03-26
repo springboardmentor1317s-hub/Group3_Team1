@@ -1,33 +1,13 @@
 <div class="profile-shell">
-  <header class="luxury-header">
-    <div class="header-inner">
-      <button class="brand-block" type="button" (click)="goTo('dashboard')">
-        <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub">
-        <div class="brand-copy">
-          <span class="eyebrow">Student Lounge</span>
-          <span class="brand-name">Campus Event Hub</span>
-        </div>
-      </button>
-
-      <nav class="header-nav">
-        <button type="button" class="nav-link" (click)="goTo('dashboard')">Dashboard</button>
-        <button type="button" class="nav-link" (click)="goTo('events')">Events</button>
-        <button type="button" class="nav-link" (click)="goTo('registrations')">My Registrations</button>
-        <button type="button" class="nav-link" (click)="goTo('feedback')">Feedback</button>
-      </nav>
-
-      <div class="header-actions">
-        <button type="button" class="profile-chip active">
-          <span class="material-icons">account_circle</span>
-          <span class="profile-chip-name">{{ studentName }}</span>
-        </button>
-        <button type="button" class="notification-btn" (click)="openNotifications()" aria-label="Notifications">
-          <span class="material-icons">notifications</span>
-        </button>
-        <button type="button" class="logout-btn" (click)="logout()">Logout</button>
-      </div>
-    </div>
-  </header>
+  <app-student-header
+    activeTab="profile"
+    [studentName]="studentName"
+    notificationMode="dropdown"
+    [notifications]="notifications"
+    [notificationsLoading]="notificationsLoading"
+    [notificationsOpen]="notificationsDropdownOpen"
+    (notificationToggle)="openNotifications($event)"
+  />
 
   <main class="profile-main">
     <p *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</p>

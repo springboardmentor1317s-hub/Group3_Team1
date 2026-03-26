@@ -55,6 +55,12 @@ export const routes: Routes = [
   },
 
   {
+    path: 'student-event/:id',
+    loadComponent: () => import('./student-event-details-page/student-event-details-page.component').then(m => m.StudentEventDetailsPageComponent),
+    canActivate: [roleGuard('student')]
+  },
+
+  {
     path: 'student-registrations',
     loadComponent: () => import('./student-registrations-page/student-registrations-page.component').then(m => m.StudentRegistrationsPageComponent),
     canActivate: [roleGuard('student')]
@@ -63,6 +69,12 @@ export const routes: Routes = [
   {
     path: 'student-profile',
     loadComponent: () => import('./student-profile-page/student-profile-page.component').then(m => m.StudentProfilePageComponent),
+    canActivate: [roleGuard('student')]
+  },
+
+  {
+    path: 'student-feedback',
+    loadComponent: () => import('./student-feedback-page/student-feedback-page.component').then(m => m.StudentFeedbackPageComponent),
     canActivate: [roleGuard('student')]
   }
 ];
