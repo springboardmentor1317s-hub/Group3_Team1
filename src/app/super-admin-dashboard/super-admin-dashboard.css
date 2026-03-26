@@ -1,4 +1,4 @@
- :host {
+:host {
   display: block;
 }
 
@@ -500,6 +500,85 @@
 .reject-box textarea {
   width: 100%;
   resize: vertical;
+}
+
+/* ── Admin Activity Report: new states & low-activity style ── */
+
+.reports-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.reports-header h3 {
+  margin: 0;
+}
+
+.ghost-refresh-btn {
+  background: none;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 10px;
+  padding: 5px 11px;
+  cursor: pointer;
+  color: #64748b;
+  font-size: 0.85rem;
+  transition: background 0.15s, color 0.15s;
+}
+
+.ghost-refresh-btn:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.activity-loading,
+.activity-error,
+.activity-empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 22px 12px;
+  color: #94a3b8;
+  font-size: 0.88rem;
+}
+
+.activity-error {
+  color: #ef4444;
+}
+
+.activity-empty {
+  flex-direction: column;
+  justify-content: center;
+}
+
+.activity-empty p {
+  margin: 0;
+}
+
+.retry-btn {
+  margin-left: 8px;
+  padding: 4px 12px;
+  border: 1px solid #ef4444;
+  background: none;
+  color: #ef4444;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.retry-btn:hover {
+  background: #fef2f2;
+}
+
+/* Low activity (new — High & Medium already exist above) */
+.tag-low {
+  background: rgba(100, 116, 139, 0.12);
+  color: #475569;
+}
+
+.activity-low {
+  background: rgba(100, 116, 139, 0.12);
+  color: #475569;
 }
 
 @media (max-width: 1024px) {
