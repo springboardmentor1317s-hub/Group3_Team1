@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
 import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
+import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
 import { finalize, timeout } from 'rxjs';
 import {
   StudentDashboardService,
@@ -24,7 +25,7 @@ interface DashboardStat {
 @Component({
   selector: 'app-student-dashboard-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, StudentHeaderComponent],
   templateUrl: './student-dashboard-page.component.html',
   styleUrls: ['./student-dashboard-page.component.scss']
 })

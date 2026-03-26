@@ -34,13 +34,20 @@
 
           <form (ngSubmit)="login()">
             <label>Email Address</label>
-            <input type="email" [(ngModel)]="user.email" name="email" placeholder="Enter your email" required>
+            <input type="email" [(ngModel)]="user.email" name="email" placeholder="Enter your email address" required>
 
             <label>Password</label>
             <div class="password-box">
               <input [type]="show ? 'text' : 'password'" [(ngModel)]="user.password" name="password"
                 placeholder="Enter your password" required>
-              <i class="fa-solid" [class.fa-eye]="!show" [class.fa-eye-slash]="show" (click)="show = !show"></i>
+              <button
+                type="button"
+                class="password-toggle"
+                [attr.aria-label]="show ? 'Hide password' : 'Show password'"
+                (click)="show = !show"
+              >
+                <i class="fa-solid" [class.fa-eye]="!show" [class.fa-eye-slash]="show"></i>
+              </button>
             </div>
 
             <label>Login As</label>
@@ -132,4 +139,12 @@
     </div>
   </div>
   <app-site-footer></app-site-footer>
+
+  <div class="popup-backdrop" *ngIf="isPopupOpen" (click)="closePopup()">
+    <div class="popup-card" (click)="$event.stopPropagation()" role="alertdialog" aria-modal="true" aria-labelledby="login-popup-title">
+      <h3 id="login-popup-title">Validation Message</h3>
+      <p>{{ popupMessage }}</p>
+      <button type="button" class="popup-btn" (click)="closePopup()">OK</button>
+    </div>
+  </div>
 </div>

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
 import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
+import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
 import { finalize, timeout } from 'rxjs';
 import {
   StudentDashboardService,
@@ -16,7 +17,7 @@ import {
 @Component({
   selector: 'app-student-registrations-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, StudentHeaderComponent],
   templateUrl: './student-registrations-page.component.html',
   styleUrls: ['./student-registrations-page.component.scss']
 })

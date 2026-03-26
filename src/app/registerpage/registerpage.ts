@@ -14,6 +14,11 @@ import { SiteFooterComponent } from '../shared/site-footer/site-footer.component
   styleUrl: './registerpage.css',
 })
 export class Registerpage {
+  showPassword = false;
+  showConfirmPassword = false;
+  popupMessage = '';
+  isPopupOpen = false;
+  private readonly emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
   user = {
     fullName: '',
@@ -32,20 +37,50 @@ export class Registerpage {
     private adminApprovalService: AdminApprovalService
   ) {}
 
+  closePopup(): void {
+    this.isPopupOpen = false;
+  }
+
+  private openPopup(message: string): void {
+    this.popupMessage = message;
+    this.isPopupOpen = true;
+    this.errorMessage = message;
+  }
+
   register() {
     console.log('Registering user:', this.user);
-    
-    // Check if passwords match
-    if (this.user.password !== this.user.confirmPassword) {
-      this.errorMessage = 'Passwords do not match';
+    const trimmedName = this.user.fullName.trim();
+    const trimmedEmail = this.user.email.trim().toLowerCase();
+
+    if (!trimmedName) {
+      this.openPopup('Please enter your full name.');
       return;
     }
 
-    // Check if required fields are filled
-    if (!this.user.fullName || !this.user.email || !this.user.password) {
-      this.errorMessage = 'Please fill all required fields';
+    if (!this.emailPattern.test(trimmedEmail)) {
+      this.openPopup('Please enter a valid email address like name@gmail.com.');
       return;
     }
+
+    if (!this.user.password.trim()) {
+      this.openPopup('Please enter your password.');
+      return;
+    }
+
+    if (this.user.password.length < 6) {
+      this.openPopup('Password must be at least 6 characters long.');
+      return;
+    }
+    
+    // Check if passwords match
+    if (this.user.password !== this.user.confirmPassword) {
+      this.openPopup('Passwords do not match.');
+      return;
+    }
+
+    this.user.fullName = trimmedName;
+    this.user.email = trimmedEmail;
+    this.errorMessage = '';
 
     // Create userId from email (before @)
     const userId = this.user.email.split('@')[0];
@@ -82,7 +117,7 @@ export class Registerpage {
       },
       error: (err) => {
         console.log('Registration Failed:', err);
-        this.errorMessage = err.error?.message || 'Registration failed. Please try again.';
+        this.openPopup(err.error?.message || 'Registration failed. Please try again.');
       }
     });
   }

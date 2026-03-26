@@ -1,8 +1,9 @@
 import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { EventService, BackendEvent } from '../services/event.service';
 import { HttpClient } from '@angular/common/http';
+import { inject } from '@angular/core';
 
 interface HomepageEventCard {
   id: string;
@@ -64,6 +65,7 @@ export class Homepage implements OnInit, OnDestroy {
   private dragStartX: number | null = null;
   private dragDeltaX = 0;
   private revealObserver: IntersectionObserver | null = null;
+  private readonly document = inject(DOCUMENT);
 
   constructor(
     private eventService: EventService,
@@ -72,6 +74,7 @@ export class Homepage implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
+    this.document.body.classList.add('homepage-scrollbar');
     this.updateActiveSection();
 
     this.http.get<DashboardStatsResponse>('/api/superadmin/dashboard-stats').subscribe({
@@ -152,6 +155,7 @@ export class Homepage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.document.body.classList.remove('homepage-scrollbar');
     this.stopCollegeRotation();
     this.revealObserver?.disconnect();
   }
