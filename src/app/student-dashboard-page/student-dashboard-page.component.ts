@@ -14,7 +14,8 @@ import {
   StudentNotificationItem,
   StudentProfile,
   StudentRegistrationRecord,
-  StudentEventReview
+  StudentEventReview,
+  StudentSupportQuery
 } from '../services/student-dashboard.service';
 
 interface DashboardStat {
@@ -46,6 +47,8 @@ export class StudentDashboardPageComponent implements OnInit {
   eventRatingSummaryByEventId: Record<string, { average: number; count: number }> = {};
   feedbackOpenEventIds = new Set<string>();
   feedbackSavedEventIds = new Set<string>();
+  supportQuery: StudentSupportQuery | null = null;
+  latestResolvedSupportQuery: StudentSupportQuery | null = null;
   statsState = {
     upcomingEvents: 0,
     myRegistrations: 0,
@@ -62,6 +65,12 @@ export class StudentDashboardPageComponent implements OnInit {
   notificationsDropdownOpen = false;
   actionEventId = '';
   reviewActionEventId = '';
+  supportQuerySubject = '';
+  supportQueryMessage = '';
+  supportQueryLoading = true;
+  supportQuerySubmitting = false;
+  supportQueryActionInProgress = false;
+  supportQueryErrorMessage = '';
   errorMessage = '';
   silentRefreshing = false;
   activeTab: 'dashboard' | 'events' | 'registrations' | 'feedback' = 'dashboard';
@@ -88,6 +97,7 @@ export class StudentDashboardPageComponent implements OnInit {
     });
     this.prefillFromCache();
     this.loadDashboard();
+    this.loadSupportQuery();
     this.startNotificationsRefresh();
     this.startRatingsRefresh();
   }
@@ -230,7 +240,7 @@ export class StudentDashboardPageComponent implements OnInit {
     }
 
     if (tab === 'feedback') {
-      this.router.navigate(['/student-feedback']);
+      document.getElementById('feedback-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       return;
     }
 
@@ -247,6 +257,106 @@ export class StudentDashboardPageComponent implements OnInit {
 
   openRegistrationsPage(): void {
     this.router.navigate(['/student-registrations']);
+  }
+
+  get hasOpenSupportQuery(): boolean {
+    return !!this.supportQuery && this.supportQuery.status !== 'RESOLVED';
+  }
+
+  get canSubmitSupportQuery(): boolean {
+    return !this.supportQuerySubmitting
+      && !this.hasOpenSupportQuery
+      && this.supportQuerySubject.trim().length >= 3
+      && this.supportQueryMessage.trim().length >= 10;
+  }
+
+  submitSupportQuery(): void {
+    const subject = this.supportQuerySubject.trim();
+    const message = this.supportQueryMessage.trim();
+    if (!this.canSubmitSupportQuery) {
+      return;
+    }
+
+    this.supportQuerySubmitting = true;
+    this.errorMessage = '';
+    this.supportQueryErrorMessage = '';
+
+    this.studentDashboardService.createSupportQuery(subject, message).pipe(
+      finalize(() => {
+        this.supportQuerySubmitting = false;
+      })
+    ).subscribe({
+      next: (query) => {
+        this.supportQuery = query;
+        this.latestResolvedSupportQuery = null;
+        this.supportQuerySubject = '';
+        this.supportQueryMessage = '';
+        this.loadSupportQuery();
+      },
+      error: (error) => {
+        const backendActiveQuery = error?.error?.activeQuery || null;
+        if (backendActiveQuery) {
+          this.supportQuery = backendActiveQuery;
+          this.latestResolvedSupportQuery = null;
+        }
+        this.supportQueryErrorMessage = error?.error?.message || 'Unable to save your query right now.';
+      }
+    });
+  }
+
+  deleteSupportQuery(): void {
+    if (!this.supportQuery?.id || !this.supportQuery.canDelete || this.supportQueryActionInProgress) {
+      return;
+    }
+
+    const deletingQueryId = this.supportQuery.id;
+    this.supportQueryActionInProgress = true;
+    this.errorMessage = '';
+    this.supportQueryErrorMessage = '';
+
+    this.studentDashboardService.deleteSupportQuery(deletingQueryId).pipe(
+      finalize(() => {
+        this.supportQueryActionInProgress = false;
+      })
+    ).subscribe({
+      next: () => {
+        this.supportQuery = null;
+        this.loadSupportQuery();
+      },
+      error: (error) => {
+        this.supportQueryErrorMessage = error?.error?.message || 'Unable to delete your query right now.';
+      }
+    });
+  }
+
+  escalateSupportQuery(): void {
+    if (!this.supportQuery?.id || !this.supportQuery.canEscalate || this.supportQueryActionInProgress) {
+      return;
+    }
+
+    this.supportQueryActionInProgress = true;
+    this.errorMessage = '';
+    this.supportQueryErrorMessage = '';
+
+    this.studentDashboardService.escalateSupportQuery(this.supportQuery.id).pipe(
+      finalize(() => {
+        this.supportQueryActionInProgress = false;
+      })
+    ).subscribe({
+      next: (query) => {
+        this.supportQuery = query;
+        this.loadSupportQuery();
+      },
+      error: (error) => {
+        this.supportQueryErrorMessage = error?.error?.message || 'Unable to request escalation right now.';
+      }
+    });
+  }
+
+  getSupportQueryStatusLabel(status: StudentSupportQuery['status']): string {
+    if (status === 'IN_PROGRESS') return 'In Progress';
+    if (status === 'RESOLVED') return 'Resolved';
+    return 'Open';
   }
 
   openNotifications(event?: Event): void {
@@ -638,6 +748,27 @@ export class StudentDashboardPageComponent implements OnInit {
         error: () => void 0
       });
     }, 8000);
+  }
+
+  private loadSupportQuery(): void {
+    this.supportQueryLoading = true;
+    this.supportQueryErrorMessage = '';
+
+    this.studentDashboardService.getMySupportQuery().pipe(
+      finalize(() => {
+        this.supportQueryLoading = false;
+      })
+    ).subscribe({
+      next: (snapshot) => {
+        this.supportQuery = snapshot.activeQuery;
+        this.latestResolvedSupportQuery = snapshot.latestResolvedQuery;
+      },
+      error: (error) => {
+        this.supportQuery = null;
+        this.latestResolvedSupportQuery = null;
+        this.supportQueryErrorMessage = error?.error?.message || 'Unable to load your query status right now.';
+      }
+    });
   }
 
   private startRatingsRefresh(): void {

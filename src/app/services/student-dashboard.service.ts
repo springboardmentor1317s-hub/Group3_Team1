@@ -100,6 +100,31 @@ export interface StudentNotificationItem {
   category: 'overview' | 'registration' | 'approval' | 'event';
 }
 
+export interface StudentSupportQuery {
+  id: string;
+  studentId: string;
+  studentEmail: string;
+  studentName: string;
+  subject: string;
+  message: string;
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
+  progressNote: string;
+  adminResponse: string;
+  escalationRequested: boolean;
+  escalatedAt: string | null;
+  canCreateAnother: boolean;
+  canDelete: boolean;
+  canEscalate: boolean;
+  ageInDays: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudentSupportQuerySnapshot {
+  activeQuery: StudentSupportQuery | null;
+  latestResolvedQuery: StudentSupportQuery | null;
+}
+
 export interface StudentEventReview {
   id?: string;
   reviewId?: string;
@@ -258,6 +283,26 @@ export class StudentDashboardService {
   submitEventFeedback(eventId: string, feedback: string): Observable<StudentEventReview> {
     const headers = this.authService.getAuthHeaders();
     return this.http.post<StudentEventReview>(`${this.apiUrl}/event-reviews/feedback`, { eventId, feedback }, { headers });
+  }
+
+  getMySupportQuery(): Observable<StudentSupportQuerySnapshot> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.get<StudentSupportQuerySnapshot>(`${this.apiUrl}/student-queries/me`, { headers });
+  }
+
+  createSupportQuery(subject: string, message: string): Observable<StudentSupportQuery> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.post<StudentSupportQuery>(`${this.apiUrl}/student-queries`, { subject, message }, { headers });
+  }
+
+  deleteSupportQuery(queryId: string): Observable<{ message: string }> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.delete<{ message: string }>(`${this.apiUrl}/student-queries/${encodeURIComponent(queryId)}`, { headers });
+  }
+
+  escalateSupportQuery(queryId: string): Observable<StudentSupportQuery> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.post<StudentSupportQuery>(`${this.apiUrl}/student-queries/${encodeURIComponent(queryId)}/escalate`, {}, { headers });
   }
 
   getMyProfileDetails(): Observable<StudentProfile> {

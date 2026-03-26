@@ -163,18 +163,125 @@
     <section class="panel feedback-panel" id="feedback-section">
       <div class="panel-head">
         <div>
-          <p class="section-kicker">We Value Your Input</p>
-          <h2>Feedback</h2>
+          <p class="section-kicker">Student Support Desk</p>
+          <h2>Student Query Section</h2>
         </div>
       </div>
 
-      <div class="feedback-card">
-        <div>
-          <h3>Share your event experience</h3>
-          <p>For event suggestions, issue reporting, or platform feedback, contact the campus team directly from your registered email.</p>
+      <div class="query-layout">
+        <div class="feedback-card query-compose-card">
+          <div>
+            <h3>Raise a query</h3>
+            <p>Submit one active query at a time. You can delete it before resolution or request escalation if it stays unresolved for many days.</p>
+          </div>
+
+          <div class="query-form" *ngIf="!supportQueryLoading">
+            <p class="query-error" *ngIf="supportQueryErrorMessage">{{ supportQueryErrorMessage }}</p>
+
+            <label class="query-field">
+              <span>Query Subject</span>
+              <input
+                type="text"
+                [(ngModel)]="supportQuerySubject"
+                [disabled]="hasOpenSupportQuery || supportQuerySubmitting"
+                placeholder="Example: Registration issue, dashboard bug, event access problem"
+              >
+            </label>
+
+            <label class="query-field">
+              <span>Your Query</span>
+              <textarea
+                rows="5"
+                [(ngModel)]="supportQueryMessage"
+                [disabled]="hasOpenSupportQuery || supportQuerySubmitting"
+                placeholder="Describe your issue or query clearly so it can be tracked from the database."
+              ></textarea>
+            </label>
+
+            <div class="query-form-actions">
+              <button
+                type="button"
+                class="submit-feedback-btn"
+                [disabled]="!canSubmitSupportQuery"
+                (click)="submitSupportQuery()"
+              >
+                Send Query
+              </button>
+              <p class="query-hint" *ngIf="hasOpenSupportQuery">You already have one active query. Resolve or delete it before sending another.</p>
+            </div>
+          </div>
+
+          <div class="loading-card" *ngIf="supportQueryLoading">Loading your current query status...</div>
         </div>
 
-        <a class="feedback-link" href="mailto:support@campuseventhub.com?subject=Student%20Feedback">Send Feedback</a>
+        <div class="feedback-card query-status-card" *ngIf="!supportQueryLoading">
+          <div class="query-status-head">
+            <div>
+              <h3>Current Query Status</h3>
+              <p *ngIf="supportQuery">Live database-backed status for your latest active query.</p>
+              <p *ngIf="!supportQuery && latestResolvedSupportQuery">No active query right now. Your last resolved query is shown below.</p>
+              <p *ngIf="!supportQuery && !latestResolvedSupportQuery">No query submitted yet. Your first query will appear here after you send it.</p>
+            </div>
+            <span class="status-pill-table" *ngIf="supportQuery" [attr.data-tone]="supportQuery.status === 'RESOLVED' ? 'approved' : supportQuery.status === 'IN_PROGRESS' ? 'pending' : 'pending'">
+              {{ getSupportQueryStatusLabel(supportQuery.status) }}
+            </span>
+          </div>
+
+          <div class="query-thread" *ngIf="supportQuery as currentQuery; else resolvedQueryPreview">
+            <article class="query-bubble student">
+              <span class="query-bubble-label">Your Query</span>
+              <strong>{{ currentQuery.subject }}</strong>
+              <p>{{ currentQuery.message }}</p>
+              <small>Submitted {{ currentQuery.createdAt | date:'medium' }}</small>
+            </article>
+
+            <article class="query-bubble system">
+              <span class="query-bubble-label">System Status</span>
+              <strong>{{ getSupportQueryStatusLabel(currentQuery.status) }}</strong>
+              <p>{{ currentQuery.progressNote || 'Your query is still in queue.' }}</p>
+              <small>{{ currentQuery.ageInDays }} day(s) old</small>
+            </article>
+
+            <article class="query-bubble admin" *ngIf="currentQuery.adminResponse">
+              <span class="query-bubble-label">Admin Message</span>
+              <p>{{ currentQuery.adminResponse }}</p>
+            </article>
+
+            <div class="query-status-actions">
+              <button
+                type="button"
+                class="ghost-btn"
+                [disabled]="!currentQuery.canDelete || supportQueryActionInProgress"
+                (click)="deleteSupportQuery()"
+              >
+                Delete Query
+              </button>
+              <button
+                type="button"
+                class="solid-btn"
+                [disabled]="!currentQuery.canEscalate || supportQueryActionInProgress"
+                (click)="escalateSupportQuery()"
+              >
+                {{ currentQuery.escalationRequested ? 'Escalation Requested' : 'Request Escalation' }}
+              </button>
+            </div>
+          </div>
+
+          <ng-template #resolvedQueryPreview>
+            <div class="query-thread" *ngIf="latestResolvedSupportQuery as resolvedQuery">
+              <article class="query-bubble student">
+                <span class="query-bubble-label">Last Resolved Query</span>
+                <strong>{{ resolvedQuery.subject }}</strong>
+                <p>{{ resolvedQuery.message }}</p>
+              </article>
+              <article class="query-bubble admin">
+                <span class="query-bubble-label">Resolution</span>
+                <p>{{ resolvedQuery.adminResponse || resolvedQuery.progressNote || 'Marked as resolved.' }}</p>
+                <small>Updated {{ resolvedQuery.updatedAt | date:'medium' }}</small>
+              </article>
+            </div>
+          </ng-template>
+        </div>
       </div>
     </section>
   </main>

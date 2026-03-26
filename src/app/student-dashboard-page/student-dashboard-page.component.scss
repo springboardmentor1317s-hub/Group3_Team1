@@ -904,17 +904,135 @@ app-site-footer {
   gap: 1.2rem;
 }
 
-.feedback-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 180px;
-  border-radius: 18px;
-  padding: 0.95rem 1.2rem;
-  background: linear-gradient(135deg, #0f172a, #1d4ed8);
-  color: #fff;
+.query-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  gap: 1rem;
+}
+
+.query-compose-card,
+.query-status-card {
+  display: grid;
+  align-content: start;
+}
+
+.query-form {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.query-error {
+  margin: 0;
+  padding: 0.85rem 0.95rem;
+  border-radius: 16px;
+  border: 1px solid rgba(190, 24, 93, 0.16);
+  background: rgba(255, 241, 242, 0.95);
+  color: #be123c;
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.query-field {
+  display: grid;
+  gap: 0.42rem;
+}
+
+.query-field span {
+  color: #475569;
+  font-size: 0.84rem;
   font-weight: 800;
-  text-decoration: none;
+}
+
+.query-field input,
+.query-field textarea {
+  width: 100%;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  padding: 0.9rem 1rem;
+  font-family: inherit;
+  font-size: 0.94rem;
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+  resize: vertical;
+  outline: none;
+}
+
+.query-field input:focus,
+.query-field textarea:focus {
+  border-color: rgba(37, 99, 235, 0.5);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.query-form-actions {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.query-hint {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.query-status-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.query-thread {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.query-bubble {
+  display: grid;
+  gap: 0.3rem;
+  padding: 1rem 1.05rem;
+  border-radius: 22px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.query-bubble.student {
+  background: linear-gradient(135deg, rgba(219, 234, 254, 0.72), rgba(239, 246, 255, 0.98));
+}
+
+.query-bubble.system {
+  background: linear-gradient(135deg, rgba(254, 249, 195, 0.72), rgba(255, 251, 235, 0.98));
+}
+
+.query-bubble.admin {
+  background: linear-gradient(135deg, rgba(220, 252, 231, 0.72), rgba(240, 253, 244, 0.98));
+}
+
+.query-bubble-label {
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 900;
+  color: #64748b;
+}
+
+.query-bubble strong,
+.query-bubble p,
+.query-bubble small {
+  margin: 0;
+}
+
+.query-bubble p {
+  color: #334155;
+  line-height: 1.65;
+}
+
+.query-bubble small {
+  color: #64748b;
+}
+
+.query-status-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
 }
 
 .filter-bar {
@@ -2019,6 +2137,10 @@ app-site-footer {
     align-items: stretch;
   }
 
+  .query-layout {
+    grid-template-columns: 1fr;
+  }
+
   .luxury-header {
     border-radius: 0 0 22px 22px;
   }
@@ -2026,7 +2148,6 @@ app-site-footer {
   .nav-link,
   .primary-hero-btn,
   .secondary-hero-btn,
-  .feedback-link,
   .view-all-btn,
   .ghost-btn,
   .solid-btn,
