@@ -20,7 +20,7 @@
         <button type="button" class="profile-chip" (click)="navigate('profile')">
           <img *ngIf="profilePhotoUrl as photo; else detailsAvatarFallback" class="profile-chip-avatar" [src]="photo" [alt]="studentName">
           <ng-template #detailsAvatarFallback>
-            <span class="material-icons">account_circle</span>
+            <span class="profile-chip-fallback">{{ profileInitials }}</span>
           </ng-template>
           <span class="profile-chip-name">{{ studentName }}</span>
         </button>

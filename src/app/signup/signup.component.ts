@@ -76,11 +76,10 @@ export class SignupComponent {
     this.isSubmitting = true;
     this.user.email = trimmedEmail;
 
-    const userId = this.user.email.split('@')[0] || `u${Date.now()}`;
     const payload = {
       name: this.user.name || this.user.email,
-      userId,
       email: this.user.email,
+      college: this.user.college,
       password: this.user.password,
       role: this.user.role
     };

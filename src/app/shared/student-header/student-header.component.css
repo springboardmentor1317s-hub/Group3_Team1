@@ -244,6 +244,37 @@
   color: inherit;
 }
 
+.profile-chip-avatar,
+.profile-chip-fallback {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.profile-chip-avatar {
+  object-fit: cover;
+  border: 1px solid rgba(24, 50, 125, 0.12);
+  box-shadow: 0 8px 18px rgba(16, 32, 60, 0.12);
+}
+
+.profile-chip-fallback {
+  display: inline-grid;
+  place-items: center;
+  background: linear-gradient(135deg, #1d4ed8, #7c3aed 60%, #f59e0b);
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  box-shadow: 0 8px 18px rgba(29, 78, 216, 0.22);
+}
+
+.profile-chip.active .profile-chip-fallback {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: none;
+}
+
 .notification-wrapper {
   position: relative;
 }

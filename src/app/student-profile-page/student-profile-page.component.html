@@ -2,6 +2,7 @@
   <app-student-header
     activeTab="profile"
     [studentName]="studentName"
+    [studentPhotoUrl]="profilePhotoUrl"
     notificationMode="dropdown"
     [notifications]="notifications"
     [notificationsLoading]="notificationsLoading"
@@ -11,6 +12,20 @@
 
   <main class="profile-main">
     <p *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</p>
+    <div *ngIf="successMessage" class="profile-success-toast" role="status" aria-live="polite">
+      <span class="material-icons">check_circle</span>
+      <span>{{ successMessage }}</span>
+    </div>
+    <div class="profile-required-overlay" *ngIf="profileUpdateRequired && !isEditing">
+      <div class="profile-required-card">
+        <span class="material-icons">lock_person</span>
+        <h3>You have to update your profile first</h3>
+        <p>Your student details are required before accessing the full dashboard, events, and registrations.</p>
+        <button type="button" class="profile-action-btn premium-save-btn" (click)="startForcedProfileUpdate()">
+          Update Profile Now
+        </button>
+      </div>
+    </div>
 
     <section *ngIf="loading" class="state-card">Loading profile details...</section>
 
@@ -18,31 +33,56 @@
       <section class="hero-profile">
         <div class="hero-orb hero-orb-one"></div>
         <div class="hero-orb hero-orb-two"></div>
+        <article class="profile-avatar-panel">
+          <div class="avatar-ring">
+            <img *ngIf="profilePhotoUrl; else profileInitialsFallback" class="hero-avatar" [src]="profilePhotoUrl" [alt]="student.name">
+            <ng-template #profileInitialsFallback>
+              <div class="hero-avatar hero-avatar-fallback">{{ profileInitials }}</div>
+            </ng-template>
+            <label class="avatar-upload-btn" [class.loading]="photoUploadFeedbackActive" [attr.aria-label]="photoUploadInProgress ? 'Uploading profile photo' : 'Add profile photo'">
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/jpg"
+                (change)="onPhotoSelected($event)"
+                [disabled]="photoUploadInProgress"
+              >
+              <span class="material-icons">add</span>
+            </label>
+          </div>
+          <div class="avatar-meta">
+            <strong>{{ student.name }}</strong>
+            <span>{{ student.email }}</span>
+          </div>
+        </article>
+
         <div class="hero-copy">
-          <p class="kicker">Premium Student Identity</p>
-          <h1>{{ student.name }}</h1>
-          <p class="hero-text">
-            This page pulls your real database profile and registration activity so you can
-            quickly verify contact details, college info, and event participation status.
-          </p>
           <div class="identity-ribbon">
             <span><span class="material-icons">apartment</span>{{ student.college || 'College not available' }}</span>
             <span><span class="material-icons">verified_user</span>{{ student.role }}</span>
           </div>
         </div>
 
-        <div class="mini-stats">
+        <div class="stats-row" aria-label="Registration summary">
           <article class="stat-shell violet">
+            <div class="stat-copy">
+              <span class="stat-label">Total Registrations</span>
+              <small>All synced entries</small>
+            </div>
             <strong>{{ registrations.length }}</strong>
-            <span>Total Registrations</span>
           </article>
           <article class="stat-shell amber">
+            <div class="stat-copy">
+              <span class="stat-label">Approved</span>
+              <small>Ready to participate</small>
+            </div>
             <strong>{{ approvedCount }}</strong>
-            <span>Approved</span>
           </article>
           <article class="stat-shell cyan">
+            <div class="stat-copy">
+              <span class="stat-label">Pending</span>
+              <small>Awaiting review</small>
+            </div>
             <strong>{{ pendingCount }}</strong>
-            <span>Pending</span>
           </article>
         </div>
       </section>
@@ -54,8 +94,21 @@
               <p class="card-kicker">Verified Identity</p>
               <h2>Profile Details</h2>
             </div>
-            <span class="card-icon material-icons">badge</span>
+            <div class="card-header-tools">
+              <div class="card-actions">
+                <button
+                  type="button"
+                  class="profile-action-btn premium-edit-btn"
+                  (click)="startEdit()"
+                >
+                  <span class="material-icons">edit_square</span>
+                  <span>Edit Profile</span>
+                </button>
+              </div>
+              <span class="card-icon material-icons">badge</span>
+            </div>
           </div>
+
           <div class="info-list">
             <div>
               <span>Full Name</span>
@@ -70,6 +123,14 @@
               <strong>{{ student.email }}</strong>
             </div>
             <div>
+              <span>Gender</span>
+              <strong>{{ student.gender || 'Not added yet' }}</strong>
+            </div>
+            <div>
+              <span>Date of Birth</span>
+              <strong>{{ student.dateOfBirth || 'Not added yet' }}</strong>
+            </div>
+            <div>
               <span>Role</span>
               <strong>{{ student.role }}</strong>
             </div>
@@ -81,10 +142,81 @@
               <span>Joined On</span>
               <strong>{{ student.createdAt | date: 'fullDate' }}</strong>
             </div>
+            <div>
+              <span>Current Class</span>
+              <strong>{{ student.currentClass || 'Not added yet' }}</strong>
+            </div>
+            <div>
+              <span>Department</span>
+              <strong>{{ resolvedDepartmentLabel }}</strong>
+            </div>
+            <div>
+              <span>Semester</span>
+              <strong>{{ student.semester || 'Not added yet' }}</strong>
+            </div>
+            <div>
+              <span>Current CGPA</span>
+              <strong>{{ student.currentCgpa || 'Not added yet' }}</strong>
+            </div>
+            <div>
+              <span>Phone Number</span>
+              <strong>{{ student.phone || 'Not added yet' }}</strong>
+            </div>
+            <div>
+              <span>Parent's Phone</span>
+              <strong>{{ student.parentPhone || 'Not added yet' }}</strong>
+            </div>
+            <div class="info-list-wide">
+              <span>Current Address</span>
+              <strong>{{ currentAddressPreview }}</strong>
+            </div>
+            <div class="info-list-wide">
+              <span>Permanent Address</span>
+              <strong>{{ permanentAddressPreview }}</strong>
+            </div>
           </div>
         </article>
 
-        <article class="info-card secondary">
+        <article class="info-card accent-card">
+          <div class="card-header">
+            <div>
+              <p class="card-kicker">Account Snapshot</p>
+              <h2>Participation Highlights</h2>
+            </div>
+            <span class="card-icon material-icons">auto_awesome</span>
+          </div>
+          <div class="journey-grid">
+            <div class="journey-tile">
+              <span class="material-icons">event_available</span>
+              <div>
+                <strong>{{ approvedCount }}</strong>
+                <p>Confirmed entries already approved for live events.</p>
+              </div>
+            </div>
+            <div class="journey-tile">
+              <span class="material-icons">schedule</span>
+              <div>
+                <strong>{{ pendingCount }}</strong>
+                <p>Requests still being reviewed by the event organizers.</p>
+              </div>
+            </div>
+            <div class="journey-tile full">
+              <span class="material-icons">workspace_premium</span>
+              <div>
+                <strong>{{ registrations.length === 0 ? 'Start exploring events' : 'Your profile is synced' }}</strong>
+                <p>
+                  {{
+                    registrations.length === 0
+                      ? 'Once you register for events, your activity and approvals will appear here automatically.'
+                      : 'Your dashboard is tracking real registration history from the backend in a cleaner premium view.'
+                  }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="info-card secondary timeline-card">
           <div class="card-header">
             <div>
               <p class="card-kicker">Recent Activity</p>
@@ -92,15 +224,17 @@
             </div>
             <span class="card-icon material-icons">history</span>
           </div>
-          <div class="recent-list" *ngIf="registrations.length > 0; else noRegistrations">
-            <div class="recent-item" *ngFor="let registration of registrations.slice(0, 5)">
-              <div>
-                <strong>{{ registration.eventName }}</strong>
-                <p>{{ registration.event?.dateLabel || (registration.createdAt | date: 'mediumDate') }}</p>
+          <div class="recent-scroll" *ngIf="timelineRegistrations.length > 0; else noRegistrations">
+            <div class="recent-list">
+              <div class="recent-item" *ngFor="let registration of timelineRegistrations; trackBy: trackByRegistration">
+                <div class="recent-copy">
+                  <strong>{{ registration.eventName }}</strong>
+                  <p>{{ registration.event?.dateLabel || (registration.createdAt | date: 'mediumDate') }}</p>
+                </div>
+                <span class="status-pill" [attr.data-tone]="getRegistrationTone(registration.status)">
+                  {{ getRegistrationStatusLabel(registration.status) }}
+                </span>
               </div>
-              <span class="status-pill" [attr.data-tone]="getRegistrationTone(registration.status)">
-                {{ getRegistrationStatusLabel(registration.status) }}
-              </span>
             </div>
           </div>
 
@@ -108,6 +242,228 @@
             <p class="empty-copy">No registrations available yet.</p>
           </ng-template>
         </article>
+
+        <div class="profile-edit-modal" *ngIf="isEditing" (click)="cancelEdit()">
+          <div class="profile-edit-dialog" (click)="$event.stopPropagation()">
+            <div class="profile-edit-header">
+              <div>
+                <p class="card-kicker">India Student Profile</p>
+                <h3>Edit Academic Details</h3>
+                <p class="profile-edit-subtitle">Update your academic and address details for India-only student records.</p>
+              </div>
+              <button type="button" class="profile-edit-close" (click)="cancelEdit()" aria-label="Close edit profile form">
+                <span class="material-icons">close</span>
+              </button>
+            </div>
+
+            <p *ngIf="editError" class="error-banner inline-error">{{ editError }}</p>
+
+            <div class="profile-edit-body">
+              <aside class="profile-edit-sidebar">
+                <div class="profile-step active">
+                  <span>1</span>
+                  <div>
+                    <strong>Identity</strong>
+                    <p>Name and college details</p>
+                  </div>
+                </div>
+                <div class="profile-step active">
+                  <span>2</span>
+                  <div>
+                    <strong>Academics</strong>
+                    <p>Class, department, semester, CGPA</p>
+                  </div>
+                </div>
+                <div class="profile-step active">
+                  <span>3</span>
+                  <div>
+                    <strong>Addresses</strong>
+                    <p>Current and permanent address in India</p>
+                  </div>
+                </div>
+              </aside>
+
+              <div class="profile-edit-content">
+                <section class="profile-edit-section">
+                  <div class="section-heading">
+                    <h4>Basic Profile</h4>
+                    <span>Only your editable student details</span>
+                  </div>
+                  <div class="modal-form-grid two-column">
+                    <label class="modal-field">
+                      <span>Full Name</span>
+                      <input type="text" [(ngModel)]="editForm.name" placeholder="Enter your full name">
+                    </label>
+                    <label class="modal-field">
+                      <span>College Name</span>
+                      <input type="text" [(ngModel)]="editForm.college" placeholder="Enter your college name">
+                    </label>
+                    <label class="modal-field">
+                      <span>Gender</span>
+                      <select [(ngModel)]="editForm.gender">
+                        <option value="">Select gender</option>
+                        <option *ngFor="let option of genderOptions" [value]="option">{{ option }}</option>
+                      </select>
+                    </label>
+                    <label class="modal-field">
+                      <span>Date of Birth</span>
+                      <input type="date" [(ngModel)]="editForm.dateOfBirth">
+                    </label>
+                    <label class="modal-field">
+                      <span>Phone Number</span>
+                      <input type="text" [(ngModel)]="editForm.phone" inputmode="numeric" maxlength="10" placeholder="10 digit mobile number">
+                    </label>
+                    <label class="modal-field">
+                      <span>Parent's Phone (Optional)</span>
+                      <input type="text" [(ngModel)]="editForm.parentPhone" inputmode="numeric" maxlength="10" placeholder="10 digit mobile number">
+                    </label>
+                  </div>
+                </section>
+
+                <section class="profile-edit-section">
+                  <div class="section-heading">
+                    <h4>Academic Details</h4>
+                    <span>Structured for Indian college students</span>
+                  </div>
+                  <div class="modal-form-grid two-column">
+                    <label class="modal-field">
+                      <span>Current Class / Program</span>
+                      <select [(ngModel)]="editForm.currentClass">
+                        <option value="">Select program</option>
+                        <option *ngFor="let option of programOptions" [value]="option">{{ option }}</option>
+                      </select>
+                    </label>
+                    <label class="modal-field">
+                      <span>Department</span>
+                      <select [(ngModel)]="editForm.department" (change)="onDepartmentChange()">
+                        <option value="">Select department</option>
+                        <option *ngFor="let option of departmentOptions" [value]="option">{{ option }}</option>
+                      </select>
+                    </label>
+                    <label class="modal-field" *ngIf="editForm.department === 'Other'">
+                      <span>Other Department</span>
+                      <input type="text" [(ngModel)]="editForm.departmentOther" placeholder="Enter your department name">
+                    </label>
+                    <label class="modal-field">
+                      <span>Semester</span>
+                      <select [(ngModel)]="editForm.semester">
+                        <option value="">Select semester</option>
+                        <option *ngFor="let option of semesterOptions" [value]="option">{{ option }}</option>
+                      </select>
+                    </label>
+                    <label class="modal-field">
+                      <span>Current CGPA</span>
+                      <input type="text" [(ngModel)]="editForm.currentCgpa" inputmode="decimal" placeholder="Example: 8.42">
+                    </label>
+                  </div>
+                </section>
+
+                <section class="profile-edit-section">
+                  <div class="section-heading">
+                    <h4>Permanent Address</h4>
+                    <span>India only</span>
+                  </div>
+                  <div class="modal-form-grid two-column">
+                    <label class="modal-field">
+                      <span>Country</span>
+                      <input type="text" [value]="indiaCountry" readonly>
+                    </label>
+                    <label class="modal-field">
+                      <span>Pincode</span>
+                      <input type="text" [(ngModel)]="editForm.permanentPincode" inputmode="numeric" maxlength="6" placeholder="6 digit pincode" (input)="onPermanentAddressInput()">
+                    </label>
+                    <label class="modal-field">
+                      <span>State</span>
+                      <select [(ngModel)]="editForm.permanentState" (change)="onPermanentStateChange()">
+                        <option value="">Select state</option>
+                        <option *ngFor="let option of stateOptions" [value]="option">{{ option }}</option>
+                      </select>
+                    </label>
+                    <label class="modal-field">
+                      <span>District</span>
+                      <input
+                        type="text"
+                        [(ngModel)]="editForm.permanentDistrict"
+                        [attr.list]="'permanent-districts'"
+                        placeholder="Select or type district"
+                        (input)="onPermanentAddressInput()"
+                      >
+                      <datalist id="permanent-districts">
+                        <option *ngFor="let option of permanentDistrictOptions" [value]="option"></option>
+                      </datalist>
+                    </label>
+                    <label class="modal-field">
+                      <span>City</span>
+                      <input type="text" [(ngModel)]="editForm.permanentCity" placeholder="Enter city" (input)="onPermanentAddressInput()">
+                    </label>
+                    <label class="modal-field modal-field-wide">
+                      <span>Address Line</span>
+                      <textarea rows="3" [(ngModel)]="editForm.permanentAddressLine" placeholder="House no, road, locality, landmark" (input)="onPermanentAddressInput()"></textarea>
+                    </label>
+                  </div>
+                </section>
+
+                <section class="profile-edit-section">
+                  <div class="section-heading">
+                    <h4>Current Address</h4>
+                    <span>Keep your live location updated</span>
+                  </div>
+                  <label class="modal-toggle">
+                    <input type="checkbox" [(ngModel)]="editForm.currentSameAsPermanent" (change)="onSameAsPermanentToggle()">
+                    <span>Same as permanent address</span>
+                  </label>
+                  <div class="modal-form-grid two-column">
+                    <label class="modal-field">
+                      <span>Country</span>
+                      <input type="text" [value]="indiaCountry" readonly>
+                    </label>
+                    <label class="modal-field">
+                      <span>Pincode</span>
+                      <input type="text" [(ngModel)]="editForm.currentPincode" inputmode="numeric" maxlength="6" placeholder="6 digit pincode" [disabled]="editForm.currentSameAsPermanent">
+                    </label>
+                    <label class="modal-field">
+                      <span>State</span>
+                      <select [(ngModel)]="editForm.currentState" (change)="onCurrentStateChange()" [disabled]="editForm.currentSameAsPermanent">
+                        <option value="">Select state</option>
+                        <option *ngFor="let option of stateOptions" [value]="option">{{ option }}</option>
+                      </select>
+                    </label>
+                    <label class="modal-field">
+                      <span>District</span>
+                      <input
+                        type="text"
+                        [(ngModel)]="editForm.currentDistrict"
+                        [attr.list]="'current-districts'"
+                        placeholder="Select or type district"
+                        [disabled]="editForm.currentSameAsPermanent"
+                      >
+                      <datalist id="current-districts">
+                        <option *ngFor="let option of currentDistrictOptions" [value]="option"></option>
+                      </datalist>
+                    </label>
+                    <label class="modal-field">
+                      <span>City</span>
+                      <input type="text" [(ngModel)]="editForm.currentCity" placeholder="Enter city" [disabled]="editForm.currentSameAsPermanent">
+                    </label>
+                    <label class="modal-field modal-field-wide">
+                      <span>Address Line</span>
+                      <textarea rows="3" [(ngModel)]="editForm.currentAddressLine" placeholder="House no, road, locality, landmark" [disabled]="editForm.currentSameAsPermanent"></textarea>
+                    </label>
+                  </div>
+                </section>
+              </div>
+            </div>
+
+            <div class="profile-edit-footer">
+              <button type="button" class="profile-action-btn secondary premium-cancel-btn" (click)="cancelEdit()">
+                Cancel
+              </button>
+              <button type="button" class="profile-action-btn premium-save-btn" [disabled]="isSaving" (click)="saveProfile()">
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
     </ng-container>
   </main>

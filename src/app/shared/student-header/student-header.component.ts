@@ -26,6 +26,7 @@ export interface StudentHeaderNotification {
 export class StudentHeaderComponent {
   @Input() activeTab: StudentHeaderTab = 'dashboard';
   @Input() studentName = 'Student';
+  @Input() studentPhotoUrl = '';
   @Input() notificationMode: StudentHeaderNotificationMode = 'route';
   @Input() notifications: StudentHeaderNotification[] = [];
   @Input() notificationsLoading = false;
@@ -40,6 +41,20 @@ export class StudentHeaderComponent {
 
   get notificationCount(): number {
     return this.notifications.length;
+  }
+
+  get headerInitials(): string {
+    const parts = String(this.studentName || 'Student')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2);
+
+    if (!parts.length) {
+      return 'ST';
+    }
+
+    return parts.map((part) => part.charAt(0).toUpperCase()).join('');
   }
 
   get featuredNotification(): StudentHeaderNotification | null {
