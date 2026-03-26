@@ -3,8 +3,8 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { finalize, forkJoin, of } from 'rxjs';
-import { Auth } from '../auth/auth';
 import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
+import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
 import { StudentDashboardService, StudentEventCard, StudentEventComment } from '../services/student-dashboard.service';
 
 interface ReplyThreadNode {
@@ -39,7 +39,7 @@ interface PublicCommentView {
 @Component({
   selector: 'app-student-event-details-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, StudentHeaderComponent],
   templateUrl: './student-event-details-page.component.html',
   styleUrls: ['./student-event-details-page.component.scss']
 })
@@ -70,7 +70,6 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private auth: Auth,
     private studentDashboardService: StudentDashboardService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -150,11 +149,11 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
   get registrationDeadlineText(): string {
     const event = this.event as (StudentEventCard & Record<string, unknown>) | null;
     if (!event) return 'Not specified';
-    const label = typeof event.registrationDeadlineLabel === 'string' ? event.registrationDeadlineLabel.trim() : '';
+    const label = typeof event['registrationDeadlineLabel'] === 'string' ? String(event['registrationDeadlineLabel']).trim() : '';
     if (label) return label;
 
     const rawDate =
-      (typeof event.registrationDeadline === 'string' ? event.registrationDeadline : '') ||
+      (typeof event['registrationDeadline'] === 'string' ? String(event['registrationDeadline']) : '') ||
       (typeof event['registration_deadline'] === 'string' ? String(event['registration_deadline']) : '') ||
       (typeof event['lastRegistrationDate'] === 'string' ? String(event['lastRegistrationDate']) : '') ||
       (typeof event.endDate === 'string' ? event.endDate : '');
@@ -215,35 +214,6 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     if (this.event.status === 'Full') return 'Full';
     if (this.event.status === 'Closed') return 'Closed';
     return 'Register Now';
-  }
-
-  navigate(path: 'dashboard' | 'events' | 'registrations' | 'feedback' | 'profile'): void {
-    if (path === 'dashboard') {
-      this.router.navigate(['/new-student-dashboard']);
-      return;
-    }
-    if (path === 'events') {
-      this.router.navigate(['/student-events']);
-      return;
-    }
-    if (path === 'registrations') {
-      this.router.navigate(['/student-registrations']);
-      return;
-    }
-    if (path === 'feedback') {
-      this.router.navigate(['/new-student-dashboard'], { fragment: 'feedback-section' });
-      return;
-    }
-    this.router.navigate(['/student-profile']);
-  }
-
-  openNotifications(): void {
-    this.router.navigate(['/new-student-dashboard'], { fragment: 'notifications-section' });
-  }
-
-  logout(): void {
-    this.auth.logout();
-    this.router.navigate(['/login']);
   }
 
   registerForEvent(): void {
@@ -463,28 +433,20 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
 
   deletePublicComment(comment: PublicCommentView): void {
     if (!this.canManageEntry(comment)) return;
-    const previous = this.publicComments;
     this.studentDashboardService.deleteEventComment(comment.id).subscribe({
       next: () => {
-        this.publicComments = this.publicComments.filter((item) => item.id !== comment.id);
+        this.loadPublicComments(this.eventId, true);
       },
-      error: () => {
-        this.publicComments = previous;
-      }
+      error: () => undefined
     });
-    this.publicComments = this.publicComments.filter((item) => item.id !== comment.id);
   }
 
   deleteReply(replyId: string): void {
-    const snapshot = this.publicComments;
-    this.publicComments = this.removeReplyFromTree(this.publicComments, replyId);
     this.studentDashboardService.deleteEventComment(replyId).subscribe({
       next: () => {
         this.loadPublicComments(this.eventId, true);
       },
-      error: () => {
-        this.publicComments = snapshot;
-      }
+      error: () => undefined
     });
   }
 
@@ -583,23 +545,32 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
 
     this.commentsAutoRefreshTimer = setInterval(() => {
       if (!eventId) return;
+      if (this.hasActiveCommentDrafts()) return;
       this.loadPublicComments(eventId, true);
     }, 5000);
   }
 
-  private removeReplyFromTree(comments: PublicCommentView[], replyId: string): PublicCommentView[] {
-    const updateReplies = (replies: ReplyThreadNode[]): ReplyThreadNode[] =>
-      replies
-        .filter((reply) => reply.id !== replyId)
-        .map((reply) => ({
-          ...reply,
-          replies: updateReplies(reply.replies)
-        }));
+  private hasActiveCommentDrafts(): boolean {
+    if (this.publicCommentActionInProgress || this.publicCommentDraft.trim().length > 0) {
+      return true;
+    }
 
-    return comments.map((comment) => ({
-      ...comment,
-      replies: updateReplies(comment.replies)
-    }));
+    const hasActiveThreadDraft = (replies: ReplyThreadNode[]): boolean =>
+      replies.some((reply) =>
+        reply.replyOpen
+        || reply.isEditing
+        || reply.replyDraft.trim().length > 0
+        || reply.editDraft.trim().length > 0
+        || hasActiveThreadDraft(reply.replies)
+      );
+
+    return this.publicComments.some((comment) =>
+      comment.replyOpen
+      || comment.isEditing
+      || comment.replyDraft.trim().length > 0
+      || comment.editDraft.trim().length > 0
+      || hasActiveThreadDraft(comment.replies)
+    );
   }
 
   private generateTempId(): string {

@@ -57,8 +57,12 @@
         <app-event-card
           [event]="event"
           [registerLabel]="getRegisterLabel(event)"
-          [registerDisabled]="event.status !== 'Open' || actionEventId === event.id"
-          [showRegisterButton]="true"
+          [registerDisabled]="event.status !== 'Open' || isEventCompleted(event) || actionEventId === event.id"
+          [showRegisterButton]="!isEventCompleted(event)"
+          [showRatingSummary]="isEventCompleted(event)"
+          [ratingAverage]="getEventRatingAverage(event.id)"
+          [ratingCount]="getEventRatingCount(event.id)"
+          [ratingSummaryLoading]="isRatingSummaryLoading(event.id)"
           (registerClicked)="registerForEvent(event)"
         ></app-event-card>
       </div>

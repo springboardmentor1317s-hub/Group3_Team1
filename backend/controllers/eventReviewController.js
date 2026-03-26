@@ -47,6 +47,62 @@ exports.getMyReviews = async (req, res) => {
   }
 };
 
+exports.getEventReviewsByEventId = async (req, res) => {
+  try {
+    const eventId = String(req.params?.eventId || "").trim();
+    if (!eventId) {
+      return res.status(400).json({ message: "eventId is required." });
+    }
+
+    const reviews = await EventReview.find({ eventId }).sort({ updatedAt: -1 });
+    res.json(
+      reviews.map((review) => ({
+        eventId: String(review.eventId),
+        rating: review.rating,
+        feedback: review.feedback || "",
+        createdAt: review.createdAt,
+        updatedAt: review.updatedAt
+      }))
+    );
+  } catch (error) {
+    res.status(500).json({ message: "Failed to load event reviews" });
+  }
+};
+
+exports.getEventRatingSummaries = async (req, res) => {
+  try {
+    const raw = String(req.query.eventIds || '').trim();
+    const eventIds = raw
+      ? raw.split(',').map((id) => String(id).trim()).filter(Boolean)
+      : [];
+
+    if (!eventIds.length) {
+      return res.json([]);
+    }
+
+    const summaries = await EventReview.aggregate([
+      { $match: { eventId: { $in: eventIds } } },
+      {
+        $group: {
+          _id: '$eventId',
+          average: { $avg: '$rating' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    res.json(
+      summaries.map((item) => ({
+        eventId: String(item._id),
+        average: Number(item.average || 0),
+        count: Number(item.count || 0)
+      }))
+    );
+  } catch (error) {
+    res.status(500).json({ message: "Failed to load rating summaries" });
+  }
+};
+
 exports.upsertRating = async (req, res) => {
   try {
     const studentId = String(getStudentId(req));

@@ -1,0 +1,49 @@
+<div class="profile-container">
+  <h2>Student Profile</h2>
+  
+  <div class="profile-card">
+    <div class="form-group">
+      <label>Full Name</label>
+      <input type="text" [(ngModel)]="profile.name" name="name" placeholder="Enter your name">
+    </div>
+
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" [(ngModel)]="profile.email" name="email" placeholder="Enter your email" readonly>
+    </div>
+
+    <div class="form-group">
+      <label>Phone</label>
+      <input type="tel" [(ngModel)]="profile.phone" name="phone" placeholder="Enter phone number">
+    </div>
+
+    <div class="form-group">
+      <label>College</label>
+      <input type="text" [(ngModel)]="profile.college" name="college" placeholder="College Name">
+    </div>
+
+    <div class="form-group">
+      <label>Department</label>
+      <input type="text" [(ngModel)]="profile.department" name="department" placeholder="Department">
+    </div>
+
+    <div class="form-group">
+      <label>Bio</label>
+      <textarea [(ngModel)]="profile.bio" name="bio" placeholder="Tell us about yourself"></textarea>
+    </div>
+
+    <div class="actions">
+      <button class="save-btn" (click)="saveProfile()" [disabled]="isSaving">
+  <span *ngIf="!isSaving">Save Changes</span>
+  <span *ngIf="isSaving">Saving...</span>
+</button>
+    </div>
+  </div>
+
+  <div class="toast-container" *ngIf="showToast">
+    <div class="toast" [ngClass]="{'toast-success': toastType === 'success', 'toast-error': toastType === 'error'}">
+      <span>{{ toastType === 'success' ? '✔' : '!' }}</span>
+      <span class="message">{{ toastMessage }}</span>
+    </div>
+  </div>
+</div>

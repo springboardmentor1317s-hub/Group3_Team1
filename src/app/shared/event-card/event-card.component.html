@@ -8,7 +8,24 @@
 
   <div class="event-content">
     <span class="category-pill">{{ event.category || 'General' }}</span>
-    <h3>{{ event.title }}</h3>
+    <div class="title-row">
+      <h3>{{ event.title }}</h3>
+      <div class="title-rating" *ngIf="shouldShowRatingSummary">
+        <ng-container *ngIf="ratingSummaryLoading; else ratingLoadedState">
+          <span class="title-rating-loading">Loading rating...</span>
+        </ng-container>
+        <ng-template #ratingLoadedState>
+        <ng-container *ngIf="ratingCount > 0; else titleNoRatings">
+          <span class="title-rating-value">{{ ratingAverageLabel }}</span>
+          <span class="material-icons" *ngFor="let star of ratingStars">{{ getStarIcon(star) }}</span>
+          <span class="title-rating-count">({{ ratingCount }} student{{ ratingCount === 1 ? '' : 's' }} rated)</span>
+        </ng-container>
+        <ng-template #titleNoRatings>
+          <span class="title-rating-empty">No ratings</span>
+        </ng-template>
+        </ng-template>
+      </div>
+    </div>
     <p>{{ safeDescription }}</p>
 
     <div class="meta-list">

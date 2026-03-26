@@ -1,10 +1,28 @@
-# Fix Event Details Modal Scrolling Issue
+# Student Profile Enhancement - Complete Implementation Plan
 
-## Steps:
-- [x] Step 1: Edit src/app/shared/event-card/event-card.component.ts - Add body scroll lock in openDetails()
-- [x] Step 2: Edit src/app/shared/event-card/event-card.component.ts - Add body scroll restore in closeDetails()
-- [x] Step 3: Center modal card - Edit SCSS for perfect centering + backdrop
-- [x] Step 4: Test modal behavior - Verify no background scroll when modal open, scroll restored on close, perfect centering
-- [x] Step 5: Complete task
+## Previous Save Fix ✅
+- API endpoint fixed
+- Toast notifications added  
+- Validation + localStorage sync + change detection implemented
 
+## New Requirements from User Feedback
+**Editable fields:** name, college, current_address, permanent_address, department, course, year, semester, heard_from
+**Non-editable:** userId, email, role, joinedAt 
+**New forms:**
+- Current/Permanent address: line1/line2, pincode, country (India default + all countries), conditional state/district/town
+- Academic: department/course dropdowns (CSE/IT/BTech/etc + 'Other' textbox)
+- Year/semester dropdowns
+- How heard about us dropdown
+
+**Backend:** Add all new fields to User model + profileController
+
+## Implementation Steps:
+- [ ] 1. Backend: Update User model (add address/academic fields)
+- [ ] 2. Backend: Update profileController.updateMyProfile (handle new fields)
+- [ ] 3. Frontend: Extend StudentProfile interface in service
+- [x] 4. Frontend: Enhanced profile form HTML/TS (conditional forms, dropdowns, checkbox copy address)
+- [ ] 5. Frontend: Update validation/save logic for new fields
+- [ ] 6. Test: Save new fields, verify DB/backend sync, form UX
+
+**Current progress:** Starting backend model/controller updates (step 1)
 
