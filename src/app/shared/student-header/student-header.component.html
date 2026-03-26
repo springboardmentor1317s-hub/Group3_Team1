@@ -19,7 +19,10 @@
 
     <div class="header-actions">
       <button type="button" class="profile-chip" [class.active]="activeTab === 'profile'" (click)="openProfile()">
-        <span class="material-icons">account_circle</span>
+        <img *ngIf="studentPhotoUrl; else headerAvatarFallback" class="profile-chip-avatar" [src]="studentPhotoUrl" [alt]="studentName">
+        <ng-template #headerAvatarFallback>
+          <span class="profile-chip-fallback">{{ headerInitials }}</span>
+        </ng-template>
         <span class="profile-chip-name">{{ studentName }}</span>
       </button>
 

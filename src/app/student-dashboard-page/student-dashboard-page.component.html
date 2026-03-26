@@ -1,81 +1,14 @@
 <div class="student-shell">
-  <header class="luxury-header">
-    <div class="header-inner">
-      <button class="brand-block" type="button" (click)="navigateTab('dashboard')">
-        <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub">
-        <div class="brand-copy">
-          <span class="brand-name">Campus Event Hub</span>
-          <span class="eyebrow">Student Lounge</span>
-        </div>
-      </button>
-
-      <nav class="header-nav">
-        <button type="button" class="nav-link active" (click)="navigateTab('dashboard')">Dashboard</button>
-        <button type="button" class="nav-link" (click)="navigateTab('events')">Events</button>
-        <button type="button" class="nav-link" (click)="navigateTab('registrations')">My Registrations</button>
-        <button type="button" class="nav-link" (click)="navigateTab('feedback')">Feedback</button>
-      </nav>
-
-      <div class="header-actions">
-        <button type="button" class="profile-chip" (click)="openProfile()">
-          <span class="material-icons">account_circle</span>
-          <span class="profile-chip-name">{{ studentName }}</span>
-        </button>
-        <div class="notification-wrapper" (click)="$event.stopPropagation()">
-        <button type="button" class="notification-btn" (click)="openNotifications($event)" aria-label="Notifications">
-          <span class="material-icons">notifications</span>
-          <span class="notification-badge">{{ notifications.length }}</span>
-        </button>
-        <div class="notification-dropdown" *ngIf="notificationsDropdownOpen">
-          <div class="notification-dropdown-head">
-            <div>
-              <p>Notifications</p>
-              <h3>Campus pulse</h3>
-            </div>
-            <span class="notification-count">{{ notifications.length }}</span>
-          </div>
-
-          <div *ngIf="notificationsLoading" class="notification-dropdown-state">Loading notifications...</div>
-
-          <div class="notification-dropdown-list" *ngIf="!notificationsLoading && notifications.length > 0">
-            <article class="notification-dropdown-card featured" *ngIf="featuredNotification as featured">
-              <span class="notification-icon material-icons">{{ featured.icon }}</span>
-              <div class="notification-copy">
-                <div class="notification-chip-row">
-                  <span class="notification-category">{{ featured.category }}</span>
-                  <span class="notification-time">{{ formatNotificationTime(featured.createdAt) }}</span>
-                </div>
-                <h4>{{ featured.title }}</h4>
-                <p>{{ featured.message }}</p>
-              </div>
-            </article>
-
-            <article class="notification-dropdown-card" *ngFor="let item of remainingNotifications; trackBy: trackNotification">
-              <span class="notification-tone" [attr.data-tone]="item.tone"></span>
-              <span class="notification-icon material-icons">{{ item.icon }}</span>
-              <div class="notification-copy">
-                <div class="notification-chip-row">
-                  <span class="notification-category">{{ item.category }}</span>
-                  <span class="notification-time">{{ formatNotificationTime(item.createdAt) }}</span>
-                </div>
-                <h4>{{ item.title }}</h4>
-                <p>{{ item.message }}</p>
-              </div>
-            </article>
-          </div>
-
-          <div class="notification-dropdown-state" *ngIf="!notificationsLoading && notifications.length === 0">
-            No notifications right now.
-          </div>
-        </div>
-        </div>
-        <button type="button" class="logout-btn" (click)="logout()">
-          <span class="material-icons">logout</span>
-          <span>Logout</span>
-        </button>
-      </div>
-    </div>
-  </header>
+  <app-student-header
+    activeTab="dashboard"
+    [studentName]="studentName"
+    [studentPhotoUrl]="profilePhotoUrl"
+    notificationMode="dropdown"
+    [notifications]="notifications"
+    [notificationsLoading]="notificationsLoading"
+    [notificationsOpen]="notificationsDropdownOpen"
+    (notificationToggle)="openNotifications($event)"
+  />
 
   <main class="dashboard-main">
     <section class="hero-panel">
@@ -161,14 +94,12 @@
           <app-event-card
             [event]="event"
             [registerLabel]="getRegisterLabel(event)"
-            [registerDisabled]="event.status !== 'Open' || isEventCompleted(event) || actionEventId === event.id"
+            [registerDisabled]="event.status !== 'Open' || actionEventId === event.id"
             [showRegisterButton]="!shouldShowRating(event)"
-            [showRatingSummary]="isEventCompleted(event)"
-            [ratingAverage]="getEventRatingAverage(event.id)"
-            [ratingCount]="getEventRatingCount(event.id)"
-            [ratingSummaryLoading]="isRatingSummaryLoading(event.id)"
             (registerClicked)="registerForEvent(event)"
           ></app-event-card>
+
+
         </div>
       </div>
 

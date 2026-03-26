@@ -1,8 +1,39 @@
 <div class="event-details-shell">
-  <app-student-header
-    activeTab="events"
-    [studentName]="studentName"
-  />
+  <header class="luxury-header">
+    <div class="header-inner">
+      <button class="brand-block" type="button" (click)="navigate('dashboard')">
+        <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub">
+        <div class="brand-copy">
+          <span class="brand-name">Campus Event Hub</span>
+          <span class="eyebrow">Student Lounge</span>
+        </div>
+      </button>
+
+      <nav class="header-nav">
+        <button type="button" class="nav-link" (click)="navigate('dashboard')">Dashboard</button>
+        <button type="button" class="nav-link active" (click)="navigate('events')">Events</button>
+        <button type="button" class="nav-link" (click)="navigate('registrations')">My Registrations</button>
+        <button type="button" class="nav-link" (click)="navigate('feedback')">Feedback</button>
+      </nav>
+
+      <div class="header-actions">
+        <button type="button" class="profile-chip" (click)="navigate('profile')">
+          <img *ngIf="profilePhotoUrl as photo; else detailsAvatarFallback" class="profile-chip-avatar" [src]="photo" [alt]="studentName">
+          <ng-template #detailsAvatarFallback>
+            <span class="profile-chip-fallback">{{ profileInitials }}</span>
+          </ng-template>
+          <span class="profile-chip-name">{{ studentName }}</span>
+        </button>
+        <button type="button" class="notification-btn" (click)="openNotifications()" aria-label="Notifications">
+          <span class="material-icons">notifications</span>
+        </button>
+        <button type="button" class="logout-btn" (click)="logout()">
+          <span class="material-icons">logout</span>
+          <span>Logout</span>
+        </button>
+      </div>
+    </div>
+  </header>
 
   <main class="event-details-main">
     <p *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</p>

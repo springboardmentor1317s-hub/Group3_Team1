@@ -145,6 +145,19 @@
   background: #dbeafe;
 }
 
+.profile-chip-fallback {
+  width: 30px;
+  height: 30px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #1d4ed8, #7c3aed 60%, #f59e0b);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
 .notification-btn {
   justify-content: center;
   width: 52px;

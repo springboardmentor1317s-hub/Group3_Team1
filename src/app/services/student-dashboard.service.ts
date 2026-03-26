@@ -10,10 +10,28 @@ export interface StudentProfile {
   userId: string;
   email: string;
   role: string;
+  profileCompleted?: boolean;
   college: string;
   phone?: string;
+  parentPhone?: string;
+  gender?: string;
+  dateOfBirth?: string;
   location?: string;
   department?: string;
+  departmentOther?: string;
+  currentClass?: string;
+  semester?: string;
+  currentCgpa?: string;
+  currentState?: string;
+  currentDistrict?: string;
+  currentCity?: string;
+  currentPincode?: string;
+  currentAddressLine?: string;
+  permanentState?: string;
+  permanentDistrict?: string;
+  permanentCity?: string;
+  permanentPincode?: string;
+  permanentAddressLine?: string;
   profileImageUrl?: string;
   createdAt: string;
   updatedAt: string;
@@ -254,14 +272,75 @@ export class StudentDashboardService {
     email?: string;
     college?: string;
     phone?: string;
+    parentPhone?: string;
+    gender?: string;
+    dateOfBirth?: string;
     location?: string;
     department?: string;
+    departmentOther?: string;
+    currentClass?: string;
+    semester?: string;
+    currentCgpa?: string;
+    currentState?: string;
+    currentDistrict?: string;
+    currentCity?: string;
+    currentPincode?: string;
+    currentAddressLine?: string;
+    permanentState?: string;
+    permanentDistrict?: string;
+    permanentCity?: string;
+    permanentPincode?: string;
+    permanentAddressLine?: string;
     profileImageUrl?: string;
   }): Observable<StudentProfile> {
     const headers = this.authService.getAuthHeaders();
     return this.http.put<StudentProfile>(`${this.apiUrl}/profile/me`, payload, { headers }).pipe(
       tap(() => this.invalidateDashboardCache())
     );
+  }
+
+  isProfileComplete(profile: Partial<StudentProfile> | null | undefined): boolean {
+    if (!profile) {
+      return false;
+    }
+
+    const department = String(profile.department || '').trim();
+    const departmentOther = String(profile.departmentOther || '').trim();
+    const requiredFields = [
+      profile.name,
+      profile.email,
+      profile.college,
+      profile.gender,
+      profile.dateOfBirth,
+      profile.phone,
+      profile.currentClass,
+      profile.semester,
+      profile.currentCgpa,
+      profile.currentState,
+      profile.currentDistrict,
+      profile.currentCity,
+      profile.currentPincode,
+      profile.currentAddressLine,
+      profile.permanentState,
+      profile.permanentDistrict,
+      profile.permanentCity,
+      profile.permanentPincode,
+      profile.permanentAddressLine
+    ];
+
+    if (requiredFields.some((value) => !String(value || '').trim())) {
+      return false;
+    }
+
+    if (!department) {
+      return false;
+    }
+
+    if (department === 'Other' && !departmentOther) {
+      return false;
+    }
+
+    return true;
   }
 
   getEventReviews(eventId: string): Observable<StudentEventReview[]> {
@@ -433,6 +512,58 @@ export class StudentDashboardService {
   refreshDashboardSnapshot(): Observable<StudentDashboardSnapshot> {
     this.invalidateDashboardCache();
     return this.getDashboardSnapshot();
+  }
+
+  applyProfileUpdate(profile: StudentProfile): void {
+    if (!profile) {
+      return;
+    }
+
+    this.cachedProfile = profile;
+
+    if (this.cachedSnapshot) {
+      this.cachedSnapshot = {
+        ...this.cachedSnapshot,
+        profile
+      };
+      localStorage.setItem(this.snapshotStorageKey, JSON.stringify(this.cachedSnapshot));
+    }
+
+    try {
+      const currentUserRaw = localStorage.getItem(this.currentUserStorageKey);
+      const existing = currentUserRaw ? JSON.parse(currentUserRaw) : {};
+      localStorage.setItem(this.currentUserStorageKey, JSON.stringify({
+        ...existing,
+        name: profile.name || existing.name,
+        email: profile.email || existing.email,
+        profileCompleted: profile.profileCompleted ?? this.isProfileComplete(profile),
+        college: profile.college || existing.college,
+        role: profile.role || existing.role,
+        phone: profile.phone ?? existing.phone,
+        parentPhone: profile.parentPhone ?? existing.parentPhone,
+        gender: profile.gender ?? existing.gender,
+        dateOfBirth: profile.dateOfBirth ?? existing.dateOfBirth,
+        location: profile.location ?? existing.location,
+        department: profile.department ?? existing.department,
+        departmentOther: profile.departmentOther ?? existing.departmentOther,
+        currentClass: profile.currentClass ?? existing.currentClass,
+        semester: profile.semester ?? existing.semester,
+        currentCgpa: profile.currentCgpa ?? existing.currentCgpa,
+        currentState: profile.currentState ?? existing.currentState,
+        currentDistrict: profile.currentDistrict ?? existing.currentDistrict,
+        currentCity: profile.currentCity ?? existing.currentCity,
+        currentPincode: profile.currentPincode ?? existing.currentPincode,
+        currentAddressLine: profile.currentAddressLine ?? existing.currentAddressLine,
+        permanentState: profile.permanentState ?? existing.permanentState,
+        permanentDistrict: profile.permanentDistrict ?? existing.permanentDistrict,
+        permanentCity: profile.permanentCity ?? existing.permanentCity,
+        permanentPincode: profile.permanentPincode ?? existing.permanentPincode,
+        permanentAddressLine: profile.permanentAddressLine ?? existing.permanentAddressLine,
+        profileImageUrl: profile.profileImageUrl ?? existing.profileImageUrl
+      }));
+    } catch {
+      // Ignore localStorage parse issues and preserve the in-memory cache.
+    }
   }
 
   getCachedProfile(): StudentProfile | null {

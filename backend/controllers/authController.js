@@ -1,8 +1,10 @@
 const User = require("../models/User");
+const StudentProfileDetails = require("../models/StudentProfileDetails");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const Event = require("../models/Event");
 const Registration = require("../models/Registration");
+const { buildMergedStudentProfile } = require("../utils/studentProfile");
 
 function normalizeText(value) {
   return String(value || "").trim().toLowerCase();
@@ -38,21 +40,6 @@ function buildNotification(id, title, message, tone, createdAt, icon, category) 
     createdAt: toNotificationDate(createdAt),
     icon,
     category
-  };
-}
-
-function formatProfile(user) {
-  return {
-    id: String(user._id),
-    name: user.name,
-    userId: user.userId,
-    email: user.email,
-    role: user.role,
-    college: user.college || "",
-    adminApprovalStatus: user.adminApprovalStatus || "approved",
-    adminRejectionReason: user.adminRejectionReason || "",
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt
   };
 }
 
@@ -230,8 +217,9 @@ function buildStudentNotifications(user, registrations, events, eventMap, approv
 }
 
 async function buildStudentDashboardPayload(userId) {
-  const [user, events, registrations] = await Promise.all([
+  const [user, details, events, registrations] = await Promise.all([
     User.findById(userId).select("-password"),
+    StudentProfileDetails.findOne({ user: userId }).lean(),
     Event.find().sort({ createdAt: -1 }),
     Registration.find({ studentId: String(userId) }).sort({ createdAt: -1 })
   ]);
@@ -273,7 +261,7 @@ async function buildStudentDashboardPayload(userId) {
   const notifications = buildStudentNotifications(user, registrations, enrichedEvents, eventMap, approvedCount, pendingCount);
 
   return {
-    profile: formatProfile(user),
+    profile: buildMergedStudentProfile(user, details),
     events: dashboardEvents,
     registrations: dashboardRegistrations,
     stats: {
@@ -327,11 +315,12 @@ exports.toggleRegistration = async (req, res) => {
 // ================= SIGNUP =================
 exports.signup = async (req, res) => {
   try {
-    const { name, userId, password, role, college } = req.body;
+    const { name, password, role, college } = req.body;
     const email = normalizeText(req.body.email);
-    const normalizedUserId = normalizeText(userId);
+    const normalizedRole = normalizeText(role || "student");
+    const normalizedUserId = email;
 
-    console.log("Signup request:", { name, userId: normalizedUserId, email, role, college });
+    console.log("Signup request:", { name, userId: normalizedUserId, email, role: normalizedRole, college });
 
     if (!name || !String(name).trim()) {
       return res.status(400).json({ message: "Name is required" });
@@ -339,10 +328,6 @@ exports.signup = async (req, res) => {
 
     if (!isValidEmail(email)) {
       return res.status(400).json({ message: "Please provide a valid email address" });
-    }
-
-    if (!isValidUserId(normalizedUserId)) {
-      return res.status(400).json({ message: "Please provide a valid user ID" });
     }
 
     if (!password || String(password).length < 6) {
@@ -362,7 +347,6 @@ exports.signup = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const normalizedRole = (role || "").toLowerCase();
     const isCollegeAdmin = normalizedRole === "college_admin" || normalizedRole === "admin";
 
     const user = await User.create({
@@ -371,11 +355,19 @@ exports.signup = async (req, res) => {
       email,
       college,
       password: hashedPassword,
-      role,
+      role: normalizedRole,
       adminApprovalStatus: isCollegeAdmin ? "pending" : "approved",
       adminRejectionReason: "",
       adminReviewedAt: null
     });
+
+    if (normalizedRole === "student") {
+      await StudentProfileDetails.create({
+        user: user._id,
+        userId: user.userId,
+        email: user.email
+      });
+    }
 
     res.status(201).json({ message: "User registered successfully" });
 
@@ -419,6 +411,10 @@ exports.login = async (req, res) => {
     const normalizedRole = (user.role || "").toLowerCase();
     const isCollegeAdmin = normalizedRole === "college_admin" || normalizedRole === "admin";
     const approvalStatus = user.adminApprovalStatus || "pending";
+    const details = normalizedRole === "student"
+      ? await StudentProfileDetails.findOne({ user: user._id }).lean()
+      : null;
+    const mergedProfile = buildMergedStudentProfile(user, details);
 
     if (isCollegeAdmin && approvalStatus === "pending") {
       return res.status(403).json({
@@ -448,6 +444,8 @@ exports.login = async (req, res) => {
       userId: user.userId,
       email: user.email,
       college: user.college,
+      profileImageUrl: user.profileImageUrl || "",
+      profileCompleted: normalizedRole === "student" ? mergedProfile.profileCompleted : true,
       adminApprovalStatus: user.adminApprovalStatus || "approved",
       adminRejectionReason: user.adminRejectionReason || ""
     });
@@ -460,12 +458,13 @@ exports.login = async (req, res) => {
 exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
+    const details = await StudentProfileDetails.findOne({ user: req.user.id }).lean();
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json(formatProfile(user));
+    res.json(buildMergedStudentProfile(user, details));
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch profile" });
   }

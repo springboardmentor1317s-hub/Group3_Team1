@@ -117,6 +117,20 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     ).trim();
   }
 
+  get profileInitials(): string {
+    const parts = String(this.studentName || 'Student')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2);
+
+    if (!parts.length) {
+      return 'ST';
+    }
+
+    return parts.map((part) => part.charAt(0).toUpperCase()).join('');
+  }
+
   get cardBackground(): string {
     if (this.event?.imageUrl) {
       return `linear-gradient(180deg, rgba(2, 6, 23, 0.2), rgba(2, 6, 23, 0.7)), url(${this.event.imageUrl})`;

@@ -82,13 +82,8 @@ export class Registerpage {
     this.user.email = trimmedEmail;
     this.errorMessage = '';
 
-    // Create userId from email (before @)
-    const userId = this.user.email.split('@')[0];
-
-    // Prepare payload for backend
     const payload = {
       name: this.user.fullName,
-      userId: userId,
       email: this.user.email,
       college: this.user.college,
       password: this.user.password,
@@ -103,7 +98,7 @@ export class Registerpage {
         if (this.user.role === 'college_admin') {
           this.adminApprovalService.saveRequest({
             name: payload.name,
-            userId: payload.userId,
+            userId: payload.email,
             email: payload.email,
             college: payload.college,
             role: 'college_admin'

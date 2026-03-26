@@ -124,13 +124,15 @@ export class Loginpage {
 
       // store token and role
       if (res.token) localStorage.setItem('token', res.token);
-      const currentUser = {
+const currentUser = {
   id: res.userId || '',
   name: res.name || 'Student',
   userId: res.userId || '',
   email: res.email || this.user.email,
   role: res.role || 'student',
-  college: res.college || 'Not Set'
+  profileCompleted: res.profileCompleted !== false,
+  college: res.college || 'Not Set',
+  profileImageUrl: res.profileImageUrl || ''
 };
 localStorage.setItem('currentUser', JSON.stringify(currentUser));
 localStorage.setItem('userName', currentUser.name)
