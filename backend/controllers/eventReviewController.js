@@ -177,3 +177,23 @@ exports.upsertFeedback = async (req, res) => {
     res.status(statusCode).json({ message: error.message || "Failed to save feedback" });
   }
 };
+
+  exports.getAllReviews = async (req, res) => {
+  try {
+    const reviews = await EventReview.find();
+    res.json(
+      reviews.map(r => ({
+        id: r._id.toString(),
+        eventId: r.eventId.toString(),
+        rating: r.rating,
+        feedback: r.feedback || "",
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt
+      }))
+    );
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
