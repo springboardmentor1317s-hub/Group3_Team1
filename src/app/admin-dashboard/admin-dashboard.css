@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
+﻿@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
 
 :host {
   display: block;
@@ -2238,4 +2238,211 @@
 
 [class*="dark"] .status-approved {
   background: #22c55e;
+}
+
+
+/* Feedback Icon Styling */
+.stat-icon.feedback-icon {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+}
+
+/* Feedback Detailed Card */
+.feedback-detailed-card {
+  min-height: 400px;
+}
+
+.feedback-summary {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 20px;
+  padding: 16px 0;
+  margin-bottom: 12px;
+}
+
+.rating-overview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.1));
+  border-radius: 14px;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
+.rating-number {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 2.8rem;
+  font-weight: 700;
+  color: #f59e0b;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.rating-stars {
+  font-size: 1.2rem;
+  margin-bottom: 4px;
+}
+
+.rating-count {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.rating-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+
+.rating-bar-item {
+  display: grid;
+  grid-template-columns: 42px 1fr 32px;
+  gap: 10px;
+  align-items: center;
+}
+
+.rating-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.rating-bar {
+  height: 8px;
+  background: rgba(120, 102, 170, 0.15);
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+}
+
+.rating-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.rating-count-small {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+/* Recent Feedback List */
+.recent-feedback-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.recent-feedback-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.recent-feedback-list::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 2px;
+}
+
+.feedback-item {
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(120, 102, 170, 0.15);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.feedback-item:hover {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(125, 107, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.feedback-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.feedback-rating {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #f59e0b;
+}
+
+.feedback-date {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.feedback-text {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+/* Empty State */
+.empty-feedback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+  opacity: 0.6;
+}
+
+.empty-feedback p {
+  margin: 0 0 4px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.empty-feedback .muted {
+  font-size: 0.85rem;
+}
+
+/* Dark mode adjustments */
+.dark .rating-overview {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(245, 158, 11, 0.15));
+}
+
+.dark .feedback-item {
+  background: rgba(30, 41, 59, 0.7);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.dark .feedback-item:hover {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .feedback-summary {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .rating-overview {
+    flex-direction: row;
+    gap: 16px;
+  }
+  
+  .rating-number {
+    font-size: 2.2rem;
+  }
 }
