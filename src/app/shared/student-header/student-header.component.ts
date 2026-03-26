@@ -3,7 +3,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { Router } from '@angular/router';
 import { Auth } from '../../auth/auth';
 
-export type StudentHeaderTab = 'dashboard' | 'events' | 'registrations' | 'profile';
+export type StudentHeaderTab = 'dashboard' | 'events' | 'registrations' | 'feedback' | 'profile';
 export type StudentHeaderNotificationMode = 'route' | 'dropdown';
 
 export interface StudentHeaderNotification {
@@ -70,7 +70,7 @@ export class StudentHeaderComponent {
       return;
     }
 
-    this.router.navigate(['/new-student-dashboard'], { fragment: 'feedback-section' });
+    this.router.navigate(['/student-feedback']);
   }
 
   openProfile(): void {

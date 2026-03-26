@@ -467,67 +467,24 @@
 
 .registration-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
 }
 
 .registration-card {
-  border-radius: 28px;
-  padding: 1.25rem;
-  background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.68), transparent 34%),
-    linear-gradient(135deg, rgba(255, 251, 247, 0.96), rgba(239, 246, 255, 0.9));
-  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  display: block;
 }
 
-.card-top,
-.card-title-wrap,
-.detail-grid span,
-.ghost-btn,
-.cancel-btn {
-  display: flex;
-  align-items: center;
+.registration-card-wrap {
+  position: relative;
 }
 
-.card-top {
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.card-title-wrap {
-  gap: 0.95rem;
-  min-width: 0;
-}
-
-.event-poster,
-.poster-fallback {
-  width: 68px;
-  height: 68px;
-  border-radius: 18px;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.poster-fallback {
-  display: grid;
-  place-items: center;
-  background: linear-gradient(135deg, #1d4ed8, #f59e0b);
-  color: #fff;
-  font-size: 1.45rem;
-  font-weight: 800;
-}
-
-.card-title-wrap h3 {
-  margin: 0 0 0.25rem;
-  color: #0f172a;
-  font-size: 1.2rem;
-}
-
-.card-title-wrap p,
-.reason {
-  margin: 0;
-  color: #64748b;
-  line-height: 1.6;
+.registration-card app-event-card {
+  display: block;
 }
 
 .status-pill {
@@ -539,6 +496,12 @@
   font-size: 0.82rem;
   font-weight: 800;
   white-space: nowrap;
+  position: absolute;
+  top: auto;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 2;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
 }
 
 .status-pill[data-tone='approved'] {
@@ -556,27 +519,6 @@
   color: #b91c1c;
 }
 
-.detail-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.8rem;
-  margin: 1rem 0;
-  color: #334155;
-  font-size: 0.92rem;
-  font-weight: 600;
-}
-
-.detail-grid span {
-  gap: 0.4rem;
-}
-
-.reason {
-  padding: 0.9rem 1rem;
-  border-radius: 18px;
-  background: rgba(254, 242, 242, 0.94);
-  color: #7f1d1d;
-}
-
 .card-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -586,6 +528,22 @@
 
 .card-actions.rating-actions {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.feedback-link-btn {
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 16px;
+  padding: 0.85rem 1rem;
+  font-size: 0.94rem;
+  font-weight: 800;
+  color: #0f172a;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.26), rgba(250, 204, 21, 0.3));
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.feedback-link-btn:hover {
+  transform: translateY(-2px);
 }
 
 .rating-wrap {
@@ -668,17 +626,6 @@
   transform: translateY(-2px);
 }
 
-.rated-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 1rem;
-  border-radius: 22px;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(59, 130, 246, 0.08));
-  border: 1px solid rgba(16, 185, 129, 0.18);
-}
-
 .rated-chip {
   display: inline-flex;
   align-items: center;
@@ -689,6 +636,7 @@
   color: #047857;
   font-weight: 900;
   font-size: 0.9rem;
+  width: fit-content;
 }
 
 .feedback-btn {
@@ -718,6 +666,18 @@
   margin-top: 0.9rem;
   background: rgba(15, 23, 42, 0.03);
   border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.feedback-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.feedback-top strong {
+  color: #0f172a;
+  font-size: 0.95rem;
 }
 
 .feedback-textarea {
@@ -986,9 +946,12 @@
   }
 
   .filters-card,
-  .hero-stats,
-  .registration-grid {
+  .hero-stats {
     grid-template-columns: 1fr;
+  }
+
+  .registration-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -1012,19 +975,16 @@
   .profile-chip,
   .notification-btn,
   .logout-btn,
-  .card-actions,
-  .detail-grid {
+  .card-actions {
     width: 100%;
   }
 
-  .card-actions,
-  .detail-grid {
+  .card-actions {
     grid-template-columns: 1fr;
   }
 
-  .card-top {
-    flex-direction: column;
-    align-items: stretch;
+  .registration-grid {
+    grid-template-columns: 1fr;
   }
 }
 

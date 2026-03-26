@@ -70,6 +70,12 @@ export const routes: Routes = [
     path: 'student-profile',
     loadComponent: () => import('./student-profile-page/student-profile-page.component').then(m => m.StudentProfilePageComponent),
     canActivate: [roleGuard('student')]
+  },
+
+  {
+    path: 'student-feedback',
+    loadComponent: () => import('./student-feedback-page/student-feedback-page.component').then(m => m.StudentFeedbackPageComponent),
+    canActivate: [roleGuard('student')]
   }
 ];
 

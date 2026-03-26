@@ -147,7 +147,7 @@ export class StudentProfilePageComponent implements OnInit, OnDestroy {
       return;
     }
     if (path === 'feedback') {
-      this.router.navigate(['/new-student-dashboard'], { fragment: 'feedback-section' });
+      this.router.navigate(['/student-feedback']);
       return;
     }
     this.router.navigate(['/student-registrations']);

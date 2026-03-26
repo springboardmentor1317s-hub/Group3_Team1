@@ -280,6 +280,42 @@ export class StudentDashboardService {
     );
   }
 
+  getEventRatingSummaries(eventIds: string[]): Observable<Array<{ eventId: string; average: number; count: number }>> {
+    const headers = this.authService.getAuthHeaders();
+    const ids = (eventIds || []).map((id) => String(id).trim()).filter(Boolean);
+    if (!ids.length) {
+      return of([]);
+    }
+
+    const query = `?eventIds=${encodeURIComponent(ids.join(','))}`;
+    return this.http.get<Array<{ eventId: string; average: number; count: number }>>(
+      `${this.apiUrl}/event-reviews/summary${query}`,
+      { headers }
+    ).pipe(
+      catchError(() =>
+        forkJoin(ids.map((id) =>
+          this.getEventReviews(id).pipe(
+            map((reviews) => {
+              const validRatings = (reviews || [])
+                .map((review) => Number(review.rating || 0))
+                .filter((rating) => Number.isFinite(rating) && rating >= 1 && rating <= 5);
+              if (!validRatings.length) {
+                return { eventId: id, average: 0, count: 0 };
+              }
+              const total = validRatings.reduce((sum, rating) => sum + rating, 0);
+              return {
+                eventId: id,
+                average: Math.round((total / validRatings.length) * 10) / 10,
+                count: validRatings.length
+              };
+            }),
+            catchError(() => of({ eventId: id, average: 0, count: 0 }))
+          )
+        ))
+      )
+    );
+  }
+
   deleteMyEventReview(eventId: string): Observable<void> {
     const headers = this.authService.getAuthHeaders();
     const normalizedId = String(eventId || '').trim();
@@ -583,11 +619,42 @@ export class StudentDashboardService {
       || (registrationDeadlineDate && !Number.isNaN(registrationDeadlineDate.getTime())
         ? registrationDeadlineDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
         : 'Not specified');
+    const normalizedStatus: StudentEventCard['status'] = this.isEventExpired(event) ? 'Closed' : event.status;
 
     return {
       ...event,
-      registrationDeadlineLabel
+      registrationDeadlineLabel,
+      status: normalizedStatus
     };
+  }
+
+  private isEventExpired(event: StudentEventCard): boolean {
+    const normalizedStatus = String(event.status || '').toLowerCase();
+    if (normalizedStatus === 'closed' || normalizedStatus === 'completed' || normalizedStatus === 'past') {
+      return true;
+    }
+
+    const parseDate = (value?: string | null): number => {
+      if (!value) return Number.NaN;
+      const trimmed = String(value).trim();
+      if (!trimmed) return Number.NaN;
+
+      const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(trimmed);
+      const parsed = new Date(isDateOnly ? `${trimmed}T23:59:59.999` : trimmed).getTime();
+      return Number.isNaN(parsed) ? Number.NaN : parsed;
+    };
+
+    const endTimestamp = parseDate(event.endDate);
+    if (!Number.isNaN(endTimestamp)) {
+      return endTimestamp < Date.now();
+    }
+
+    const startTimestamp = parseDate(event.dateTime);
+    if (!Number.isNaN(startTimestamp)) {
+      return startTimestamp < Date.now();
+    }
+
+    return false;
   }
 
   private restoreSnapshotFromStorage(): void {

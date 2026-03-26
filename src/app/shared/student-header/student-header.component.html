@@ -14,7 +14,7 @@
       <button type="button" class="nav-link" [class.active]="activeTab === 'dashboard'" (click)="navigate('dashboard')">Dashboard</button>
       <button type="button" class="nav-link" [class.active]="activeTab === 'events'" (click)="navigate('events')">Events</button>
       <button type="button" class="nav-link" [class.active]="activeTab === 'registrations'" (click)="navigate('registrations')">My Registrations</button>
-      <button type="button" class="nav-link" (click)="navigate('feedback')">Feedback</button>
+      <button type="button" class="nav-link" [class.active]="activeTab === 'feedback'" (click)="navigate('feedback')">Feedback</button>
     </nav>
 
     <div class="header-actions">

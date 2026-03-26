@@ -58,35 +58,6 @@ function buildThreadTree(comments) {
   return roots;
 }
 
-async function collectDescendantIds(eventId, rootId) {
-  const all = await EventComment.find({ eventId }).select("_id parentCommentId");
-  const childrenByParent = new Map();
-
-  for (const item of all) {
-    const parentId = item.parentCommentId ? String(item.parentCommentId) : "";
-    if (!childrenByParent.has(parentId)) {
-      childrenByParent.set(parentId, []);
-    }
-    childrenByParent.get(parentId).push(String(item._id));
-  }
-
-  const queue = [String(rootId)];
-  const allIds = new Set([String(rootId)]);
-
-  while (queue.length > 0) {
-    const current = queue.shift();
-    const nextChildren = childrenByParent.get(current) || [];
-    for (const childId of nextChildren) {
-      if (!allIds.has(childId)) {
-        allIds.add(childId);
-        queue.push(childId);
-      }
-    }
-  }
-
-  return [...allIds];
-}
-
 exports.getEventComments = async (req, res) => {
   try {
     const eventId = String(req.params?.eventId || "").trim();
@@ -187,7 +158,7 @@ exports.deleteComment = async (req, res) => {
       return res.status(400).json({ message: "commentId is required." });
     }
 
-    const comment = await EventComment.findById(commentId).select("_id studentId eventId");
+    const comment = await EventComment.findById(commentId).select("_id studentId eventId parentCommentId");
     if (!comment) {
       return res.status(404).json({ message: "Comment not found." });
     }
@@ -196,8 +167,14 @@ exports.deleteComment = async (req, res) => {
       return res.status(403).json({ message: "You can delete only your own comments." });
     }
 
-    const idsToDelete = await collectDescendantIds(String(comment.eventId), String(comment._id));
-    await EventComment.deleteMany({ _id: { $in: idsToDelete } });
+    const parentCommentId = comment.parentCommentId ? String(comment.parentCommentId) : null;
+
+    // Keep discussion intact: move direct children one level up, then delete only selected comment.
+    await EventComment.updateMany(
+      { eventId: String(comment.eventId), parentCommentId: String(comment._id) },
+      { $set: { parentCommentId } }
+    );
+    await EventComment.deleteOne({ _id: comment._id });
 
     res.json({ message: "Comment deleted successfully." });
   } catch (error) {

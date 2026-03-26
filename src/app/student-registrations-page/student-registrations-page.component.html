@@ -67,113 +67,16 @@
 
     <section class="registration-grid" *ngIf="!loading && filteredRegistrations.length > 0">
       <article class="registration-card" *ngFor="let registration of filteredRegistrations; trackBy: trackById">
-        <div class="card-top">
-          <div class="card-title-wrap">
-            <div class="poster-fallback" *ngIf="!registration.event?.posterDataUrl">{{ registration.eventName.charAt(0) }}</div>
-            <img
-              *ngIf="registration.event?.posterDataUrl"
-              [src]="registration.event?.posterDataUrl || ''"
-              [alt]="registration.eventName"
-              class="event-poster"
-            >
-            <div>
-              <h3>{{ registration.eventName }}</h3>
-              <p>{{ registration.event?.location || 'Location TBA' }}</p>
-            </div>
-          </div>
+        <div class="registration-card-wrap">
           <span class="status-pill" [attr.data-tone]="getRegistrationTone(registration.status)">
             {{ getRegistrationStatusLabel(registration.status) }}
           </span>
-        </div>
 
-        <div class="detail-grid">
-          <span><span class="material-icons">calendar_today</span>{{ registration.event?.dateLabel || (registration.createdAt | date: 'mediumDate') }}</span>
-          <span><span class="material-icons">apartment</span>{{ registration.college || 'College not available' }}</span>
-          <span><span class="material-icons">mail</span>{{ registration.email }}</span>
-          <span><span class="material-icons">flag</span>{{ registration.status }}</span>
-        </div>
-
-        <p class="reason" *ngIf="registration.rejectionReason">
-          <strong>Update:</strong> {{ registration.rejectionReason }}
-        </p>
-
-        <div class="card-actions" *ngIf="!shouldShowRating(registration)">
-          <button type="button" class="ghost-btn" (click)="navigate('events')">
-            Explore Events
-          </button>
-          <button
-            type="button"
-            class="cancel-btn"
-            [disabled]="actionEventId === registration.eventId"
-            (click)="cancelRegistration(registration)"
-          >
-            {{ actionEventId === registration.eventId ? 'Cancelling...' : 'Cancel Registration' }}
-          </button>
-        </div>
-
-        <div class="card-actions rating-actions" *ngIf="shouldShowRating(registration)">
-          <div class="rating-wrap" *ngIf="!getSavedRating(registration.eventId); else ratedState">
-            <div class="rating-head">
-              <span class="material-icons">star_rate</span>
-              <strong>Rate this event</strong>
-              <span class="rating-sub">after attending</span>
-            </div>
-
-            <div class="star-row" role="group" [attr.aria-label]="'Rate ' + registration.eventName">
-              <button
-                *ngFor="let value of ratingChoices"
-                type="button"
-                class="star-btn"
-                [class.active]="value <= getDraftRating(registration.eventId)"
-                (click)="setDraftRating(registration.eventId, value)"
-                [attr.aria-label]="'Rate ' + value + ' out of 5'"
-              >
-                <span class="material-icons">{{ value <= getDraftRating(registration.eventId) ? 'star' : 'star_border' }}</span>
-              </button>
-            </div>
-
-            <button
-              type="button"
-              class="submit-rating-btn"
-              [disabled]="getDraftRating(registration.eventId) < 1 || reviewActionEventId === registration.eventId"
-              (click)="submitRating(registration)"
-            >
-              {{ reviewActionEventId === registration.eventId ? 'Submitting...' : 'Submit Rating' }}
-            </button>
-          </div>
-
-          <ng-template #ratedState>
-            <div class="rated-wrap">
-              <div class="rated-chip">
-                <span class="material-icons">verified</span>
-                Rated {{ getSavedRating(registration.eventId) }}/5
-              </div>
-              <button type="button" class="feedback-btn" (click)="toggleFeedback(registration.eventId)">
-                {{ feedbackOpenEventIds.has(registration.eventId) ? 'Close' : (savedFeedbackByEventId[registration.eventId] ? 'Edit Feedback' : 'Add Feedback') }}
-              </button>
-            </div>
-
-            <div class="feedback-wrap" *ngIf="feedbackOpenEventIds.has(registration.eventId)">
-              <textarea
-                class="feedback-textarea"
-                rows="3"
-                placeholder="Write your feedback..."
-                [(ngModel)]="feedbackDraftByEventId[registration.eventId]"
-              ></textarea>
-              <button
-                type="button"
-                class="submit-feedback-btn"
-                [disabled]="(feedbackDraftByEventId[registration.eventId] || '').trim().length < 3 || reviewActionEventId === registration.eventId"
-                (click)="submitFeedback(registration)"
-              >
-                {{
-                  reviewActionEventId === registration.eventId
-                    ? 'Saving...'
-                    : (feedbackSavedEventIds.has(registration.eventId) ? 'Saved' : 'Save Feedback')
-                }}
-              </button>
-            </div>
-          </ng-template>
+          <app-event-card
+            [event]="getRegistrationEventCard(registration)"
+            [showRegisterButton]="false"
+            [showRatingSummary]="false"
+          ></app-event-card>
         </div>
       </article>
     </section>
