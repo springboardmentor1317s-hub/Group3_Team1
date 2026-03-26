@@ -8,32 +8,52 @@ const userSchema = new mongoose.Schema({
   userId: {
     type: String,
     required: true,
-    unique: true   // unique userid
+    unique: true
   },
   email: {
     type: String,
     required: true,
-    unique: true   // unique email
+    unique: true
   },
   college: {
     type: String,
-    required: false
+    default: ''
   },
   phone: {
     type: String,
-    default: ""
+    default: ''
   },
+  currentAddress: {
+    line1: { type: String, default: '' },
+    line2: { type: String, default: '' },
+    pincode: { type: String, default: '' },
+    country: { type: String, default: 'India' },
+    state: { type: String, default: '' },
+    district: { type: String, default: '' },
+    townVillage: { type: String, default: '' }
+  },
+  permanentAddress: {
+    line1: { type: String, default: '' },
+    line2: { type: String, default: '' },
+    pincode: { type: String, default: '' },
+    country: { type: String, default: 'India' },
+    state: { type: String, default: '' },
+    district: { type: String, default: '' },
+    townVillage: { type: String, default: '' },
+    sameAsCurrent: { type: Boolean, default: false }
+  },
+  department: { type: String, default: '' },
+  course: { type: String, default: '' },
+  year: { type: String, default: '' },
+  semester: { type: String, default: '' },
+  heardFrom: { type: String, default: '' },
   location: {
     type: String,
-    default: ""
-  },
-  department: {
-    type: String,
-    default: ""
+    default: ''
   },
   profileImageUrl: {
     type: String,
-    default: ""
+    default: ''
   },
   password: {
     type: String,
@@ -54,7 +74,7 @@ const userSchema = new mongoose.Schema({
   },
   adminRejectionReason: {
     type: String,
-    default: ""
+    default: ''
   },
   adminReviewedAt: {
     type: Date,

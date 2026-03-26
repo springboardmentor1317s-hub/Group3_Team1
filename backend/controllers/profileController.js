@@ -20,24 +20,29 @@ exports.updateMyProfile = async (req, res) => {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: "Not authorized" });
 
-    const { name, email, college, phone, location, department, profileImageUrl } = req.body || {};
+    const updateData = req.body || {};
 
-    if (email) {
-      const existing = await User.findOne({ email, _id: { $ne: userId } });
+    // Email uniqueness check (if provided)
+    if (updateData.email !== undefined) {
+      const existing = await User.findOne({ email: updateData.email, _id: { $ne: userId } });
       if (existing) {
         return res.status(400).json({ message: "Email already in use" });
       }
     }
 
-    const update = {
-      ...(name !== undefined ? { name } : {}),
-      ...(email !== undefined ? { email } : {}),
-      ...(college !== undefined ? { college } : {}),
-      ...(phone !== undefined ? { phone } : {}),
-      ...(location !== undefined ? { location } : {}),
-      ...(department !== undefined ? { department } : {}),
-      ...(profileImageUrl !== undefined ? { profileImageUrl } : {})
-    };
+    // Supported fields for update
+    const allowedFields = [
+      'name', 'college', 'phone', 
+      'currentAddress', 'permanentAddress', 
+      'department', 'course', 'year', 'semester', 'heardFrom'
+    ];
+
+    const update = {};
+    allowedFields.forEach(field => {
+      if (updateData[field] !== undefined) {
+        update[field] = updateData[field];
+      }
+    });
 
     const user = await User.findByIdAndUpdate(userId, update, {
       new: true,
