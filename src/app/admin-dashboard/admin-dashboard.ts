@@ -78,6 +78,11 @@ interface EventRating {
   expanded?: boolean;
 }
 
+interface FlattenedReview extends EventReviewSummary {
+  eventId: string;
+  eventName: string;
+}
+
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -91,7 +96,9 @@ export class AdminDashboard implements OnInit, OnDestroy {
   private readonly API_URL = '/api/events';
   private readonly REGISTRATIONS_API_URL = '/api/registrations';
   private readonly NOTIFICATION_POLL_INTERVAL_MS = 12000;
+  private readonly RATINGS_POLL_INTERVAL_MS = 15000;
   private notificationPollTimer: ReturnType<typeof setInterval> | null = null;
+  private ratingsPollTimer: ReturnType<typeof setInterval> | null = null;
   private sidebarHoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
   private knownRegistrationIds = new Set<string>();
   private notificationStorageKey = 'admin-dashboard-last-seen-registration-at';
@@ -101,6 +108,82 @@ export class AdminDashboard implements OnInit, OnDestroy {
   eventRatings: EventRating[] = [];
   isLoadingRatings = false;
   ratingsError: string | null = null;
+
+  private allReviewsCache: FlattenedReview[] | null = null;
+  private writtenFeedbackSortedCache: FlattenedReview[] | null = null;
+
+  private invalidateFeedbackCaches(): void {
+    this.allReviewsCache = null;
+    this.writtenFeedbackSortedCache = null;
+  }
+
+  getAllReviews(): FlattenedReview[] {
+    if (this.allReviewsCache) return this.allReviewsCache;
+    const out: FlattenedReview[] = [];
+    for (const er of this.eventRatings) {
+      for (const r of er.reviews || []) {
+        out.push({ ...r, eventId: er.eventId, eventName: er.eventName });
+      }
+    }
+    this.allReviewsCache = out;
+    return out;
+  }
+
+  get totalRatedReviews(): number {
+    return this.getAllReviews().filter(r => typeof r.rating === 'number').length;
+  }
+
+  get overallAverageRating(): number | null {
+    const ratings = this.getAllReviews()
+      .map(r => r.rating)
+      .filter((n): n is number => typeof n === 'number');
+    if (ratings.length === 0) return null;
+    const avg = ratings.reduce((sum, n) => sum + n, 0) / ratings.length;
+    return Math.round(avg * 10) / 10;
+  }
+
+  get totalWrittenFeedback(): number {
+    return this.getAllReviews().filter(r => (r.feedback || '').trim().length > 0).length;
+  }
+
+  get fiveStarReviews(): number {
+    return this.getAllReviews().filter(r => r.rating === 5).length;
+  }
+
+  get responseRate(): number {
+    const denom = this.getAllReviews().length;
+    if (denom === 0) return 0;
+    const rate = (this.totalWrittenFeedback / denom) * 100;
+    return Math.min(100, Math.round(rate));
+  }
+
+  getRatingCount(star: number): number {
+    return this.getAllReviews().filter(r => r.rating === star).length;
+  }
+
+  getRatingPercent(star: number): number {
+    const denom = this.totalRatedReviews;
+    if (denom === 0) return 0;
+    const count = this.getRatingCount(star);
+    return (count / denom) * 100;
+  }
+
+  getLatestWrittenFeedback(limit?: number): FlattenedReview[] {
+    if (!this.writtenFeedbackSortedCache) {
+      this.writtenFeedbackSortedCache = this.getAllReviews()
+        .filter(r => (r.feedback || '').trim().length > 0)
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    }
+    const list = this.writtenFeedbackSortedCache;
+    if (typeof limit === 'number') return list.slice(0, Math.max(0, limit));
+    return list;
+  }
+
+  formatShortDate(iso: string): string {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
 
   constructor(
     private readonly http: HttpClient,
@@ -268,7 +351,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
       return;
     }
 
-    const params = `?collegeName=${encodeURIComponent(this.userCollege)}`;
+    const params = `?collegeName=${encodeURIComponent(this.userCollege)}&includeReviewed=1`;
 
     const user = JSON.parse(localStorage.getItem('currentUser') || '{}');
     const token = user?.token || localStorage.getItem('token');
@@ -284,6 +367,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
       .subscribe({
         next: (data) => {
           this.eventRatings = data.map(r => ({ ...r, expanded: false }));
+          this.invalidateFeedbackCaches();
           this.isLoadingRatings = false;
           console.log('[AdminDashboard] Ratings loaded:', this.eventRatings.length, 'events');
           this.cdr.detectChanges();
@@ -301,6 +385,10 @@ export class AdminDashboard implements OnInit, OnDestroy {
     if (this.notificationPollTimer !== null) {
       clearInterval(this.notificationPollTimer);
       this.notificationPollTimer = null;
+    }
+    if (this.ratingsPollTimer !== null) {
+      clearInterval(this.ratingsPollTimer);
+      this.ratingsPollTimer = null;
     }
     if (this.sidebarHoverCloseTimer !== null) {
       clearTimeout(this.sidebarHoverCloseTimer);
@@ -332,6 +420,27 @@ export class AdminDashboard implements OnInit, OnDestroy {
     //     an empty result was cached forever and never retried)
     if (tab === 'feedback') {
       this.loadEventRatings();
+      this.startRatingsPolling();
+    } else {
+      this.stopRatingsPolling();
+    }
+  }
+
+  private startRatingsPolling(): void {
+    if (this.ratingsPollTimer !== null) {
+      clearInterval(this.ratingsPollTimer);
+    }
+    this.ratingsPollTimer = setInterval(() => {
+      if (this.activeTab === 'feedback') {
+        this.loadEventRatings();
+      }
+    }, this.RATINGS_POLL_INTERVAL_MS);
+  }
+
+  private stopRatingsPolling(): void {
+    if (this.ratingsPollTimer !== null) {
+      clearInterval(this.ratingsPollTimer);
+      this.ratingsPollTimer = null;
     }
   }
 
