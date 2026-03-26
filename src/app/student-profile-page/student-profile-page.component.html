@@ -4,8 +4,8 @@
       <button class="brand-block" type="button" (click)="goTo('dashboard')">
         <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub">
         <div class="brand-copy">
-          <span class="eyebrow">Student Lounge</span>
           <span class="brand-name">Campus Event Hub</span>
+          <span class="eyebrow">Student Lounge</span>
         </div>
       </button>
 
@@ -18,13 +18,16 @@
 
       <div class="header-actions">
         <button type="button" class="profile-chip active">
-          <span class="material-icons">account_circle</span>
+          <img class="profile-chip-avatar" [src]="profilePhotoUrl" [alt]="studentName">
           <span class="profile-chip-name">{{ studentName }}</span>
         </button>
         <button type="button" class="notification-btn" (click)="openNotifications()" aria-label="Notifications">
           <span class="material-icons">notifications</span>
         </button>
-        <button type="button" class="logout-btn" (click)="logout()">Logout</button>
+        <button type="button" class="logout-btn" (click)="logout()">
+          <span class="material-icons">logout</span>
+          <span>Logout</span>
+        </button>
       </div>
     </div>
   </header>
@@ -51,16 +54,38 @@
           </div>
         </div>
 
+        <div class="profile-avatar-panel">
+          <img class="hero-avatar" [src]="profilePhotoUrl" [alt]="student.name">
+          <div class="avatar-meta">
+            <strong>{{ student.name }}</strong>
+            <span>{{ student.email }}</span>
+          </div>
+          <div class="avatar-actions" *ngIf="isEditing">
+            <label class="upload-btn" for="student-photo-input">
+              <span class="material-icons">upload</span>
+              <span>Upload Photo</span>
+            </label>
+            <input id="student-photo-input" type="file" accept="image/*" (change)="onPhotoSelected($event)">
+            <button type="button" class="upload-btn muted" (click)="removePhoto()">
+              <span class="material-icons">delete</span>
+              <span>Remove</span>
+            </button>
+          </div>
+        </div>
+
         <div class="mini-stats">
           <article class="stat-shell violet">
+            <span class="stat-icon material-icons">event_note</span>
             <strong>{{ registrations.length }}</strong>
             <span>Total Registrations</span>
           </article>
           <article class="stat-shell amber">
+            <span class="stat-icon material-icons">verified</span>
             <strong>{{ approvedCount }}</strong>
             <span>Approved</span>
           </article>
           <article class="stat-shell cyan">
+            <span class="stat-icon material-icons">hourglass_top</span>
             <strong>{{ pendingCount }}</strong>
             <span>Pending</span>
           </article>
@@ -74,12 +99,28 @@
               <p class="card-kicker">Verified Identity</p>
               <h2>Profile Details</h2>
             </div>
-            <span class="card-icon material-icons">badge</span>
+            <div class="card-actions">
+              <button *ngIf="!isEditing" type="button" class="profile-action-btn" (click)="startEdit()">
+                <span class="material-icons">edit</span>
+                <span>Edit</span>
+              </button>
+              <button *ngIf="isEditing" type="button" class="profile-action-btn secondary" (click)="cancelEdit()">
+                <span class="material-icons">close</span>
+                <span>Cancel</span>
+              </button>
+              <button *ngIf="isEditing" type="button" class="profile-action-btn" [disabled]="isSaving" (click)="saveProfile()">
+                <span class="material-icons">save</span>
+                <span>{{ isSaving ? 'Saving...' : 'Save' }}</span>
+              </button>
+              <span class="card-icon material-icons">badge</span>
+            </div>
           </div>
+          <p class="error-banner inline-error" *ngIf="editError">{{ editError }}</p>
           <div class="info-list">
             <div>
               <span>Full Name</span>
-              <strong>{{ student.name }}</strong>
+              <strong *ngIf="!isEditing">{{ student.name }}</strong>
+              <input *ngIf="isEditing" [(ngModel)]="editForm.name" type="text">
             </div>
             <div>
               <span>User ID</span>
@@ -87,7 +128,8 @@
             </div>
             <div>
               <span>Email Address</span>
-              <strong>{{ student.email }}</strong>
+              <strong *ngIf="!isEditing">{{ student.email }}</strong>
+              <input *ngIf="isEditing" [(ngModel)]="editForm.email" type="email">
             </div>
             <div>
               <span>Role</span>
@@ -95,7 +137,23 @@
             </div>
             <div>
               <span>College</span>
-              <strong>{{ student.college || 'Not available' }}</strong>
+              <strong *ngIf="!isEditing">{{ student.college || 'Not available' }}</strong>
+              <input *ngIf="isEditing" [(ngModel)]="editForm.college" type="text">
+            </div>
+            <div>
+              <span>Phone</span>
+              <strong *ngIf="!isEditing">{{ student.phone || 'Not available' }}</strong>
+              <input *ngIf="isEditing" [(ngModel)]="editForm.phone" type="text">
+            </div>
+            <div>
+              <span>Location</span>
+              <strong *ngIf="!isEditing">{{ student.location || 'Not available' }}</strong>
+              <input *ngIf="isEditing" [(ngModel)]="editForm.location" type="text">
+            </div>
+            <div>
+              <span>Department</span>
+              <strong *ngIf="!isEditing">{{ student.department || 'Not available' }}</strong>
+              <input *ngIf="isEditing" [(ngModel)]="editForm.department" type="text">
             </div>
             <div>
               <span>Joined On</span>

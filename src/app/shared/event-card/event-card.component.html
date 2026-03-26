@@ -13,6 +13,7 @@
 
     <div class="meta-list">
       <span><span class="material-icons">calendar_today</span>{{ event.dateLabel }}</span>
+      <span><span class="material-icons">event_available</span>Last Registration: {{ registrationDeadlineText }}</span>
       <span><span class="material-icons">location_on</span>{{ event.location }}</span>
     </div>
 
@@ -30,91 +31,3 @@
     </div>
   </div>
 </article>
-
-
-<div class="details-backdrop" *ngIf="detailsOpen" (click)="closeDetails()">
-  <article class="details-modal" (click)="$event.stopPropagation()">
-    <button type="button" class="close-btn" (click)="closeDetails()" aria-label="Close">
-      <span class="material-icons">close</span>
-    </button>
-
-    <div class="details-hero" [style.background-image]="cardBackground">
-      <h3>{{ event.title }}</h3>
-      <p>{{ event.category || 'General' }}</p>
-      <div class="details-chip-row">
-        <span class="details-chip">{{ event.registrations }}/{{ event.maxAttendees }} seats</span>
-        <span class="details-chip dark">{{ statusLabel }}</span>
-      </div>
-    </div>
-
-    <div class="modal-tabs">
-      <button type="button" [class.active]="tab === 'details'" (click)="toggleTab('details')">Details</button>
-      <button type="button" [class.active]="tab === 'feedback'" (click)="toggleTab('feedback')">Feedback</button>
-    </div>
-
-    <div class="details-body" *ngIf="tab === 'details'">
-      <p class="desc">{{ event.description }}</p>
-      <div class="details-grid">
-        <div class="item"><span class="material-icons">calendar_today</span>{{ event.dateLabel }}</div>
-        <div class="item"><span class="material-icons">schedule</span>{{ event.timeLabel }}</div>
-        <div class="item"><span class="material-icons">location_on</span>{{ event.location }}</div>
-        <div class="item"><span class="material-icons">apartment</span>{{ event.collegeName || 'Campus Event Hub' }}</div>
-        <div class="item"><span class="material-icons">call</span>{{ event.contact }}</div>
-        <div class="item"><span class="material-icons">person</span>{{ event.organizer || 'Campus Event Hub' }}</div>
-      </div>
-      <button *ngIf="!registerDisabled" class="register-now-btn" (click)="onRegisterClick()">
-        {{ registerLabel }}
-      </button>
-    </div>
-
-  <div class="feedback-body" *ngIf="tab === 'feedback'">
-      <div class="feedback-header">
-        <div class="rating-section" [attr.data-rating]="'★ ' + rating + '/5'">
-          <div class="rating-header">
-            <span class="material-icons">star</span>
-            <span>Rate this event</span>
-          </div>
-          <div class="star-row">
-            <button *ngFor="let star of [1,2,3,4,5]" type="button" class="star-btn" [class.active]="star <= rating" (click)="setRating(star)">
-              <span class="material-icons">star</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <p *ngIf="submitError" class="error-message">{{ submitError }}</p>
-
-      <div class="feedback-content">
-        <div class="feedback-form">
-          <textarea [(ngModel)]="feedbackText" placeholder="Write your feedback..." rows="6"></textarea>
-          <button 
-            type="button" 
-            class="post-feedback-btn" 
-            (click)="postFeedback()" 
-            [disabled]="isSubmitting || (!feedbackText.trim() && rating === 0)">
-            <span *ngIf="isSubmitting" class="loading">Saving...</span>
-            <span *ngIf="!isSubmitting">Post Feedback</span>
-          </button>
-        </div>
-
-        <div class="comments-section" *ngIf="comments.length > 0">
-          <h4>Your Comments ({{ comments.length }})</h4>
-          <div class="comments-list">
-            <div *ngFor="let comment of comments" class="comment-card">
-              <span class="comment-avatar">{{ getAvatarInitials(comment.name) }}</span>
-              <div class="comment-content">
-                <div class="comment-header">
-                  <span class="comment-name">{{ comment.name }}</span>
-                  <span class="comment-time">{{ comment.time }}</span>
-                </div>
-                <p class="comment-text">{{ comment.comment }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        <p *ngIf="comments.length === 0" class="no-comments">No feedback posted yet. Be the first!</p>
-      </div>
-    </div>
-  </article>
-</div>
-

@@ -72,6 +72,17 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
     return this.profile?.name || JSON.parse(localStorage.getItem('currentUser') || '{}')?.name || 'Student';
   }
 
+  get profilePhotoUrl(): string {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    return String(
+      currentUser.profileImageUrl
+      || currentUser.profilePhotoUrl
+      || currentUser.avatarUrl
+      || currentUser.photoUrl
+      || ''
+    ).trim();
+  }
+
   get featuredNotification(): StudentNotificationItem | null {
     return this.notifications[0] || null;
   }

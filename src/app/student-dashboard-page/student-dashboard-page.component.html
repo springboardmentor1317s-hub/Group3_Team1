@@ -18,7 +18,10 @@
 
       <div class="header-actions">
         <button type="button" class="profile-chip" (click)="openProfile()">
-          <span class="material-icons">account_circle</span>
+          <img *ngIf="profilePhotoUrl as photo; else dashboardAvatarFallback" class="profile-chip-avatar" [src]="photo" [alt]="studentName">
+          <ng-template #dashboardAvatarFallback>
+            <span class="material-icons">account_circle</span>
+          </ng-template>
           <span class="profile-chip-name">{{ studentName }}</span>
         </button>
         <div class="notification-wrapper" (click)="$event.stopPropagation()">
