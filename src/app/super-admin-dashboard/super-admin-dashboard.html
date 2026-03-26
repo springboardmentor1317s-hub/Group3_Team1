@@ -23,28 +23,24 @@
 
   <!-- Stats Cards -->
   <div class="stats">
-
     <div class="card">
       <div class="icon blue"><i class="fa-solid fa-user-shield"></i></div>
       <h4>Total Admins</h4>
       <h2>{{ totalAdmins }}</h2>
       <span class="stat-note">Approved Admins</span>
     </div>
-
     <div class="card">
       <div class="icon purple"><i class="fa-solid fa-calendar-check"></i></div>
       <h4>Total Events</h4>
       <h2>{{ totalEvents }}</h2>
       <span class="stat-note">Across all admins</span>
     </div>
-
     <div class="card">
       <div class="icon green"><i class="fa-solid fa-users"></i></div>
       <h4>Total Students</h4>
       <h2>{{ totalStudents }}</h2>
       <span class="stat-note">Across all colleges</span>
     </div>
-
   </div>
 
   <!-- Tabs -->
@@ -58,53 +54,70 @@
   <!-- Bottom Section -->
   <div class="bottom">
 
-    <!-- Admin Activity Reports (Static) -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- UPDATED: Admin Activity Reports — now fetches real data from DB -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
     <div class="reports-section">
-      <h3>Admin Activity Reports</h3>
-      <ul class="events">
-        <li>
-          <div class="event-left">
-            <div class="event-icon activity-high">
-              <i class="fa-solid fa-user-tie"></i>
-            </div>
-            <div>
-              <b class="event-title">John Doe (Engineering)</b>
-              <span>Created 5 events · Last active 2h ago</span>
-            </div>
-          </div>
-          <span class="tag tag-high">High Activity</span>
-        </li>
+      <div class="reports-header">
+        <h3>Admin Activity Reports</h3>
+        <!-- Refresh button -->
+        <button class="ghost-refresh-btn" (click)="loadAdminActivityReport()" title="Refresh">
+          <i class="fa-solid fa-rotate-right"></i>
+        </button>
+      </div>
 
-        <li>
-          <div class="event-left">
-            <div class="event-icon activity-medium">
-              <i class="fa-solid fa-user-tie"></i>
-            </div>
-            <div>
-              <b class="event-title">Sarah Smith (Arts)</b>
-              <span>Created 3 events · Last active 1d ago</span>
-            </div>
-          </div>
-          <span class="tag tag-medium">Medium Activity</span>
-        </li>
+      <!-- Loading state -->
+      <div class="activity-loading" *ngIf="isLoadingActivity">
+        <i class="fa-solid fa-spinner fa-spin"></i>
+        <span>Loading activity data...</span>
+      </div>
 
-        <li>
+      <!-- Error state -->
+      <div class="activity-error" *ngIf="activityError && !isLoadingActivity">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        <span>{{ activityError }}</span>
+        <button class="retry-btn" (click)="loadAdminActivityReport()">Retry</button>
+      </div>
+
+      <!-- Empty state -->
+      <div class="activity-empty" *ngIf="!isLoadingActivity && !activityError && adminActivityList.length === 0">
+        <i class="fa-solid fa-inbox"></i>
+        <p>No approved admins found.</p>
+      </div>
+
+      <!-- Real data list -->
+      <ul class="events" *ngIf="!isLoadingActivity && !activityError && adminActivityList.length > 0">
+        <li *ngFor="let admin of adminActivityList">
           <div class="event-left">
-            <div class="event-icon activity-high">
+            <div [class]="getActivityIconClass(admin.activityLevel)">
               <i class="fa-solid fa-user-tie"></i>
             </div>
             <div>
-              <b class="event-title">Mike Johnson (Sports)</b>
-              <span>Created 8 events · Last active 10m ago</span>
+              <!-- Name + college/department -->
+              <b class="event-title">
+                {{ admin.name }}
+                <span *ngIf="admin.department"> ({{ admin.department }})</span>
+                <span *ngIf="!admin.department && admin.college"> — {{ admin.college }}</span>
+              </b>
+              <span>
+                Created {{ admin.eventsCreated }} event{{ admin.eventsCreated !== 1 ? 's' : '' }}
+                &middot;
+                Last active {{ admin.lastActiveLabel }}
+              </span>
             </div>
           </div>
-          <span class="tag tag-high">High Activity</span>
+          <!-- Activity level badge -->
+          <span [class]="getActivityTagClass(admin.activityLevel)">
+            {{ admin.activityLevel }} Activity
+          </span>
         </li>
       </ul>
     </div>
+    <!-- ═══════════════════════════════════════════════════ END UPDATED -->
 
   </div>
 
+  <!-- College Admin Review Requests (unchanged) -->
   <div class="approval-section">
     <div class="approval-header">
       <h3>College Admin Review Requests</h3>
@@ -146,7 +159,8 @@
           <p><strong>Submitted:</strong> {{ request.createdAt | date:'medium' }}</p>
           <p>
             <strong>Status:</strong>
-            <span class="status-chip" [class.pending]="request.status === 'pending'"
+            <span class="status-chip"
+              [class.pending]="request.status === 'pending'"
               [class.approved]="request.status === 'approved'"
               [class.rejected]="request.status === 'rejected'">
               {{ request.status }}

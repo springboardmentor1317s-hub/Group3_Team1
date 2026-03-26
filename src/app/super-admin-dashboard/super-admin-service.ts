@@ -79,4 +79,14 @@ export class SuperAdminService {
     }
     return this.http.patch(`${this.baseUrl}/admin-requests/${id}/reject`, { reason }, { headers });
   }
+
+  // NEW: Admin Activity Report
+  getAdminActivityReport(): Observable<any[]> {
+    const token = localStorage.getItem('token');
+    let headers = new HttpHeaders();
+    if (token) {
+      headers = headers.set('Authorization', `Bearer ${token}`);
+    }
+    return this.http.get<any[]>(`${this.baseUrl}/admin-activity`, { headers });
+  }
 }
