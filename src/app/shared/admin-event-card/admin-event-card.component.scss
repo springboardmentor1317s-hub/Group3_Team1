@@ -1,0 +1,129 @@
+:host {
+  display: block;
+}
+
+.admin-event-card {
+  border-radius: 24px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #d4a017;
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.12);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.admin-event-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 24px 44px rgba(15, 23, 42, 0.2);
+}
+
+.event-media {
+  height: 160px;
+  background-size: cover;
+  background-position: center;
+  padding: 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  position: relative;
+}
+
+.event-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent);
+}
+
+.status-badge,
+.seat-pill,
+.category-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-weight: 800;
+  z-index: 1;
+}
+
+.status-badge {
+  padding: 0.38rem 0.74rem;
+  font-size: 0.72rem;
+  color: #ffffff;
+  background: linear-gradient(135deg, #0ea5e9, #2563eb);
+}
+
+.status-badge.closed {
+  background: linear-gradient(135deg, #334155, #1e293b);
+}
+
+.seat-pill {
+  padding: 0.38rem 0.74rem;
+  font-size: 0.72rem;
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.event-content {
+  padding: 1rem;
+}
+
+.category-pill {
+  padding: 0.35rem 0.68rem;
+  font-size: 0.68rem;
+  color: #334155;
+  background: rgba(133, 167, 221, 0.1);
+}
+
+.event-content h3 {
+  margin: 0.55rem 0 0.35rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+  background: linear-gradient(90deg, #2563eb, #7c3aed);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.event-content p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.meta-list {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+}
+
+.meta-list span {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.meta-list .material-icons {
+  font-size: 1rem;
+}
+
+.card-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.view-btn {
+  border: none;
+  border-radius: 14px;
+  padding: 0.65rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.view-btn:hover {
+  background: linear-gradient(45deg, #2563eb, #7c3aed);
+  color: white;
+}

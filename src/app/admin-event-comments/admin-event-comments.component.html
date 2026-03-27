@@ -1,0 +1,81 @@
+<div class="admin-comments-shell">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Event Details</p>
+      <h1>{{ event?.name || 'Event Details' }}</h1>
+      <p class="muted">Student detail page jaisa view with comments only. Feedback hidden hai.</p>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="ghost-btn" (click)="goBack()">Back To My Events</button>
+      <a class="ghost-btn" routerLink="/admin-dashboard">Dashboard</a>
+    </div>
+  </header>
+
+  <p *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</p>
+  <section *ngIf="loading" class="state-card">Loading event details...</section>
+
+  <ng-container *ngIf="!loading && event">
+    <section class="hero-card" [style.background-image]="cardBackground">
+      <div class="hero-overlay"></div>
+      <div class="hero-content">
+        <span class="status-pill" [class.closed]="statusLabel === 'Closed'">{{ statusLabel }}</span>
+        <h2>{{ event.name }}</h2>
+        <p>{{ event.category || 'General' }}</p>
+        <div class="hero-meta">
+          <span><span class="material-icons">calendar_today</span>{{ formatTime(event.dateTime) }}</span>
+          <span><span class="material-icons">event_available</span>Last Registration: {{ registrationDeadlineText }}</span>
+          <span><span class="material-icons">location_on</span>{{ event.location || 'Campus Venue' }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="detail-card">
+      <h3>Event Details</h3>
+      <p class="description">{{ event.description || 'No description available.' }}</p>
+      <div class="detail-grid">
+        <div><strong>Organizer</strong><span>{{ event.organizer || 'Campus Event Hub' }}</span></div>
+        <div><strong>Contact</strong><span>{{ event.contact || 'Not available' }}</span></div>
+        <div><strong>College</strong><span>{{ event.collegeName || 'Campus Event Hub' }}</span></div>
+        <div><strong>Seats</strong><span>{{ event.registrations || 0 }}/{{ event.maxAttendees || event.participants || 0 }}</span></div>
+      </div>
+    </section>
+
+    <section class="comments-card">
+      <div class="comments-head">
+        <h3>Public Comments</h3>
+        <span class="muted">{{ comments.length }} threads</span>
+      </div>
+
+      <section *ngIf="commentsLoading" class="state-card">Loading comments...</section>
+      <section *ngIf="!commentsLoading && comments.length === 0" class="state-card">
+        Is event par abhi koi public comment nahi hai.
+      </section>
+
+      <section class="comments-list" *ngIf="!commentsLoading && comments.length > 0">
+        <article class="comment-item" *ngFor="let item of comments; trackBy: trackByCommentId">
+          <img class="avatar-img" [src]="item.avatarUrl" [alt]="item.name">
+          <div class="comment-body">
+            <div class="comment-head">
+              <strong>{{ item.name }}</strong>
+              <span>{{ formatTime(item.createdAt) }}</span>
+            </div>
+            <p>{{ item.text }}</p>
+
+            <div class="reply-list" *ngIf="item.replies.length > 0">
+              <article class="reply-item" *ngFor="let reply of item.replies; trackBy: trackByCommentId">
+                <img class="reply-avatar-img" [src]="reply.avatarUrl" [alt]="reply.name">
+                <div class="reply-body">
+                  <div class="comment-head">
+                    <strong>{{ reply.name }}</strong>
+                    <span>{{ formatTime(reply.createdAt) }}</span>
+                  </div>
+                  <p>{{ reply.text }}</p>
+                </div>
+              </article>
+            </div>
+          </div>
+        </article>
+      </section>
+    </section>
+  </ng-container>
+</div>

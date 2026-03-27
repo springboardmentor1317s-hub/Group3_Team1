@@ -24,6 +24,12 @@ export interface BackendEvent {
   attendeeIds?: string[];
   registered?: boolean;
   collegeName?: string;
+  createdBy?: string;
+  createdById?: string;
+  ownerId?: string;
+  adminId?: string;
+  userId?: string;
+  email?: string;
 }
 
 @Injectable({

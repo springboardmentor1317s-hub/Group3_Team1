@@ -1,13 +1,20 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { EventService, BackendEvent } from '../services/event.service';
 import { CreateEventComponent } from '../create-event/create-event.component';
 import { catchError, finalize, forkJoin, of, timeout } from 'rxjs';
 import { Auth } from '../auth/auth';
 import { FeedbackService, Feedback } from '../services/feedback.service';
+import { AdminFeedbackPanelComponent } from '../admin-feedback-panel/admin-feedback-panel.component';
+import { AdminEventCardComponent } from '../shared/admin-event-card/admin-event-card.component';
+import { StudentEventCard } from '../services/student-dashboard.service';
+import { AdminDashboardSidebarComponent } from '../admin-dashboard-sidebar/admin-dashboard-sidebar.component';
+import { AdminRegistrationsPanelComponent } from '../admin-registrations-panel/admin-registrations-panel.component';
+import { buildAdminProfileIdentifiers } from '../shared/admin-owned-events.util';
+import { isEventClosedByDate, parseEventLocalDay, resolveEventDateCandidate } from '../shared/event-date.util';
 
 type DashboardTab = 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback';
 
@@ -57,10 +64,19 @@ interface AdminNotification {
   timeLabel: string;
 }
 
+interface RegistrationGroup {
+  eventId: string;
+  eventName: string;
+  registrations: Registration[];
+  total: number;
+  isClosed: boolean;
+  statusLabel: 'Open' | 'Closed';
+}
+
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, CreateEventComponent],
+  imports: [CommonModule, RouterLink, FormsModule, CreateEventComponent, AdminFeedbackPanelComponent, AdminEventCardComponent, AdminDashboardSidebarComponent, AdminRegistrationsPanelComponent],
   templateUrl: './admin-dashboard.html',
   styleUrls: ['./admin-dashboard.css']
 })
@@ -77,6 +93,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
   private sidebarHoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
   private knownRegistrationIds = new Set<string>();
   private notificationStorageKey = 'admin-dashboard-last-seen-registration-at';
+  private adminIdentifiers: string[] = [];
 
   constructor(
     private readonly http: HttpClient,
@@ -84,6 +101,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
     private readonly cdr: ChangeDetectorRef,
     private readonly elementRef: ElementRef<HTMLElement>,
     private readonly auth: Auth,
+    private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly feedbackService: FeedbackService
   ) {}
@@ -96,6 +114,10 @@ export class AdminDashboard implements OnInit, OnDestroy {
   }
 
   openEditModal(event: OrganizerEvent): void {
+    if (!this.isOwnedEvent(event)) {
+      this.showErrorToast('You can edit only the events created by you.');
+      return;
+    }
     this.editingEvent = {
       id: event.id,
       name: event.name,
@@ -177,11 +199,28 @@ export class AdminDashboard implements OnInit, OnDestroy {
     this.userAvatarUrl = user.profileImageUrl || null;
     const userId = user.id || user._id || this.userName || 'admin';
     this.notificationStorageKey = `admin-dashboard-last-seen-registration-at-${userId}`;
+    this.adminIdentifiers = buildAdminProfileIdentifiers({
+      userId: user.userId,
+      id: user.id || user._id,
+      email: user.email,
+      name: user.name,
+      college: user.college
+    });
 
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark' || (savedTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       this.isDarkMode = true;
     }
+
+    this.route.queryParamMap.subscribe((params) => {
+      const tab = params.get('tab') as DashboardTab | null;
+      if (tab && ['overview', 'events', 'analytics', 'registrations', 'feedback'].includes(tab)) {
+        this.activeTab = tab;
+      }
+      if (params.get('create') === 'true') {
+        this.openCreateModal();
+      }
+    });
 
     this.isLoading = true;
     forkJoin({
@@ -204,7 +243,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
         this.syncEventRegistrationStats(registrations);
         
         this.feedbacks = feedbacks;
-        this.calculateAverageRating();
         
         this.initializeNotifications(registrations);
         this.startNotificationPolling();
@@ -217,17 +255,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       }
     });
-  }
-
-  private calculateAverageRating(): void {
-    if (this.feedbacks.length === 0) {
-      this.averageRating = 0;
-      this.totalFeedbacks = 0;
-      return;
-    }
-    const totalRating = this.feedbacks.reduce((sum, feedback) => sum + feedback.rating, 0);
-    this.averageRating = Math.round((totalRating / this.feedbacks.length) * 10) / 10;
-    this.totalFeedbacks = this.feedbacks.length;
   }
 
   get averageRatingStars(): string {
@@ -332,6 +359,18 @@ export class AdminDashboard implements OnInit, OnDestroy {
   logout(): void {
     this.auth.logout();
     this.router.navigate(['/login']);
+  }
+
+  goToMyEvents(): void {
+    this.router.navigate(['/admin-my-events']);
+  }
+
+  goToRegistrationDetails(): void {
+    this.router.navigate(['/admin-registration-details']);
+  }
+
+  goToOldEvents(): void {
+    this.router.navigate(['/admin-old-events']);
   }
 
   onManageClick(event: OrganizerEvent, targetTab: DashboardTab): void {
@@ -449,7 +488,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
   }
 
   applyRegistrationFilters(): void {
-    let filtered = this.registrations;
+    let filtered = this.getOwnedRegistrations();
     if (this.registrationStatusFilter !== 'All') {
       const statusMap: { [key: string]: string } = {
         'Pending': 'PENDING',
@@ -512,7 +551,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
   }
 
   getFilteredRegistrations(): any[] {
-    let filtered = this.registrations;
+    let filtered = this.getOwnedRegistrations();
     const combinedSearch = `${this.registrationSearchQuery} ${this.dashboardSearchQuery}`.trim();
     if (combinedSearch) {
       const searchLower = combinedSearch.toLowerCase();
@@ -534,13 +573,23 @@ export class AdminDashboard implements OnInit, OnDestroy {
     }
     if (this.registrationFilter === 'all') {
       const grouped = filtered.reduce((acc, reg) => {
-        if (!acc[reg.eventName]) {
-          acc[reg.eventName] = { eventName: reg.eventName, registrations: [], total: 0 };
+        const key = reg.eventId || reg.eventName;
+        if (!acc[key]) {
+          const matchedEvent = this.findEventForRegistration(reg);
+          const isClosed = matchedEvent ? this.isEventClosed(matchedEvent) : false;
+          acc[key] = {
+            eventId: reg.eventId,
+            eventName: reg.eventName,
+            registrations: [],
+            total: 0,
+            isClosed,
+            statusLabel: isClosed ? 'Closed' : 'Open'
+          };
         }
-        acc[reg.eventName].registrations.push(reg);
-        acc[reg.eventName].total++;
+        acc[key].registrations.push(reg);
+        acc[key].total++;
         return acc;
-      }, {} as { [key: string]: { eventName: string; registrations: Registration[]; total: number } });
+      }, {} as { [key: string]: RegistrationGroup });
       return Object.values(grouped);
     }
     return filtered;
@@ -651,15 +700,15 @@ export class AdminDashboard implements OnInit, OnDestroy {
   }
 
   getPendingCount(): number {
-    return this.registrations.filter((r) => r.status === 'PENDING').length;
+    return this.getOwnedRegistrations().filter((r) => r.status === 'PENDING').length;
   }
 
   getApprovedCount(): number {
-    return this.registrations.filter((r) => r.status === 'APPROVED').length;
+    return this.getOwnedRegistrations().filter((r) => r.status === 'APPROVED').length;
   }
 
   getRejectedCount(): number {
-    return this.registrations.filter((r) => r.status === 'REJECTED').length;
+    return this.getOwnedRegistrations().filter((r) => r.status === 'REJECTED').length;
   }
 
   trackByRegistrationId(_index: number, reg: Registration): string {
@@ -685,6 +734,10 @@ export class AdminDashboard implements OnInit, OnDestroy {
   }
 
   deleteEvent(event: OrganizerEvent): void {
+    if (!this.isOwnedEvent(event)) {
+      this.showErrorToast('You can delete only the events created by you.');
+      return;
+    }
     const ok = window.confirm(`Delete "${event.name}"? This can't be undone.`);
     if (!ok) return;
     this.http.delete<void>(`${this.API_URL}/${event.id}`).subscribe({
@@ -733,7 +786,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
 
   formatDateTime(value: string): string {
     if (!value) return '';
-    const date = this.parseLocalDay(value);
+    const date = parseEventLocalDay(value);
     if (!date) return value;
     return date.toLocaleDateString(undefined, {
       year: 'numeric',
@@ -750,22 +803,47 @@ export class AdminDashboard implements OnInit, OnDestroy {
     return 1245;
   }
 
+  get dashboardStats(): Array<{ title: string; count: number; icon: string; accent: 'violet' | 'gold' | 'emerald' }> {
+    return [
+      { title: 'Total Events', count: this.totalEvents, icon: 'event', accent: 'violet' },
+      { title: 'Active Events', count: this.activeEvents, icon: 'verified', accent: 'gold' },
+      { title: 'Registrations', count: this.totalRegistrations, icon: 'groups', accent: 'emerald' }
+    ];
+  }
+
+  get adminEventCards(): StudentEventCard[] {
+    return this.getActiveOwnedFilteredEvents().map((event) => this.mapEventCard(event));
+  }
+
+  get recentAdminEventCards(): StudentEventCard[] {
+    return this.getActiveOwnedEvents().slice(0, 3).map((event) => this.mapEventCard(event));
+  }
+
+  get groupedRegistrationsForView(): RegistrationGroup[] {
+    return this.getFilteredRegistrations();
+  }
+
+  get flatRegistrationsForView(): Registration[] {
+    return [];
+  }
+
   get totalEvents(): number {
-    return this.events.length;
+    return this.getOwnedEvents().length;
   }
 
   get activeEvents(): number {
-    return this.events.filter((e) => e.status === 'Active').length;
+    return this.getOwnedEvents().filter((e) => !this.isEventClosed(e)).length;
   }
 
   get totalRegistrations(): number {
-    return this.events.reduce((sum, e) => sum + e.registrations, 0);
+    return this.getOwnedEvents().reduce((sum, e) => sum + e.registrations, 0);
   }
 
   get averageParticipants(): number {
-    if (this.events.length === 0) return 0;
-    const total = this.events.reduce((sum, e) => sum + e.participants, 0);
-    return Math.round(total / this.events.length);
+    const ownedEvents = this.getOwnedEvents();
+    if (ownedEvents.length === 0) return 0;
+    const total = ownedEvents.reduce((sum, e) => sum + e.participants, 0);
+    return Math.round(total / ownedEvents.length);
   }
 
   getPendingApprovals(): number {
@@ -792,41 +870,95 @@ export class AdminDashboard implements OnInit, OnDestroy {
   }
 
   private refreshEventStatuses(): void {
-    const today = this.startOfToday();
     this.events = this.events.map((event) => {
       if (event.status === 'Draft') return event;
-      const day = this.parseLocalDay(event.dateTime);
-      if (!day) return event;
-      const nextStatus: OrganizerEvent['status'] = day.getTime() < today.getTime() ? 'Past' : 'Active';
+      const nextStatus: OrganizerEvent['status'] = this.isEventClosed(event) ? 'Past' : 'Active';
       if (event.status === nextStatus) return event;
       return { ...event, status: nextStatus };
     });
   }
 
-  private isPastEventDate(value: string): boolean {
-    const day = this.parseLocalDay(value);
-    if (!day) return false;
-    return day.getTime() < this.startOfToday().getTime();
+  private getOwnedEvents(): OrganizerEvent[] {
+    return this.events
+      .filter((event) => this.isOwnedEvent(event))
+      .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
   }
 
-  private startOfToday(): Date {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return today;
+  private getActiveOwnedEvents(): OrganizerEvent[] {
+    return this.getOwnedEvents().filter((event) => !this.isEventClosed(event));
   }
 
-  private parseLocalDay(value: string): Date | null {
-    const trimmed = value.trim();
-    const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
-    if (dateOnlyMatch) {
-      const year = Number(dateOnlyMatch[1]);
-      const monthIndex = Number(dateOnlyMatch[2]) - 1;
-      const day = Number(dateOnlyMatch[3]);
-      const local = new Date(year, monthIndex, day);
-      return Number.isNaN(local.getTime()) ? null : local;
-    }
-    const parsed = new Date(trimmed);
-    if (Number.isNaN(parsed.getTime())) return null;
-    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  private getOwnedRegistrations(): Registration[] {
+    const ownedEventIds = new Set(this.getOwnedEvents().map((event) => event.id));
+    return this.registrations.filter((registration) => ownedEventIds.has(registration.eventId));
+  }
+
+  getOwnedFilteredEvents(): OrganizerEvent[] {
+    return this.getFilteredEvents().filter((event) => this.isOwnedEvent(event));
+  }
+
+  getActiveOwnedFilteredEvents(): OrganizerEvent[] {
+    return this.getOwnedFilteredEvents().filter((event) => !this.isEventClosed(event));
+  }
+
+  private isOwnedEvent(event: OrganizerEvent): boolean {
+    const candidates = [
+      (event as OrganizerEvent & Record<string, unknown>)['createdById'],
+      (event as OrganizerEvent & Record<string, unknown>)['ownerId'],
+      (event as OrganizerEvent & Record<string, unknown>)['adminId'],
+      (event as OrganizerEvent & Record<string, unknown>)['userId'],
+      (event as OrganizerEvent & Record<string, unknown>)['createdBy'],
+      (event as OrganizerEvent & Record<string, unknown>)['email'],
+      (event as OrganizerEvent & Record<string, unknown>)['organizer'],
+      (event as OrganizerEvent & Record<string, unknown>)['collegeName']
+    ]
+      .filter(Boolean)
+      .map((value) => String(value).toLowerCase());
+    return candidates.some((value) => this.adminIdentifiers.includes(value));
+  }
+
+  private mapEventCard(event: OrganizerEvent): StudentEventCard {
+    const resolvedDateValue = resolveEventDateCandidate(event as OrganizerEvent & Record<string, unknown>);
+    const date = parseEventLocalDay(resolvedDateValue);
+    const deadlineDate = event.registrationDeadline ? new Date(event.registrationDeadline) : null;
+    const status: StudentEventCard['status'] = this.isEventClosed(event) ? 'Closed' : 'Open';
+    const fallbackId = (event as OrganizerEvent & Record<string, unknown>)['_id'];
+    return {
+      id: String(event.id || fallbackId || ''),
+      title: event.name,
+      description: event.description || 'Manage this event and review registrations from one place.',
+      category: event.category || 'Campus Event',
+      location: event.location || 'Campus Venue',
+      dateTime: resolvedDateValue || event.dateTime,
+      registrationDeadline: event.registrationDeadline ?? null,
+      registrationDeadlineLabel: deadlineDate && !Number.isNaN(deadlineDate.getTime())
+        ? deadlineDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : 'Not specified',
+      dateLabel: date && !Number.isNaN(date.getTime())
+        ? date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : event.dateTime,
+      timeLabel: date && !Number.isNaN(date.getTime())
+        ? date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+        : 'Time TBA',
+      imageUrl: event.posterDataUrl || null,
+      organizer: event.organizer || 'Campus Event Hub',
+      contact: event.contact || 'Contact admin',
+      status,
+      registrations: event.registrations || 0,
+      maxAttendees: event.maxAttendees || event.participants || 100,
+      collegeName: event.collegeName || 'Campus Event Hub',
+      endDate: event.endDate ?? null
+    };
+  }
+
+  private findEventForRegistration(registration: Registration): OrganizerEvent | undefined {
+    return this.events.find((event) =>
+      event.id === registration.eventId ||
+      event.name.toLowerCase() === registration.eventName.toLowerCase()
+    );
+  }
+
+  private isEventClosed(event: Pick<OrganizerEvent, 'status' | 'dateTime' | 'endDate'>): boolean {
+    return isEventClosedByDate(event as Pick<OrganizerEvent, 'status' | 'dateTime' | 'endDate'> & Record<string, unknown>);
   }
 }

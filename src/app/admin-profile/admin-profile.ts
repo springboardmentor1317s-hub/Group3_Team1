@@ -3,6 +3,7 @@ import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { buildAdminProfileIdentifiers, filterEventsOwnedByAdmin } from '../shared/admin-owned-events.util';
 
 @Component({
   selector: 'app-admin-profile',
@@ -151,24 +152,7 @@ export class AdminProfile implements OnInit {
   }
 
   private filterEventsForCurrentAdmin(events: any[]): any[] {
-    const identifiers = this.profileIdentifiers;
-    if (!identifiers || identifiers.length === 0) return events;
-
-    return events.filter((event) => {
-      const candidates = [
-        event?.createdBy,
-        event?.createdById,
-        event?.ownerId,
-        event?.adminId,
-        event?.userId,
-        event?.email,
-        event?.organizer
-      ]
-        .filter(Boolean)
-        .map((v: string) => String(v).toLowerCase());
-
-      return candidates.some((value: string) => identifiers.includes(value));
-    });
+    return filterEventsOwnedByAdmin(events, this.profileIdentifiers);
   }
 
   private buildProfileIdentifiers(source?: any): string[] {
@@ -178,15 +162,7 @@ export class AdminProfile implements OnInit {
       id: (source as any)?.id,
       userId: (source as any)?.userId
     };
-
-    return [
-      base?.userId,
-      base?.id,
-      base?.email,
-      base?.name
-    ]
-      .filter(Boolean)
-      .map((v: string) => String(v).toLowerCase());
+    return buildAdminProfileIdentifiers(base);
   }
 
   private applyProfile(profile: any): void {

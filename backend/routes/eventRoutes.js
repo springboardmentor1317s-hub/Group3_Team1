@@ -33,6 +33,12 @@ function toClient(eventDoc, options = {}) {
     registrations: registrationsCount,
     maxAttendees: obj.maxAttendees || 100,
     collegeName: obj.collegeName,
+    createdBy: obj.createdBy || "",
+    createdById: obj.createdById || "",
+    ownerId: obj.ownerId || "",
+    adminId: obj.adminId || "",
+    userId: obj.userId || "",
+    email: obj.email || "",
     attendeeIds,
     registered: isRegistered
   };
@@ -130,6 +136,12 @@ router.post("/", async (req, res) => {
       registrations: Number(req.body?.registrations ?? 0) || 0,
       participants: Number(req.body?.participants ?? 0) || 0,
       collegeName: String(req.body?.collegeName ?? "").trim(),
+      createdBy: String(req.body?.createdBy ?? "").trim(),
+      createdById: String(req.body?.createdById ?? "").trim(),
+      ownerId: String(req.body?.ownerId ?? "").trim(),
+      adminId: String(req.body?.adminId ?? "").trim(),
+      userId: String(req.body?.userId ?? "").trim(),
+      email: String(req.body?.email ?? "").trim(),
       teamSize: teamSizeValue === "" || teamSizeValue === null || teamSizeValue === undefined
         ? null
         : Number(teamSizeValue),
@@ -215,7 +227,13 @@ async function updateEvent(req, res) {
       "status",
       "teamSize",
       "collegeName",
-      "maxAttendees"
+      "maxAttendees",
+      "createdBy",
+      "createdById",
+      "ownerId",
+      "adminId",
+      "userId",
+      "email"
     ];
 
     const updates = {};

@@ -1,0 +1,62 @@
+<div class="student-shell admin-events-shell">
+  <header class="luxury-header">
+    <div class="header-inner">
+      <button class="brand-block" type="button" (click)="goToDashboard()">
+        <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub" />
+        <div class="brand-copy">
+          <span class="brand-name">
+            <span class="brand-campus">Campus</span>
+            <span class="brand-eventhub">Event Hub</span>
+          </span>
+          <span class="brand-role">College Admin Dashboard</span>
+        </div>
+      </button>
+
+      <nav class="header-nav">
+        <button class="nav-link" type="button" (click)="goToDashboard()">Dashboard</button>
+        <button class="nav-link active" type="button">My Events</button>
+        <button class="nav-link" type="button" (click)="handleTabChange('events')">Manage Events</button>
+        <button class="nav-link" type="button" (click)="handleTabChange('registrations')">Registrations</button>
+      </nav>
+
+      <div class="header-actions">
+        <button type="button" class="back-btn ghost" (click)="goToOldEvents()">Old Events</button>
+        <a class="back-btn" routerLink="/admin-dashboard">Back To Dashboard</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="dashboard-layout">
+    <app-admin-dashboard-sidebar
+      [activeTab]="'events'"
+      (tabChange)="handleTabChange($event)"
+      (createEvent)="openCreateEvent()"
+    ></app-admin-dashboard-sidebar>
+
+    <main class="page-main">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">Admin Events</p>
+          <h1>{{ userName }}'s Events</h1>
+          <p class="muted">Yahan aapke create kiye hue events dikh rahe hain.</p>
+        </div>
+      </header>
+
+      <p *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</p>
+      <section *ngIf="loading" class="state-card">Loading your events...</section>
+
+      <section class="events-grid" *ngIf="!loading && eventCards.length > 0">
+        <div class="event-card-stack" *ngFor="let event of eventCards; trackBy: trackByEventId">
+          <app-admin-event-card
+            [event]="event"
+            [detailsRouteBase]="'/admin-my-events'"
+          ></app-admin-event-card>
+        </div>
+      </section>
+
+      <section class="state-card" *ngIf="!loading && eventCards.length === 0">
+        Aapke create kiye hue events abhi available nahi hain.
+      </section>
+    </main>
+  </div>
+</div>
