@@ -35,6 +35,26 @@ export const routes: Routes = [
     component: AdminProfile,
     canActivate: [roleGuard('college_admin')]
   },
+  {
+    path: 'admin-my-events',
+    loadComponent: () => import('./admin-my-events/admin-my-events.component').then(m => m.AdminMyEventsComponent),
+    canActivate: [roleGuard('college_admin')]
+  },
+  {
+    path: 'admin-my-events/:id',
+    loadComponent: () => import('./admin-event-comments/admin-event-comments.component').then(m => m.AdminEventCommentsComponent),
+    canActivate: [roleGuard('college_admin')]
+  },
+  {
+    path: 'admin-registration-details',
+    loadComponent: () => import('./admin-registration-details/admin-registration-details.component').then(m => m.AdminRegistrationDetailsComponent),
+    canActivate: [roleGuard('college_admin')]
+  },
+  {
+    path: 'admin-old-events',
+    loadComponent: () => import('./admin-old-events/admin-old-events.component').then(m => m.AdminOldEventsComponent),
+    canActivate: [roleGuard('college_admin')]
+  },
 
   {
     path: 'super-admin-dashboard',

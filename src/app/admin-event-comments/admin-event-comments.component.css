@@ -1,0 +1,237 @@
+.admin-comments-shell {
+  min-height: 100vh;
+  padding: 112px 1rem 1rem;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(250, 204, 21, 0.16), transparent 24%),
+    radial-gradient(circle at 88% 6%, rgba(56, 189, 248, 0.18), transparent 26%),
+    linear-gradient(180deg, #f7f3ea 0%, #f7fbff 40%, #edf3ff 100%);
+}
+
+.page-header,
+.header-actions,
+.comments-head,
+.comment-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.page-header {
+  margin-bottom: 1rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.4rem;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.page-header h1 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.muted {
+  margin: 0;
+  color: #64748b;
+}
+
+.ghost-btn {
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-radius: 14px;
+  padding: 0.68rem 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: #132238;
+  text-decoration: none;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.hero-card {
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  min-height: 260px;
+  background-size: cover;
+  background-position: center;
+  margin-bottom: 1rem;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(2, 6, 23, 0.25), rgba(2, 6, 23, 0.82));
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  color: #fff;
+  padding: 1.25rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.hero-content h2 {
+  margin: 0;
+  font-size: clamp(1.5rem, 2.8vw, 2.2rem);
+}
+
+.hero-content p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.status-pill {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.38rem 0.72rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #0ea5e9, #2563eb);
+}
+
+.status-pill.closed {
+  background: linear-gradient(135deg, #334155, #1e293b);
+}
+
+.hero-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.hero-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: #e2e8f0;
+}
+
+.detail-card,
+.comments-card,
+.state-card,
+.error-banner {
+  border-radius: 20px;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.08);
+}
+
+.error-banner {
+  color: #b91c1c;
+  margin-bottom: 0.85rem;
+  font-weight: 700;
+}
+
+.detail-card {
+  margin-bottom: 1rem;
+}
+
+.detail-card h3,
+.comments-card h3 {
+  margin: 0 0 0.55rem;
+  color: #0f172a;
+}
+
+.description {
+  margin: 0 0 0.75rem;
+  color: #334155;
+  line-height: 1.6;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.detail-grid div {
+  display: grid;
+  gap: 0.2rem;
+  border-radius: 12px;
+  padding: 0.62rem 0.72rem;
+  background: linear-gradient(135deg, rgba(241, 245, 249, 0.92), rgba(226, 232, 240, 0.76));
+}
+
+.detail-grid strong {
+  color: #334155;
+}
+
+.detail-grid span {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.comments-list,
+.reply-list {
+  display: grid;
+  gap: 0.72rem;
+}
+
+.comment-item,
+.reply-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.65rem;
+  align-items: start;
+  padding: 0.75rem;
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.94);
+}
+
+.avatar-img,
+.reply-avatar-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.reply-avatar-img {
+  width: 32px;
+  height: 32px;
+}
+
+.comment-body,
+.reply-body {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.comment-body p,
+.reply-body p {
+  margin: 0;
+  color: #334155;
+}
+
+.state-card {
+  min-height: 140px;
+  display: grid;
+  place-items: center;
+  color: #475569;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .admin-comments-shell {
+    padding: 104px 0.75rem 0.75rem;
+  }
+
+  .page-header,
+  .header-actions,
+  .hero-meta,
+  .detail-grid {
+    display: grid;
+  }
+}

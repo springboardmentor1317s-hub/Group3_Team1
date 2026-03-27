@@ -145,6 +145,20 @@ export class CreateEventComponent implements OnInit {
       participants: this.editingEvent?.participants ?? 0
     };
 
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    const creatorId = currentUser?.userId || currentUser?.id || currentUser?._id || '';
+    const creatorName = currentUser?.name || '';
+    const creatorEmail = currentUser?.email || '';
+    const creatorCollege = currentUser?.college || '';
+
+    payload.collegeName = payload.collegeName || creatorCollege;
+    payload.createdBy = creatorName;
+    payload.createdById = creatorId;
+    payload.ownerId = creatorId;
+    payload.adminId = creatorId;
+    payload.userId = creatorId;
+    payload.email = creatorEmail;
+
     this.isSavingEvent = true;
     
     const request = this.isEditMode && this.editingEvent 

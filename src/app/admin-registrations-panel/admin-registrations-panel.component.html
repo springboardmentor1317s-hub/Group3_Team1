@@ -1,0 +1,99 @@
+<section class="panel registrations-panel">
+  <div class="panel-head">
+    <div>
+      <p class="section-kicker">Registrations Hub</p>
+      <h2>Registrations</h2>
+    </div>
+    <div class="card-actions">
+      <input
+        class="search-input"
+        type="text"
+        placeholder="Search registrations..."
+        [ngModel]="searchQuery"
+        (ngModelChange)="searchQueryChange.emit($event)"
+      />
+      <button class="ghost-btn" type="button" (click)="back.emit()">Back</button>
+    </div>
+  </div>
+
+  <div class="registrations-table" *ngIf="(registrationFilter === 'all' ? groupedRegistrations.length : flatRegistrations.length) > 0; else noRegistrations">
+    <ng-container *ngIf="registrationFilter === 'all'; else flatList">
+      <div class="reg-group" *ngFor="let group of groupedRegistrations">
+        <div class="group-header">
+          <div class="group-copy">
+            <h4>{{ group.eventName }}</h4>
+            <div class="group-meta">
+              <p>Event-wise registration overview</p>
+              <span class="event-state" [class.closed]="group.isClosed">
+                {{ group.isClosed ? 'Event Closed' : 'Event Open' }}
+              </span>
+            </div>
+          </div>
+          <div class="group-total-card">
+            <span>Total Students</span>
+            <strong>{{ group.total }}</strong>
+          </div>
+        </div>
+        <div class="reg-list-group">
+          <div class="reg-item" *ngFor="let reg of group.registrations">
+            <div class="avatar small">{{ reg.studentName.charAt(0) }}</div>
+            <div class="reg-copy">
+              <div class="student-headline">
+                <h5>{{ reg.studentName }}</h5>
+                <span
+                  class="status-badge"
+                  [class.approved]="reg.status === 'APPROVED'"
+                  [class.pending-status]="reg.status === 'PENDING'"
+                  [class.rejected-status]="reg.status === 'REJECTED'"
+                >
+                  {{ reg.status }}
+                </span>
+              </div>
+              <div class="student-meta">
+                <span><strong>College:</strong> {{ reg.college }}</span>
+                <span><strong>Email:</strong> {{ reg.email }}</span>
+                <span><strong>Student ID:</strong> {{ reg.studentId }}</span>
+              </div>
+            </div>
+            <div class="row-actions">
+              <button class="pill-btn approve-btn" (click)="approve.emit(reg)" *ngIf="reg.status === 'PENDING'">Approve</button>
+              <button class="pill-btn reject-btn" (click)="reject.emit(reg)" *ngIf="reg.status === 'PENDING'">Reject</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <ng-template #flatList>
+      <div class="reg-item" *ngFor="let reg of flatRegistrations">
+        <div class="avatar small">{{ reg.studentName.charAt(0) }}</div>
+        <div class="reg-copy">
+          <div class="student-headline">
+            <h4>{{ reg.studentName }}</h4>
+            <span
+              class="status-badge"
+              [class.approved]="reg.status === 'APPROVED'"
+              [class.pending-status]="reg.status === 'PENDING'"
+              [class.rejected-status]="reg.status === 'REJECTED'"
+            >
+              {{ reg.status }}
+            </span>
+          </div>
+          <div class="student-meta">
+            <span><strong>Event:</strong> {{ reg.eventName }}</span>
+            <span><strong>College:</strong> {{ reg.college }}</span>
+            <span><strong>Email:</strong> {{ reg.email }}</span>
+          </div>
+        </div>
+      </div>
+    </ng-template>
+  </div>
+
+  <ng-template #noRegistrations>
+    <div class="empty-state compact">
+      <span class="material-icons">groups</span>
+      <h3>No registrations found</h3>
+      <p>Try another search or status filter.</p>
+    </div>
+  </ng-template>
+</section>

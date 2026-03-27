@@ -1,0 +1,19 @@
+<aside class="admin-sidebar">
+  <div class="sidebar-brand">
+    <img class="sidebar-logo" src="/icon2.png" alt="Campus Event Hub" />
+    <div class="sidebar-copy">
+      <strong>Campus Event Hub</strong>
+      <span>College Admin Dashboard</span>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav">
+    <button type="button" class="sidebar-link" [class.active]="activeTab === 'overview'" (click)="setTab('overview')">Dashboard</button>
+    <button type="button" class="sidebar-link" [class.active]="activeTab === 'events'" (click)="setTab('events')">Manage Events</button>
+    <button type="button" class="sidebar-link" [class.active]="activeTab === 'registrations'" (click)="setTab('registrations')">Registrations</button>
+    <button type="button" class="sidebar-link" [class.active]="activeTab === 'feedback'" (click)="setTab('feedback')">Feedback</button>
+    <button type="button" class="sidebar-link" [class.active]="activeTab === 'analytics'" (click)="setTab('analytics')">Analytics</button>
+    <button type="button" class="sidebar-link" (click)="myEvents.emit()">My Events</button>
+    <button type="button" class="sidebar-link accent" (click)="createEvent.emit()">Create Event</button>
+  </nav>
+</aside>

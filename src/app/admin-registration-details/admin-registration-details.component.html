@@ -1,0 +1,85 @@
+<div class="student-shell admin-registration-shell">
+  <header class="luxury-header">
+    <div class="header-inner">
+      <button class="brand-block" type="button" (click)="goToDashboard()">
+        <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub" />
+        <div class="brand-copy">
+          <span class="brand-name">
+            <span class="brand-campus">Campus</span>
+            <span class="brand-eventhub">Event Hub</span>
+          </span>
+          <span class="brand-role">College Admin Dashboard</span>
+        </div>
+      </button>
+
+      <div class="header-actions">
+        <button type="button" class="back-btn ghost" (click)="goToSummary()">Registration Summary</button>
+        <a class="back-btn" routerLink="/admin-dashboard">Back To Dashboard</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="dashboard-layout">
+    <app-admin-dashboard-sidebar
+      [activeTab]="'registrations'"
+      (tabChange)="handleTabChange($event)"
+      (createEvent)="openCreateEvent()"
+      (myEvents)="goToMyEvents()"
+    ></app-admin-dashboard-sidebar>
+
+    <main class="page-main">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">Registration Details</p>
+          <h1>Event-wise Student Registrations</h1>
+          <p class="muted">Yahan har event ke registered students ki full details dikh rahi hain.</p>
+        </div>
+
+        <input
+          class="search-input"
+          type="text"
+          [(ngModel)]="searchQuery"
+          placeholder="Search event or student..."
+        />
+      </header>
+
+      <p *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</p>
+      <section *ngIf="loading" class="state-card">Loading registration details...</section>
+
+      <section class="group-list" *ngIf="!loading && filteredGroups.length > 0">
+        <article class="group-card" *ngFor="let group of filteredGroups; trackBy: trackByGroup">
+          <div class="group-head">
+            <div>
+              <h2>{{ group.eventName }}</h2>
+              <p>{{ group.total }} students registered</p>
+            </div>
+            <span class="status-pill" [class.closed]="group.statusLabel === 'Closed'">{{ group.statusLabel }}</span>
+          </div>
+
+          <div class="empty-inline" *ngIf="group.registrations.length === 0">
+            Is event me abhi registrations nahi hain.
+          </div>
+
+          <div class="student-list" *ngIf="group.registrations.length > 0">
+            <article class="student-card" *ngFor="let registration of group.registrations; trackBy: trackByRegistration">
+              <div>
+                <h3>{{ registration.studentName }}</h3>
+                <p>{{ registration.college }}</p>
+              </div>
+              <div class="student-meta">
+                <span><strong>ID:</strong> {{ registration.studentId }}</span>
+                <span><strong>Email:</strong> {{ registration.email }}</span>
+                <span><strong>Status:</strong> {{ registration.status }}</span>
+                <span><strong>Submitted:</strong> {{ formatTime(registration.createdAt) }}</span>
+              </div>
+            </article>
+          </div>
+        </article>
+      </section>
+
+      <section class="state-card" *ngIf="!loading && filteredGroups.length === 0">
+        Aapke events ke registration details abhi available nahi hain.
+      </section>
+    </main>
+  </div>
+</div>

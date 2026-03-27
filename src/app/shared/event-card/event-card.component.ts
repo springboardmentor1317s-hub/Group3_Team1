@@ -16,6 +16,7 @@ export class EventCardComponent {
   @Input() registerLabel = 'Register';
   @Input() registerDisabled = false;
   @Input() showRegisterButton = true;
+  @Input() detailsRouteBase = '/student-event';
   @Input() showRatingSummary = false;
   @Input() ratingAverage: number | null = null;
   @Input() ratingCount = 0;
@@ -101,7 +102,7 @@ export class EventCardComponent {
 
   openDetails(): void {
     if (!this.event?.id) return;
-    this.router.navigate(['/student-event', this.event.id]);
+    this.router.navigate([this.detailsRouteBase, this.event.id]);
   }
 
   onRegisterClick(): void {
@@ -116,23 +117,50 @@ export class EventCardComponent {
       return true;
     }
 
-    const parseDate = (value?: string | null): number => {
-      if (!value) return Number.NaN;
+    const parseLocalDay = (value?: string | null): Date | null => {
+      if (!value) return null;
       const trimmed = String(value).trim();
-      if (!trimmed) return Number.NaN;
-      const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(trimmed);
-      const parsed = new Date(isDateOnly ? `${trimmed}T23:59:59.999` : trimmed).getTime();
-      return Number.isNaN(parsed) ? Number.NaN : parsed;
+      if (!trimmed) return null;
+
+      const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+      if (dateOnlyMatch) {
+        const local = new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]));
+        return Number.isNaN(local.getTime()) ? null : local;
+      }
+
+      const dayFirstMatch = /^(\d{2})[\/-](\d{2})[\/-](\d{4})$/.exec(trimmed);
+      if (dayFirstMatch) {
+        const local = new Date(Number(dayFirstMatch[3]), Number(dayFirstMatch[2]) - 1, Number(dayFirstMatch[1]));
+        return Number.isNaN(local.getTime()) ? null : local;
+      }
+
+      const parsed = new Date(trimmed);
+      if (Number.isNaN(parsed.getTime())) return null;
+      return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
     };
 
-    const endTimestamp = parseDate(this.event?.endDate ?? null);
-    if (!Number.isNaN(endTimestamp)) {
-      return endTimestamp < Date.now();
-    }
+    const rawEvent = this.event as StudentEventCard & Record<string, unknown>;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    const startTimestamp = parseDate(this.event?.dateTime ?? null);
-    if (!Number.isNaN(startTimestamp)) {
-      return startTimestamp < Date.now();
+    const candidates = [
+      this.event?.endDate ?? null,
+      (typeof rawEvent['dateLabel'] === 'string' ? String(rawEvent['dateLabel']) : ''),
+      this.event?.dateTime ?? null,
+      (typeof rawEvent['date'] === 'string' ? String(rawEvent['date']) : ''),
+      (typeof rawEvent['eventDate'] === 'string' ? String(rawEvent['eventDate']) : ''),
+      (typeof rawEvent['event_date'] === 'string' ? String(rawEvent['event_date']) : ''),
+      (typeof rawEvent['eventDateTime'] === 'string' ? String(rawEvent['eventDateTime']) : ''),
+      (typeof rawEvent['event_date_time'] === 'string' ? String(rawEvent['event_date_time']) : ''),
+      (typeof rawEvent['startDate'] === 'string' ? String(rawEvent['startDate']) : ''),
+      (typeof rawEvent['start_date'] === 'string' ? String(rawEvent['start_date']) : '')
+    ];
+
+    for (const candidate of candidates) {
+      const day = parseLocalDay(candidate);
+      if (day) {
+        return day.getTime() < today.getTime();
+      }
     }
 
     return false;
