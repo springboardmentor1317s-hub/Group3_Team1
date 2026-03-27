@@ -27,8 +27,6 @@
   flex-direction: column;
   overflow-x: hidden;
   overflow-y: auto;
-  perspective: 1400px;
-  transform-style: preserve-3d;
   background:
     radial-gradient(circle at 10% 14%, rgba(76, 104, 244, 0.2), transparent 32%),
     radial-gradient(circle at 87% 18%, rgba(132, 80, 226, 0.24), transparent 36%),
@@ -267,6 +265,7 @@ select {
   justify-content: center;
   align-items: center;
   padding: 130px 20px 44px;
+  perspective: 1400px;
   transform-style: preserve-3d;
 }
 
@@ -422,6 +421,45 @@ h1 {
   border: 1px solid rgba(236, 174, 174, 0.86);
 }
 
+.popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(18, 31, 60, 0.38);
+  backdrop-filter: blur(8px);
+}
+
+.popup-card {
+  width: min(420px, 100%);
+  padding: 24px 22px 20px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 246, 255, 0.96));
+  box-shadow: 0 24px 50px rgba(18, 31, 60, 0.2);
+  border: 1px solid rgba(121, 138, 212, 0.22);
+  text-align: center;
+}
+
+.popup-card h3 {
+  margin: 0;
+  color: #1a2f5c;
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+  font-size: 1.2rem;
+}
+
+.popup-card p {
+  margin: 12px 0 18px;
+  color: #435378;
+  line-height: 1.6;
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+}
+
+.popup-btn {
+  min-width: 120px;
+}
+
 .signup-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -432,6 +470,46 @@ h1 {
 .field {
   min-width: 0;
   animation: fieldFadeUp 0.55s ease both;
+}
+
+.password-box {
+  position: relative;
+  display: block;
+  isolation: isolate;
+}
+
+.password-box input {
+  position: relative;
+  z-index: 1;
+  padding-right: 80px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.96);
+  color: #4254da;
+  font-size: 1rem;
+  box-shadow: 0 6px 16px rgba(66, 84, 218, 0.16);
+  cursor: pointer;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.password-toggle:hover {
+  transform: translateY(-50%);
+  box-shadow: 0 8px 18px rgba(66, 84, 218, 0.22);
+}
+
+.password-toggle i {
+  pointer-events: none;
 }
 
 .field:nth-child(1) { animation-delay: 0.08s; }
@@ -937,4 +1015,450 @@ h3 {
   button {
     min-height: 44px;
   }
+}
+
+/* Homepage header theme alignment */
+.auth-header {
+  padding-top: 0;
+  backdrop-filter: blur(26px) saturate(170%);
+  background: linear-gradient(180deg, rgba(249, 251, 255, 0.975), rgba(220, 230, 250, 0.92));
+  border-bottom: 1px solid rgba(74, 92, 156, 0.18);
+}
+
+.auth-header::before {
+  inset: 8px 10px 10px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 14% 20%, rgba(255, 239, 205, 0.76), rgba(255, 239, 205, 0.14) 24%, transparent 46%),
+    radial-gradient(circle at 82% 24%, rgba(255, 255, 255, 0.34), transparent 30%),
+    linear-gradient(135deg, rgba(239, 244, 255, 0.97), rgba(212, 223, 249, 0.93) 44%, rgba(184, 200, 237, 0.88) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 0 rgba(146, 165, 223, 0.42),
+    inset 18px 0 44px rgba(255, 230, 188, 0.12),
+    0 20px 38px rgba(72, 91, 162, 0.18);
+  animation: none;
+}
+
+.auth-header::after {
+  height: 3px;
+  background: linear-gradient(90deg, rgba(90, 103, 246, 0), rgba(84, 108, 255, 0.82), rgba(214, 132, 192, 0.72), rgba(244, 192, 112, 0.74), rgba(90, 103, 246, 0));
+}
+
+.header-row {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  min-height: 86px;
+  margin: 0;
+  padding: 16px 14px 14px;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.brand-block {
+  gap: 14px;
+  justify-self: start;
+  padding: 10px 18px 10px 10px;
+  position: relative;
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, rgba(255, 252, 245, 0.88), rgba(230, 237, 255, 0.72) 56%, rgba(216, 227, 252, 0.58) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.68);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 14px 28px rgba(24, 38, 74, 0.12);
+}
+
+.brand-block::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 23px;
+  background:
+    radial-gradient(circle at 14% 24%, rgba(255, 223, 168, 0.22), transparent 32%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.08));
+  pointer-events: none;
+}
+
+.brand-block::after {
+  content: "";
+  width: 1px;
+  height: 50px;
+  background: linear-gradient(180deg, rgba(102, 124, 195, 0), rgba(102, 124, 195, 0.86), rgba(223, 173, 89, 0.42), rgba(102, 124, 195, 0));
+}
+
+.brand-logo {
+  width: 64px;
+  height: 64px;
+  padding: 4px;
+  border-radius: 21px;
+  background:
+    radial-gradient(circle at 24% 18%, rgba(255, 255, 255, 0.99), rgba(255, 244, 216, 0.94) 22%, rgba(210, 223, 252, 0.99) 100%);
+  border: 1px solid rgba(252, 246, 232, 0.9);
+  box-shadow:
+    0 22px 36px rgba(18, 31, 63, 0.24),
+    0 0 0 7px rgba(239, 242, 255, 0.68),
+    0 0 26px rgba(221, 176, 93, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.97);
+  filter:
+    drop-shadow(0 4px 8px rgba(14, 24, 52, 0.12))
+    contrast(1.08)
+    saturate(1.08);
+}
+
+.brand-copy {
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.brand-name {
+  gap: 0.32rem;
+  letter-spacing: -0.06em;
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: 1.9rem;
+  font-weight: 800;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.34),
+    0 10px 20px rgba(26, 40, 86, 0.14);
+}
+
+.brand-campus,
+.brand-eventhub {
+  color: transparent;
+  background: linear-gradient(135deg, #06132e 0%, #12275b 26%, #263d7b 54%, #6f4b1d 78%, #cf9443 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.brand-tag {
+  color: #6c7b9e;
+}
+
+.nav-actions {
+  align-items: center;
+  justify-self: end;
+  padding: 4px;
+  background: linear-gradient(180deg, rgba(245, 248, 255, 0.76), rgba(220, 229, 248, 0.52));
+  border: 1px solid rgba(151, 170, 223, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 14px 30px rgba(27, 42, 90, 0.13);
+}
+
+.header-btn {
+  padding: 11px 20px;
+}
+
+.header-btn-secondary {
+  color: #18327d;
+  background: linear-gradient(180deg, rgba(251, 252, 255, 0.98), rgba(228, 236, 252, 0.98));
+  border: 1px solid rgba(100, 120, 194, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 12px 22px rgba(16, 32, 60, 0.12);
+}
+
+.header-btn-primary {
+  background: linear-gradient(135deg, #1b2f7d 0%, #4a60ee 34%, #8660f4 66%, #e3a05b 100%);
+  box-shadow: 0 20px 36px rgba(72, 84, 196, 0.36);
+}
+
+/* Final homepage parity */
+.auth-header,
+.auth-header::before,
+.auth-header::after,
+.header-row,
+.brand-block,
+.brand-logo,
+.brand-name,
+.brand-campus,
+.brand-eventhub,
+.nav-actions,
+.header-btn,
+.header-btn-secondary,
+.header-btn-primary {
+  transition-timing-function: ease !important;
+}
+
+/* Keep only the auth header fixed like the homepage */
+.auth-header {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 30;
+}
+
+.page-content {
+  padding-top: 130px;
+}
+
+@media (max-width: 700px) {
+  .page-content {
+    padding-top: 148px;
+  }
+}
+
+@media (max-width: 520px) {
+  .page-content {
+    padding-top: 154px;
+  }
+}
+
+.signup-form .field input,
+.signup-form .field select {
+  border-radius: 14px;
+  border: 1px solid rgba(78, 98, 184, 0.24);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(243, 247, 255, 0.94));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.signup-form .field input::placeholder {
+  color: #7183af;
+}
+
+.form-actions .submit-btn {
+  margin-top: 4px;
+  min-height: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: linear-gradient(120deg, #1f3f9e, #586cf2 45%, #9f62ff 75%, #ed9b56);
+  box-shadow: 0 16px 28px rgba(72, 84, 196, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.26);
+}
+
+.form-actions .submit-btn i {
+  transition: transform 0.2s ease;
+}
+
+.form-actions .submit-btn:hover i {
+  transform: translateX(3px);
+}
+
+/* Form polish: text + fields + CTA */
+.card-form h1 {
+  display: inline-block;
+  background: linear-gradient(120deg, #122a72, #4963f0 48%, #a35ff6 78%, #d98a4a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+  text-shadow: 0 8px 24px rgba(73, 99, 240, 0.2);
+}
+
+.signup-form .field label {
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #41568e;
+}
+
+.signup-form .field input,
+.signup-form .field select {
+  min-height: 48px;
+  border-radius: 16px;
+  border: 1px solid rgba(70, 95, 190, 0.22);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(240, 246, 255, 0.95));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 10px 18px rgba(45, 70, 148, 0.08);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.signup-form .field input:focus,
+.signup-form .field select:focus {
+  transform: translateY(-1px);
+  border-color: rgba(66, 96, 230, 0.65);
+  box-shadow:
+    0 0 0 4px rgba(80, 114, 248, 0.16),
+    0 14px 26px rgba(60, 88, 175, 0.18);
+}
+
+.form-actions .submit-btn {
+  min-height: 52px;
+  letter-spacing: 0.02em;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: linear-gradient(125deg, #17368e, #5468ef 44%, #9b5df5 72%, #e6a35e);
+}
+
+.form-actions .submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 34px rgba(63, 80, 191, 0.34);
+}
+
+/* 3D form-only interaction */
+.card-form {
+  perspective: 1400px;
+  transform-style: preserve-3d;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.card-form:hover {
+  transform: translateY(-6px) rotateX(3deg) rotateY(-3deg);
+  box-shadow: 0 34px 62px rgba(32, 54, 128, 0.2);
+}
+
+.signup-form {
+  transform-style: preserve-3d;
+}
+
+.signup-form .field {
+  transition: transform 0.25s ease, filter 0.25s ease;
+}
+
+.signup-form .field:hover {
+  transform: translateZ(14px);
+  filter: drop-shadow(0 10px 20px rgba(67, 89, 177, 0.18));
+}
+
+.signup-form .password-box {
+  transition: transform 0.25s ease;
+}
+
+.signup-form .password-box:hover {
+  transform: translateZ(10px);
+}
+
+.form-actions .submit-btn {
+  transform-style: preserve-3d;
+  transition: transform 0.28s ease, box-shadow 0.28s ease, filter 0.28s ease;
+}
+
+.form-actions .submit-btn:hover {
+  transform: translateY(-3px) translateZ(16px) rotateX(-5deg);
+  filter: saturate(1.08);
+  box-shadow: 0 24px 36px rgba(55, 77, 180, 0.35);
+}
+
+@media (max-width: 900px) {
+  .card-form,
+  .card-form:hover,
+  .signup-form .field:hover,
+  .signup-form .password-box:hover,
+  .form-actions .submit-btn:hover {
+    transform: none;
+    filter: none;
+  }
+}
+
+/* Alignment refinement */
+.card-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.signup-form {
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto;
+  align-items: start;
+  gap: 12px 16px;
+}
+
+.signup-form .field {
+  width: 100%;
+}
+
+.signup-form .field label {
+  margin-bottom: 8px;
+}
+
+.signup-form .field input,
+.signup-form .field select,
+.signup-form .password-box {
+  width: 100%;
+}
+
+.signup-form .password-box .password-toggle {
+  right: 10px;
+}
+
+.form-actions {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.form-actions .submit-btn {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .signup-form {
+    max-width: 460px;
+    gap: 12px;
+  }
+}
+
+/* Text breathing refinement */
+.card-form .chip {
+  margin-bottom: 16px;
+}
+
+.card-form h1 {
+  display: block;
+  margin: 0 0 12px;
+  line-height: 1.18;
+}
+
+.card-form .subtitle {
+  margin: 0 0 14px;
+  line-height: 1.55;
+}
+
+.signup-form {
+  margin-top: 6px;
+  gap: 14px 18px;
+}
+
+.signup-form .field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.signup-form .field label {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  line-height: 1.35;
+}
+
+.signup-form .field input,
+.signup-form .field select {
+  min-height: 52px;
+  padding: 14px 14px;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.signup-form .field input::placeholder {
+  font-size: 0.9rem;
+  opacity: 0.82;
+}
+
+.form-actions {
+  margin-top: 8px;
+}
+
+.form-actions .submit-btn {
+  min-height: 54px;
+}
+
+.form-actions .link {
+  margin-top: 14px;
+  line-height: 1.45;
 }

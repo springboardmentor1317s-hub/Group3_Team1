@@ -145,7 +145,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
   userName: string = '';
   userAvatarUrl: string | null = null;
   isDarkMode: boolean = false;
-  isSidebarPinned = false;
+  isSidebarPinned = true;
   isSidebarHovered = false;
   activeTab: DashboardTab = 'overview';
   showCreateEventModal = false;

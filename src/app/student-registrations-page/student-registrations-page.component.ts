@@ -4,10 +4,14 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
 import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
+import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
+import { EventCardComponent } from '../shared/event-card/event-card.component';
 import { finalize, timeout } from 'rxjs';
 import {
   StudentDashboardService,
   StudentDashboardSnapshot,
+  StudentEventCard,
+  StudentEventReview,
   StudentNotificationItem,
   StudentProfile,
   StudentRegistrationRecord
@@ -16,7 +20,7 @@ import {
 @Component({
   selector: 'app-student-registrations-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, StudentHeaderComponent, EventCardComponent],
   templateUrl: './student-registrations-page.component.html',
   styleUrls: ['./student-registrations-page.component.scss']
 })
@@ -27,6 +31,7 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
   notifications: StudentNotificationItem[] = [];
   ratingDraftByEventId: Record<string, number> = {};
   savedRatingByEventId: Record<string, number> = {};
+  eventRatingSummaryByEventId: Record<string, { average: number; count: number }> = {};
   feedbackDraftByEventId: Record<string, string> = {};
   savedFeedbackByEventId: Record<string, string> = {};
   feedbackOpenEventIds = new Set<string>();
@@ -41,6 +46,7 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
   selectedDate = '';
   readonly statusOptions = ['All', 'PENDING', 'APPROVED', 'REJECTED'];
   private notificationsRefreshTimer: ReturnType<typeof setInterval> | null = null;
+  private loadingRatingSummaryEventIds = new Set<string>();
   feedbackSavedEventIds = new Set<string>();
   private feedbackSavedTimerByEventId: Record<string, ReturnType<typeof setTimeout>> = {};
 
@@ -70,6 +76,17 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
 
   get studentName(): string {
     return this.profile?.name || JSON.parse(localStorage.getItem('currentUser') || '{}')?.name || 'Student';
+  }
+
+  get profilePhotoUrl(): string {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    return String(
+      currentUser.profileImageUrl
+      || currentUser.profilePhotoUrl
+      || currentUser.avatarUrl
+      || currentUser.photoUrl
+      || ''
+    ).trim();
   }
 
   get featuredNotification(): StudentNotificationItem | null {
@@ -131,6 +148,8 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
 
       return matchesQuery && matchesStatus && matchesDate;
     });
+
+    this.loadVisibleEventRatingSummaries(this.filteredRegistrations);
   }
 
   clearFilters(): void {
@@ -138,6 +157,12 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
     this.selectedStatus = 'All';
     this.selectedDate = '';
     this.applyFilters();
+  }
+
+  openFeedbackPage(eventId: string): void {
+    this.router.navigate(['/student-feedback'], {
+      queryParams: eventId ? { eventId } : undefined
+    });
   }
 
   navigate(path: 'dashboard' | 'events' | 'registrations' | 'feedback' | 'profile'): void {
@@ -153,7 +178,7 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
       return;
     }
     if (path === 'feedback') {
-      this.router.navigate(['/new-student-dashboard'], { fragment: 'feedback-section' });
+      this.router.navigate(['/student-feedback']);
       return;
     }
     this.router.navigate(['/student-profile']);
@@ -218,6 +243,54 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
     return registration.status === 'APPROVED' && this.isEventCompleted(registration);
   }
 
+  getRegistrationEventCard(registration: StudentRegistrationRecord): StudentEventCard {
+    const eventDate = registration.event?.dateTime || registration.createdAt;
+    const parsedDate = eventDate ? new Date(eventDate) : null;
+    const location = registration.event?.location || 'Campus Venue';
+    const category = registration.event?.category || 'Campus Event';
+    const eventStatus = this.isEventCompleted(registration)
+      ? 'Closed'
+      : registration.status === 'APPROVED'
+        ? 'Registered'
+        : 'Open';
+
+    return {
+      id: String(registration.eventId),
+      title: registration.eventName || 'Event',
+      description: registration.event?.description || 'You have registered for this event.',
+      category,
+      location,
+      dateTime: eventDate,
+      dateLabel: registration.event?.dateLabel || (
+        parsedDate && !Number.isNaN(parsedDate.getTime())
+          ? parsedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+          : 'Date TBA'
+      ),
+      timeLabel: parsedDate && !Number.isNaN(parsedDate.getTime())
+        ? parsedDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+        : 'Time TBA',
+      imageUrl: registration.event?.posterDataUrl || null,
+      organizer: registration.event?.organizer || 'Campus Event Hub',
+      contact: registration.event?.contact || registration.email || 'Contact admin',
+      status: eventStatus,
+      registrations: Number(registration.event?.registrations || 0),
+      maxAttendees: Number(registration.event?.maxAttendees || 0),
+      collegeName: registration.college || 'Campus Event Hub',
+      registered: registration.status === 'APPROVED',
+      endDate: null,
+      registrationDeadlineLabel: 'Not specified'
+    };
+  }
+
+  getEventRatingAverage(eventId: string): number | null {
+    const summary = this.eventRatingSummaryByEventId[eventId];
+    return summary ? summary.average : null;
+  }
+
+  getEventRatingCount(eventId: string): number {
+    return this.eventRatingSummaryByEventId[eventId]?.count || 0;
+  }
+
   getSavedRating(eventId: string): number | null {
     const value = this.savedRatingByEventId[eventId];
     return typeof value === 'number' && value > 0 ? value : null;
@@ -277,6 +350,7 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
         if (review && review.feedback) {
           this.savedFeedbackByEventId[eventId] = review.feedback;
         }
+        this.fetchEventRatingSummary(eventId);
       },
       error: (error) => {
         this.errorMessage = error?.error?.message || 'Failed to save rating to database.';
@@ -321,7 +395,9 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
         }
       })
     ).subscribe({
-      next: () => {},
+      next: () => {
+        this.fetchEventRatingSummary(eventId);
+      },
       error: (error) => {
         this.errorMessage = error?.error?.message || 'Failed to save feedback to database.';
         console.error('Failed to save feedback to DB', error);
@@ -415,6 +491,7 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
     this.notifications = snapshot.notifications || [];
     this.applyFilters();
     this.loadSavedReviews();
+    this.loadVisibleEventRatingSummaries(this.registrations, true);
     this.loading = false;
     this.notificationsLoading = false;
   }
@@ -464,6 +541,58 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
         }
       }
     });
+  }
+
+  private loadVisibleEventRatingSummaries(sourceRegistrations: StudentRegistrationRecord[] = this.filteredRegistrations, forceRefresh = false): void {
+    for (const registration of sourceRegistrations) {
+      if (!this.isEventCompleted(registration)) {
+        continue;
+      }
+
+      const eventId = String(registration.eventId);
+      if (!eventId) {
+        continue;
+      }
+
+      if (!forceRefresh && this.eventRatingSummaryByEventId[eventId]) {
+        continue;
+      }
+      if (this.loadingRatingSummaryEventIds.has(eventId)) {
+        continue;
+      }
+
+      this.fetchEventRatingSummary(eventId);
+    }
+  }
+
+  private fetchEventRatingSummary(eventId: string): void {
+    this.loadingRatingSummaryEventIds.add(eventId);
+
+    this.studentDashboardService.getEventReviews(eventId).subscribe({
+      next: (reviews) => {
+        const { average, count } = this.buildEventRatingSummary(reviews || []);
+        this.eventRatingSummaryByEventId[eventId] = { average, count };
+        this.loadingRatingSummaryEventIds.delete(eventId);
+      },
+      error: () => {
+        this.eventRatingSummaryByEventId[eventId] = { average: 0, count: 0 };
+        this.loadingRatingSummaryEventIds.delete(eventId);
+      }
+    });
+  }
+
+  private buildEventRatingSummary(reviews: StudentEventReview[]): { average: number; count: number } {
+    const validRatings = (reviews || [])
+      .map((review) => Number(review.rating || 0))
+      .filter((rating) => Number.isFinite(rating) && rating >= 1 && rating <= 5);
+
+    if (!validRatings.length) {
+      return { average: 0, count: 0 };
+    }
+
+    const total = validRatings.reduce((sum, rating) => sum + rating, 0);
+    const average = Math.round((total / validRatings.length) * 10) / 10;
+    return { average, count: validRatings.length };
   }
 
   private getRatingsStorageKey(): string | null {

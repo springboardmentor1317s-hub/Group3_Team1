@@ -4,15 +4,23 @@
   <div class="orb orb-3"></div>
 
   <header class="profile-topbar">
-    <a class="back-link" routerLink="/admin-dashboard">
-      <span class="back-icon">&#8592;</span>
-      Back to Dashboard
-    </a>
-    <div class="topbar-title">
-      <h1>Admin Profile</h1>
-      <p>Manage your account details and campus preferences.</p>
+    <div class="profile-topbar-brand">
+      <a class="brand-block" routerLink="/admin-dashboard" aria-label="Campus Event Hub admin dashboard">
+        <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub logo" />
+        <div class="brand-copy">
+          <div class="brand-name">
+            <span class="brand-campus">Campus</span>
+            <span class="brand-eventhub">Event Hub</span>
+          </div>
+          <p class="brand-tag">Admin Profile</p>
+        </div>
+      </a>
     </div>
     <div class="topbar-actions">
+      <a class="back-link" routerLink="/admin-dashboard">
+        <span class="back-icon">&#8592;</span>
+        Back to Dashboard
+      </a>
       <button class="ghost-btn" *ngIf="!isEditing" (click)="startEdit()">Edit Profile</button>
       <button class="ghost-btn" *ngIf="isEditing" (click)="cancelEdit()">Cancel</button>
       <button class="primary-btn" [disabled]="!isEditing || isSaving" (click)="saveProfile()">

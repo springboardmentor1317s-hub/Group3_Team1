@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, catchError, forkJoin, map, of, shareReplay, tap, throwError } from 'rxjs';
+import { Observable, catchError, forkJoin, map, of, shareReplay, switchMap, tap, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 import { BackendEvent, EventService } from './event.service';
 
@@ -10,7 +10,29 @@ export interface StudentProfile {
   userId: string;
   email: string;
   role: string;
+  profileCompleted?: boolean;
   college: string;
+  phone?: string;
+  parentPhone?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  location?: string;
+  department?: string;
+  departmentOther?: string;
+  currentClass?: string;
+  semester?: string;
+  currentCgpa?: string;
+  currentState?: string;
+  currentDistrict?: string;
+  currentCity?: string;
+  currentPincode?: string;
+  currentAddressLine?: string;
+  permanentState?: string;
+  permanentDistrict?: string;
+  permanentCity?: string;
+  permanentPincode?: string;
+  permanentAddressLine?: string;
+  profileImageUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -53,6 +75,8 @@ export interface StudentEventCard {
   category: string;
   location: string;
   dateTime: string;
+  registrationDeadline?: string | null;
+  registrationDeadlineLabel?: string;
   dateLabel: string;
   timeLabel: string;
   imageUrl: string | null;
@@ -76,12 +100,62 @@ export interface StudentNotificationItem {
   category: 'overview' | 'registration' | 'approval' | 'event';
 }
 
+export interface StudentSupportQuery {
+  id: string;
+  studentId: string;
+  studentEmail: string;
+  studentName: string;
+  subject: string;
+  message: string;
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
+  progressNote: string;
+  adminResponse: string;
+  escalationRequested: boolean;
+  escalatedAt: string | null;
+  canCreateAnother: boolean;
+  canDelete: boolean;
+  canEscalate: boolean;
+  ageInDays: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudentSupportQuerySnapshot {
+  activeQuery: StudentSupportQuery | null;
+  latestResolvedQuery: StudentSupportQuery | null;
+}
+
 export interface StudentEventReview {
+  id?: string;
+  reviewId?: string;
+  userId?: string;
+  studentId?: string;
   eventId: string;
   rating: number;
   feedback: string;
   createdAt: string;
   updatedAt: string;
+  studentName?: string;
+  reviewerName?: string;
+  userName?: string;
+  profilePhotoUrl?: string;
+  avatarUrl?: string;
+  profileImage?: string;
+  photoUrl?: string;
+}
+
+export interface StudentEventComment {
+  id: string;
+  eventId: string;
+  parentCommentId: string | null;
+  authorId: string;
+  name: string;
+  avatarUrl: string;
+  text: string;
+  likes: string[];
+  createdAt: string;
+  updatedAt: string;
+  replies?: StudentEventComment[];
 }
 
 export interface StudentDashboardSnapshot {
@@ -133,6 +207,7 @@ export class StudentDashboardService {
     if (!this.snapshotRequest$) {
       const headers = this.authService.getAuthHeaders();
       this.snapshotRequest$ = this.http.get<StudentDashboardSnapshot>(`${this.apiUrl}/student/dashboard`, { headers }).pipe(
+        switchMap((snapshot) => this.enrichSnapshotFromDatabaseEvents(snapshot)),
         catchError(() => this.buildFallbackSnapshot()),
         tap((snapshot) => {
           this.setSnapshotCache(snapshot);
@@ -210,6 +285,253 @@ export class StudentDashboardService {
     return this.http.post<StudentEventReview>(`${this.apiUrl}/event-reviews/feedback`, { eventId, feedback }, { headers });
   }
 
+  getMySupportQuery(): Observable<StudentSupportQuerySnapshot> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.get<StudentSupportQuerySnapshot>(`${this.apiUrl}/student-queries/me`, { headers });
+  }
+
+  createSupportQuery(subject: string, message: string): Observable<StudentSupportQuery> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.post<StudentSupportQuery>(`${this.apiUrl}/student-queries`, { subject, message }, { headers });
+  }
+
+  deleteSupportQuery(queryId: string): Observable<{ message: string }> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.delete<{ message: string }>(`${this.apiUrl}/student-queries/${encodeURIComponent(queryId)}`, { headers });
+  }
+
+  escalateSupportQuery(queryId: string): Observable<StudentSupportQuery> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.post<StudentSupportQuery>(`${this.apiUrl}/student-queries/${encodeURIComponent(queryId)}/escalate`, {}, { headers });
+  }
+
+  getMyProfileDetails(): Observable<StudentProfile> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.get<StudentProfile>(`${this.apiUrl}/profile/me`, { headers }).pipe(
+      catchError(() => this.getProfile())
+    );
+  }
+
+  updateMyProfile(payload: {
+    name?: string;
+    email?: string;
+    college?: string;
+    phone?: string;
+    parentPhone?: string;
+    gender?: string;
+    dateOfBirth?: string;
+    location?: string;
+    department?: string;
+    departmentOther?: string;
+    currentClass?: string;
+    semester?: string;
+    currentCgpa?: string;
+    currentState?: string;
+    currentDistrict?: string;
+    currentCity?: string;
+    currentPincode?: string;
+    currentAddressLine?: string;
+    permanentState?: string;
+    permanentDistrict?: string;
+    permanentCity?: string;
+    permanentPincode?: string;
+    permanentAddressLine?: string;
+    profileImageUrl?: string;
+  }): Observable<StudentProfile> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.put<StudentProfile>(`${this.apiUrl}/profile/me`, payload, { headers }).pipe(
+      tap(() => this.invalidateDashboardCache())
+    );
+  }
+
+  isProfileComplete(profile: Partial<StudentProfile> | null | undefined): boolean {
+    if (!profile) {
+      return false;
+    }
+
+    const department = String(profile.department || '').trim();
+    const departmentOther = String(profile.departmentOther || '').trim();
+    const requiredFields = [
+      profile.name,
+      profile.email,
+      profile.college,
+      profile.gender,
+      profile.dateOfBirth,
+      profile.phone,
+      profile.currentClass,
+      profile.semester,
+      profile.currentCgpa,
+      profile.currentState,
+      profile.currentDistrict,
+      profile.currentCity,
+      profile.currentPincode,
+      profile.currentAddressLine,
+      profile.permanentState,
+      profile.permanentDistrict,
+      profile.permanentCity,
+      profile.permanentPincode,
+      profile.permanentAddressLine
+    ];
+
+    if (requiredFields.some((value) => !String(value || '').trim())) {
+      return false;
+    }
+
+    if (!department) {
+      return false;
+    }
+
+    if (department === 'Other' && !departmentOther) {
+      return false;
+    }
+
+    return true;
+  }
+
+  getEventReviews(eventId: string): Observable<StudentEventReview[]> {
+    const headers = this.authService.getAuthHeaders();
+    const normalizedId = String(eventId || '').trim();
+    if (!normalizedId) {
+      return of([]);
+    }
+
+    return this.http.get<StudentEventReview[]>(`${this.apiUrl}/event-reviews/event/${encodeURIComponent(normalizedId)}`, { headers }).pipe(
+      catchError(() =>
+        this.http.get<StudentEventReview[]>(`${this.apiUrl}/event-reviews?eventId=${encodeURIComponent(normalizedId)}`, { headers }).pipe(
+          catchError(() => this.getMyEventReviews([normalizedId]))
+        )
+      )
+    );
+  }
+
+  getEventRatingSummaries(eventIds: string[]): Observable<Array<{ eventId: string; average: number; count: number }>> {
+    const headers = this.authService.getAuthHeaders();
+    const ids = (eventIds || []).map((id) => String(id).trim()).filter(Boolean);
+    if (!ids.length) {
+      return of([]);
+    }
+
+    const query = `?eventIds=${encodeURIComponent(ids.join(','))}`;
+    return this.http.get<Array<{ eventId: string; average: number; count: number }>>(
+      `${this.apiUrl}/event-reviews/summary${query}`,
+      { headers }
+    ).pipe(
+      catchError(() =>
+        forkJoin(ids.map((id) =>
+          this.getEventReviews(id).pipe(
+            map((reviews) => {
+              const validRatings = (reviews || [])
+                .map((review) => Number(review.rating || 0))
+                .filter((rating) => Number.isFinite(rating) && rating >= 1 && rating <= 5);
+              if (!validRatings.length) {
+                return { eventId: id, average: 0, count: 0 };
+              }
+              const total = validRatings.reduce((sum, rating) => sum + rating, 0);
+              return {
+                eventId: id,
+                average: Math.round((total / validRatings.length) * 10) / 10,
+                count: validRatings.length
+              };
+            }),
+            catchError(() => of({ eventId: id, average: 0, count: 0 }))
+          )
+        ))
+      )
+    );
+  }
+
+  deleteMyEventReview(eventId: string): Observable<void> {
+    const headers = this.authService.getAuthHeaders();
+    const normalizedId = String(eventId || '').trim();
+    if (!normalizedId) {
+      return of(void 0);
+    }
+
+    return this.http.delete<void>(`${this.apiUrl}/event-reviews/event/${encodeURIComponent(normalizedId)}/mine`, { headers }).pipe(
+      catchError(() =>
+        this.http.delete<void>(`${this.apiUrl}/event-reviews/mine/${encodeURIComponent(normalizedId)}`, { headers }).pipe(
+          catchError(() =>
+            this.http.delete<void>(`${this.apiUrl}/event-reviews/${encodeURIComponent(normalizedId)}/mine`, { headers }).pipe(
+              catchError(() => of(void 0))
+            )
+          )
+        )
+      )
+    );
+  }
+
+  getEventComments(eventId: string): Observable<StudentEventComment[]> {
+    const headers = this.authService.getAuthHeaders();
+    const normalizedId = String(eventId || '').trim();
+    if (!normalizedId) {
+      return of([]);
+    }
+
+    return this.http.get<StudentEventComment[]>(`${this.apiUrl}/event-comments/event/${encodeURIComponent(normalizedId)}`, { headers }).pipe(
+      catchError(() => of([]))
+    );
+  }
+
+  postEventComment(eventId: string, text: string, parentCommentId?: string | null): Observable<StudentEventComment> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.post<StudentEventComment>(`${this.apiUrl}/event-comments`, {
+      eventId,
+      text,
+      parentCommentId: parentCommentId || null
+    }, { headers });
+  }
+
+  updateEventComment(commentId: string, text: string): Observable<StudentEventComment> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.put<StudentEventComment>(`${this.apiUrl}/event-comments/${encodeURIComponent(commentId)}`, { text }, { headers });
+  }
+
+  deleteEventComment(commentId: string): Observable<{ message: string }> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.delete<{ message: string }>(`${this.apiUrl}/event-comments/${encodeURIComponent(commentId)}`, { headers });
+  }
+
+  toggleEventCommentLike(commentId: string): Observable<StudentEventComment> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.post<StudentEventComment>(`${this.apiUrl}/event-comments/${encodeURIComponent(commentId)}/like`, {}, { headers });
+  }
+
+  private enrichSnapshotFromDatabaseEvents(snapshot: StudentDashboardSnapshot): Observable<StudentDashboardSnapshot> {
+    return this.eventService.fetchEvents().pipe(
+      map((dbEvents) => ({
+        ...snapshot,
+        events: this.mergeEventsWithDatabase(snapshot.events || [], dbEvents || [])
+      })),
+      catchError(() => of(snapshot))
+    );
+  }
+
+  private mergeEventsWithDatabase(events: StudentEventCard[], dbEvents: BackendEvent[]): StudentEventCard[] {
+    const eventById = new Map<string, BackendEvent>();
+    for (const dbEvent of dbEvents) {
+      eventById.set(String(dbEvent.id), dbEvent);
+    }
+
+    return events.map((event) => {
+      const dbEvent = eventById.get(String(event.id));
+      if (!dbEvent) {
+        return event;
+      }
+
+      const registrationDeadline = dbEvent.registrationDeadline ?? event.registrationDeadline ?? null;
+      const deadlineDate = registrationDeadline ? new Date(registrationDeadline) : null;
+      const registrationDeadlineLabel = deadlineDate && !Number.isNaN(deadlineDate.getTime())
+        ? deadlineDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : event.registrationDeadlineLabel || 'Not specified';
+
+      return {
+        ...event,
+        registrationDeadline,
+        registrationDeadlineLabel
+      };
+    });
+  }
+
   invalidateDashboardCache(): void {
     this.snapshotRequest$ = undefined;
     this.eventsRequest$ = undefined;
@@ -235,6 +557,58 @@ export class StudentDashboardService {
   refreshDashboardSnapshot(): Observable<StudentDashboardSnapshot> {
     this.invalidateDashboardCache();
     return this.getDashboardSnapshot();
+  }
+
+  applyProfileUpdate(profile: StudentProfile): void {
+    if (!profile) {
+      return;
+    }
+
+    this.cachedProfile = profile;
+
+    if (this.cachedSnapshot) {
+      this.cachedSnapshot = {
+        ...this.cachedSnapshot,
+        profile
+      };
+      localStorage.setItem(this.snapshotStorageKey, JSON.stringify(this.cachedSnapshot));
+    }
+
+    try {
+      const currentUserRaw = localStorage.getItem(this.currentUserStorageKey);
+      const existing = currentUserRaw ? JSON.parse(currentUserRaw) : {};
+      localStorage.setItem(this.currentUserStorageKey, JSON.stringify({
+        ...existing,
+        name: profile.name || existing.name,
+        email: profile.email || existing.email,
+        profileCompleted: profile.profileCompleted ?? this.isProfileComplete(profile),
+        college: profile.college || existing.college,
+        role: profile.role || existing.role,
+        phone: profile.phone ?? existing.phone,
+        parentPhone: profile.parentPhone ?? existing.parentPhone,
+        gender: profile.gender ?? existing.gender,
+        dateOfBirth: profile.dateOfBirth ?? existing.dateOfBirth,
+        location: profile.location ?? existing.location,
+        department: profile.department ?? existing.department,
+        departmentOther: profile.departmentOther ?? existing.departmentOther,
+        currentClass: profile.currentClass ?? existing.currentClass,
+        semester: profile.semester ?? existing.semester,
+        currentCgpa: profile.currentCgpa ?? existing.currentCgpa,
+        currentState: profile.currentState ?? existing.currentState,
+        currentDistrict: profile.currentDistrict ?? existing.currentDistrict,
+        currentCity: profile.currentCity ?? existing.currentCity,
+        currentPincode: profile.currentPincode ?? existing.currentPincode,
+        currentAddressLine: profile.currentAddressLine ?? existing.currentAddressLine,
+        permanentState: profile.permanentState ?? existing.permanentState,
+        permanentDistrict: profile.permanentDistrict ?? existing.permanentDistrict,
+        permanentCity: profile.permanentCity ?? existing.permanentCity,
+        permanentPincode: profile.permanentPincode ?? existing.permanentPincode,
+        permanentAddressLine: profile.permanentAddressLine ?? existing.permanentAddressLine,
+        profileImageUrl: profile.profileImageUrl ?? existing.profileImageUrl
+      }));
+    } catch {
+      // Ignore localStorage parse issues and preserve the in-memory cache.
+    }
   }
 
   getCachedProfile(): StudentProfile | null {
@@ -400,13 +774,63 @@ export class StudentDashboardService {
   }
 
   private setSnapshotCache(snapshot: StudentDashboardSnapshot): void {
-    this.cachedSnapshot = snapshot;
-    this.cachedProfile = snapshot.profile;
-    this.cachedEvents = snapshot.events || [];
-    this.cachedRegistrations = snapshot.registrations || [];
-    this.cachedStats = snapshot.stats || this.cachedStats;
-    this.cachedNotifications = snapshot.notifications || [];
-    localStorage.setItem(this.snapshotStorageKey, JSON.stringify(snapshot));
+    const normalizedEvents = (snapshot.events || []).map((event) => this.normalizeEventCard(event));
+    const normalizedSnapshot: StudentDashboardSnapshot = {
+      ...snapshot,
+      events: normalizedEvents
+    };
+
+    this.cachedSnapshot = normalizedSnapshot;
+    this.cachedProfile = normalizedSnapshot.profile;
+    this.cachedEvents = normalizedSnapshot.events || [];
+    this.cachedRegistrations = normalizedSnapshot.registrations || [];
+    this.cachedStats = normalizedSnapshot.stats || this.cachedStats;
+    this.cachedNotifications = normalizedSnapshot.notifications || [];
+    localStorage.setItem(this.snapshotStorageKey, JSON.stringify(normalizedSnapshot));
+  }
+
+  private normalizeEventCard(event: StudentEventCard): StudentEventCard {
+    const registrationDeadlineDate = event.registrationDeadline ? new Date(event.registrationDeadline) : null;
+    const registrationDeadlineLabel = event.registrationDeadlineLabel
+      || (registrationDeadlineDate && !Number.isNaN(registrationDeadlineDate.getTime())
+        ? registrationDeadlineDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : 'Not specified');
+    const normalizedStatus: StudentEventCard['status'] = this.isEventExpired(event) ? 'Closed' : event.status;
+
+    return {
+      ...event,
+      registrationDeadlineLabel,
+      status: normalizedStatus
+    };
+  }
+
+  private isEventExpired(event: StudentEventCard): boolean {
+    const normalizedStatus = String(event.status || '').toLowerCase();
+    if (normalizedStatus === 'closed' || normalizedStatus === 'completed' || normalizedStatus === 'past') {
+      return true;
+    }
+
+    const parseDate = (value?: string | null): number => {
+      if (!value) return Number.NaN;
+      const trimmed = String(value).trim();
+      if (!trimmed) return Number.NaN;
+
+      const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(trimmed);
+      const parsed = new Date(isDateOnly ? `${trimmed}T23:59:59.999` : trimmed).getTime();
+      return Number.isNaN(parsed) ? Number.NaN : parsed;
+    };
+
+    const endTimestamp = parseDate(event.endDate);
+    if (!Number.isNaN(endTimestamp)) {
+      return endTimestamp < Date.now();
+    }
+
+    const startTimestamp = parseDate(event.dateTime);
+    if (!Number.isNaN(startTimestamp)) {
+      return startTimestamp < Date.now();
+    }
+
+    return false;
   }
 
   private restoreSnapshotFromStorage(): void {
@@ -423,7 +847,7 @@ export class StudentDashboardService {
       }
 
       this.cachedProfile = snapshot.profile || null;
-      this.cachedEvents = Array.isArray(snapshot.events) ? snapshot.events : [];
+      this.cachedEvents = Array.isArray(snapshot.events) ? snapshot.events.map((event) => this.normalizeEventCard(event)) : [];
       this.cachedRegistrations = Array.isArray(snapshot.registrations) ? snapshot.registrations : [];
       this.cachedStats = snapshot.stats || this.cachedStats;
       this.cachedNotifications = Array.isArray(snapshot.notifications) ? snapshot.notifications : [];
@@ -544,6 +968,7 @@ export class StudentDashboardService {
 
   private mapEvent(event: BackendEvent): StudentEventCard {
     const date = event.dateTime ? new Date(event.dateTime) : null;
+    const registrationDeadlineDate = event.registrationDeadline ? new Date(event.registrationDeadline) : null;
 
     return {
       id: event.id,
@@ -552,6 +977,10 @@ export class StudentDashboardService {
       category: event.category || 'Campus Event',
       location: event.location || 'Campus Venue',
       dateTime: event.dateTime,
+      registrationDeadline: event.registrationDeadline ?? null,
+      registrationDeadlineLabel: registrationDeadlineDate && !Number.isNaN(registrationDeadlineDate.getTime())
+        ? registrationDeadlineDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : 'Not specified',
       endDate: event.endDate ?? null,
       dateLabel: date && !Number.isNaN(date.getTime())
         ? date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
