@@ -4,25 +4,16 @@ const Event = require("../models/Event");
 // ================= SUPER ADMIN DASHBOARD =================
 exports.getDashboardStats = async (req, res) => {
   try {
-    // Count only approved college admins (exclude pending/rejected).
     const totalAdmins = await User.countDocuments({
       role: { $in: ["college_admin", "admin"] },
       adminApprovalStatus: "approved"
     });
 
-    // Count students (case-insensitive)
     const totalStudents = await User.countDocuments({ role: { $regex: /^student$/i } });
 
-    // Count events
     const totalEvents = await Event.countDocuments();
 
-    // Send response
-    res.json({
-      totalAdmins,
-      totalEvents,
-      totalStudents
-    });
-
+    res.json({ totalAdmins, totalEvents, totalStudents });
   } catch (error) {
     res.status(500).json({ message: "Failed to load dashboard stats" });
   }
@@ -62,9 +53,7 @@ exports.approveAdminRequest = async (req, res) => {
       "name userId email college role adminApprovalStatus adminRejectionReason adminReviewedAt createdAt"
     );
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     res.json({ message: "Admin request approved", user });
   } catch (error) {
@@ -93,13 +82,117 @@ exports.rejectAdminRequest = async (req, res) => {
       "name userId email college role adminApprovalStatus adminRejectionReason adminReviewedAt createdAt"
     );
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     res.json({ message: "Admin request rejected", user });
   } catch (error) {
     console.log("Reject admin error:", error);
     res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// ================= NEW: ADMIN ACTIVITY REPORTS =================
+// GET /api/super-admin/admin-activity
+//
+// For each approved college admin:
+//   - name, college, department
+//   - eventsCreated: count of events matching their collegeName
+//   - lastActive: most recent of updatedAt / adminReviewedAt
+//   - activityLevel: High (>=5 events), Medium (2-4), Low (0-1)
+// ────────────────────────────────────────────────────────────────
+exports.getAdminActivityReport = async (req, res) => {
+  try {
+    // 1️⃣ Fetch all approved college admins
+    const admins = await User.find({
+      role: { $in: ["college_admin", "admin"] },
+      adminApprovalStatus: "approved"
+    }).select("name college department updatedAt adminReviewedAt createdAt");
+
+    if (admins.length === 0) {
+      return res.json([]);
+    }
+
+    // 2️⃣ Get all college names to batch-query events
+    const collegeNames = admins
+      .map(a => a.college)
+      .filter(Boolean);
+
+    // 3️⃣ Aggregate event counts grouped by collegeName
+    const eventCounts = await Event.aggregate([
+      {
+        $match: {
+          collegeName: { $in: collegeNames }
+        }
+      },
+      {
+        $group: {
+          _id: "$collegeName",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Build a map: collegeName → event count
+    const eventCountMap = {};
+    eventCounts.forEach(ec => {
+      eventCountMap[ec._id] = ec.count;
+    });
+
+    // 4️⃣ Build response for each admin
+    const now = Date.now();
+
+    const result = admins.map(admin => {
+      const eventsCreated = eventCountMap[admin.college] || 0;
+
+      // Last active = most recent of updatedAt and adminReviewedAt
+      const timestamps = [admin.updatedAt, admin.adminReviewedAt, admin.createdAt]
+        .filter(Boolean)
+        .map(t => new Date(t).getTime());
+      const lastActiveMs = Math.max(...timestamps);
+
+      // Human-readable last active label
+      const diffMs = now - lastActiveMs;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      let lastActiveLabel;
+      if (diffMins < 1) {
+        lastActiveLabel = "Just now";
+      } else if (diffMins < 60) {
+        lastActiveLabel = `${diffMins}m ago`;
+      } else if (diffHours < 24) {
+        lastActiveLabel = `${diffHours}h ago`;
+      } else {
+        lastActiveLabel = `${diffDays}d ago`;
+      }
+
+      // Activity level based on events created
+      let activityLevel;
+      if (eventsCreated >= 5) {
+        activityLevel = "High";
+      } else if (eventsCreated >= 2) {
+        activityLevel = "Medium";
+      } else {
+        activityLevel = "Low";
+      }
+
+      return {
+        name: admin.name,
+        college: admin.college || "N/A",
+        department: admin.department || "",
+        eventsCreated,
+        lastActiveLabel,
+        activityLevel
+      };
+    });
+
+    // Sort by eventsCreated descending (most active first)
+    result.sort((a, b) => b.eventsCreated - a.eventsCreated);
+
+    res.json(result);
+  } catch (error) {
+    console.error("Admin activity report error:", error);
+    res.status(500).json({ message: "Failed to load admin activity report" });
   }
 };
