@@ -1,7 +1,3 @@
-
-
-
-
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -9,11 +5,11 @@ import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { EventService, BackendEvent } from '../services/event.service';
 import { CreateEventComponent } from '../create-event/create-event.component';
-import { catchError, finalize, forkJoin, timeout } from 'rxjs';
+import { catchError, finalize, forkJoin, of, timeout } from 'rxjs';
 import { Auth } from '../auth/auth';
 import { FeedbackService, Feedback } from '../services/feedback.service';
 
-type DashboardTab = 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback';  // ✅ Added 'feedback'
+type DashboardTab = 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback';
 
 interface OrganizerEvent {
   id: string;
@@ -74,8 +70,8 @@ export class AdminDashboard implements OnInit, OnDestroy {
   averageRating: number = 0;
   totalFeedbacks: number = 0;
 
-  private readonly API_URL = 'http://localhost:5000/api/events';
-  private readonly REGISTRATIONS_API_URL = 'http://localhost:5000/api/registrations';
+  private readonly API_URL = '/api/events';
+  private readonly REGISTRATIONS_API_URL = '/api/registrations';
   private readonly NOTIFICATION_POLL_INTERVAL_MS = 12000;
   private notificationPollTimer: ReturnType<typeof setInterval> | null = null;
   private sidebarHoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
@@ -191,7 +187,9 @@ export class AdminDashboard implements OnInit, OnDestroy {
     forkJoin({
       events: this.http.get<OrganizerEvent[]>(this.API_URL),
       registrations: this.http.get<Registration[]>(this.REGISTRATIONS_API_URL),
-      feedbacks: this.feedbackService.getAllFeedbacks()
+      feedbacks: this.feedbackService.getAllFeedbacks().pipe(
+        catchError(() => of([] as Feedback[]))
+      )
     }).subscribe({
       next: ({ events, registrations, feedbacks }) => {
         const eventsWithApproved = events.map(event => ({
