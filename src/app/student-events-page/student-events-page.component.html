@@ -1,33 +1,14 @@
 <div class="events-shell">
-  <header class="luxury-header">
-    <div class="header-inner">
-      <button class="brand-block" type="button" (click)="navigate('dashboard')">
-        <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub">
-        <div class="brand-copy">
-          <span class="eyebrow">Student Lounge</span>
-          <span class="brand-name">Campus Event Hub</span>
-        </div>
-      </button>
-
-      <nav class="header-nav">
-        <button type="button" class="nav-link" (click)="navigate('dashboard')">Dashboard</button>
-        <button type="button" class="nav-link active">Events</button>
-        <button type="button" class="nav-link" (click)="navigate('registrations')">My Registrations</button>
-        <button type="button" class="nav-link" (click)="navigate('feedback')">Feedback</button>
-      </nav>
-
-      <div class="header-actions">
-        <button type="button" class="profile-chip" (click)="navigate('profile')">
-          <span class="material-icons">account_circle</span>
-          <span class="profile-chip-name">{{ studentName }}</span>
-        </button>
-        <button type="button" class="notification-btn" (click)="openNotifications()" aria-label="Notifications">
-          <span class="material-icons">notifications</span>
-        </button>
-        <button type="button" class="logout-btn" (click)="logout()">Logout</button>
-      </div>
-    </div>
-  </header>
+  <app-student-header
+    activeTab="events"
+    [studentName]="studentName"
+    [studentPhotoUrl]="profilePhotoUrl"
+    notificationMode="dropdown"
+    [notifications]="notifications"
+    [notificationsLoading]="notificationsLoading"
+    [notificationsOpen]="notificationsDropdownOpen"
+    (notificationToggle)="openNotifications($event)"
+  />
 
   <main class="events-main">
     <section class="intro-card">
@@ -71,49 +52,21 @@
     <section *ngIf="loading" class="state-card">Loading events...</section>
 
     <section class="event-grid" *ngIf="!loading && filteredEvents.length > 0">
-      <article class="event-card" *ngFor="let event of filteredEvents; trackBy: trackById" [attr.id]="'event-' + event.id">
-        <div
-          class="card-cover"
-          [style.background-image]="event.imageUrl ? 'linear-gradient(180deg, rgba(15, 23, 42, 0.18), rgba(15, 23, 42, 0.76)), url(' + event.imageUrl + ')' : null"
-        ></div>
 
-        <div class="card-body">
-          <div class="meta-row">
-            <span class="seats-pill"><span class="material-icons">groups</span>{{ event.registrations }}/{{ event.maxAttendees }} seats</span>
-            <span class="contact-pill"><span class="material-icons">call</span>{{ event.contact }}</span>
-          </div>
+      <div class="event-card-stack" *ngFor="let event of filteredEvents; trackBy: trackById">
+        <app-event-card
+          [event]="event"
+          [registerLabel]="getRegisterLabel(event)"
+          [registerDisabled]="event.status !== 'Open' || isEventCompleted(event) || actionEventId === event.id"
+          [showRegisterButton]="!isEventCompleted(event)"
+          [showRatingSummary]="isEventCompleted(event)"
+          [ratingAverage]="getEventRatingAverage(event.id)"
+          [ratingCount]="getEventRatingCount(event.id)"
+          [ratingSummaryLoading]="isRatingSummaryLoading(event.id)"
+          (registerClicked)="registerForEvent(event)"
+        ></app-event-card>
+      </div>
 
-          <h3>{{ event.title }}</h3>
-          <p class="event-description" [class.expanded]="isEventDescriptionExpanded(event.id)">{{ event.description }}</p>
-          <button
-            *ngIf="event.description.length > 120"
-            type="button"
-            class="description-toggle"
-            (click)="toggleEventDescription(event.id)"
-          >
-            {{ isEventDescriptionExpanded(event.id) ? 'View less' : 'View more' }}
-          </button>
-
-          <div class="detail-grid">
-            <span class="category-pill subtle">{{ event.category }}</span>
-            <span><span class="material-icons">calendar_today</span>{{ event.dateLabel }}</span>
-            <span><span class="material-icons">schedule</span>{{ event.timeLabel }}</span>
-            <span><span class="material-icons">location_on</span>{{ event.location }}</span>
-            <span><span class="material-icons">apartment</span>{{ event.collegeName }}</span>
-            <span><span class="material-icons">person</span>{{ event.organizer || 'Campus Event Hub' }}</span>
-            <span><span class="material-icons">call</span>{{ event.contact }}</span>
-          </div>
-
-          <button
-            type="button"
-            class="register-btn"
-            [disabled]="event.status !== 'Open' || actionEventId === event.id"
-            (click)="registerForEvent(event)"
-          >
-            {{ getRegisterLabel(event) }}
-          </button>
-        </div>
-      </article>
     </section>
 
     <section *ngIf="!loading && filteredEvents.length === 0" class="state-card">

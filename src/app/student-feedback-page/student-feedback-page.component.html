@@ -1,0 +1,66 @@
+<div class="feedback-shell">
+  <app-student-header
+    activeTab="feedback"
+    [studentName]="studentName"
+    notificationMode="dropdown"
+    [notifications]="notifications"
+    [notificationsLoading]="notificationsLoading"
+    [notificationsOpen]="notificationsDropdownOpen"
+    (notificationToggle)="openNotifications($event)"
+  />
+
+  <main class="feedback-main">
+    <section class="summary-card">
+      <p class="kicker">My Feedback Overview</p>
+      <h1>Your Attended Event Ratings</h1>
+      <div class="summary-metrics">
+        <article>
+          <span class="metric-label">Overall Rating (Attended)</span>
+          <strong class="metric-value">{{ overallAverageLabel }}/5</strong>
+          <div class="overall-stars" *ngIf="totalRatedEvents > 0">
+            <span class="material-icons" *ngFor="let star of overallStars">{{ getStarIcon(star, overallAverage) }}</span>
+          </div>
+        </article>
+        <article>
+          <span class="metric-label">Events You Attended</span>
+          <strong class="metric-value">{{ attendedEventsCount }}</strong>
+        </article>
+        <article>
+          <span class="metric-label">Rated Attended Events</span>
+          <strong class="metric-value">{{ totalRatedEvents }}</strong>
+        </article>
+      </div>
+    </section>
+
+    <p *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</p>
+
+    <section *ngIf="loading" class="state-card">Loading feedback ratings...</section>
+
+    <section *ngIf="!loading && hasRatings" class="ratings-list">
+      <div class="list-head">
+        <h2>Event-wise Ratings</h2>
+        <p>Only your ratings for attended events are shown below.</p>
+      </div>
+      <article class="rating-row" *ngFor="let row of ratingRows; trackBy: trackByEventId">
+        <div class="row-head">
+          <h3>{{ row.eventName }}</h3>
+          <div class="rating-right">
+            <span class="event-stars">
+              <span class="material-icons" *ngFor="let star of overallStars">{{ getStarIcon(star, row.rating) }}</span>
+            </span>
+            <span class="rating-chip">{{ row.rating }}/5</span>
+          </div>
+        </div>
+        <p class="feedback-text" *ngIf="row.feedback">{{ row.feedback }}</p>
+        <p class="feedback-text muted" *ngIf="!row.feedback">No written feedback for this event.</p>
+        <span class="updated-at">Updated: {{ formatDate(row.updatedAt) }}</span>
+      </article>
+    </section>
+
+    <section *ngIf="!loading && !hasRatings" class="state-card">
+      You have not submitted ratings yet. Rate completed events to see your summary here.
+    </section>
+  </main>
+
+  <app-site-footer></app-site-footer>
+</div>

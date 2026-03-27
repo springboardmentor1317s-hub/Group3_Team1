@@ -12,6 +12,7 @@ export interface User {
   userId: string;
   email: string;
   role: string;
+  profileCompleted?: boolean;
   college?: string;
 }
 
@@ -21,12 +22,12 @@ export interface LoginResponse {
   name: string;
   userId: string;
   email: string;
+  profileCompleted?: boolean;
   college?: string;
 }
 
 export interface SignupRequest {
   name: string;
-  userId: string;
   email: string;
   password: string;
   role: string;
@@ -69,6 +70,7 @@ export class AuthService {
               userId: response.userId || identifier,
               email: response.email || identifier,
               role: response.role,
+              profileCompleted: response.profileCompleted,
               college: response.college
             };
             localStorage.setItem('currentUser', JSON.stringify(user));

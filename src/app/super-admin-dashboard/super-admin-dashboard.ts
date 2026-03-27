@@ -19,6 +19,17 @@ type AdminRequestItem = {
   reviewedAt?: string;
 };
 
+// ── NEW: Admin Activity Report interface ────────────────────────
+interface AdminActivityItem {
+  name: string;
+  college: string;
+  department: string;
+  eventsCreated: number;
+  lastActiveLabel: string;
+  activityLevel: 'High' | 'Medium' | 'Low';
+}
+// ────────────────────────────────────────────────────────────────
+
 @Component({
   selector: 'app-super-admin-dashboard',
   standalone: true,
@@ -36,6 +47,12 @@ export class SuperAdminDashboard implements OnInit {
   rejectInputById: Record<string, string> = {};
   showRejectBoxById: Record<string, boolean> = {};
 
+  // ── NEW: Activity report state ───────────────────────────────
+  adminActivityList: AdminActivityItem[] = [];
+  isLoadingActivity = false;
+  activityError: string | null = null;
+  // ─────────────────────────────────────────────────────────────
+
   constructor(
     private auth: Auth,
     private router: Router,
@@ -46,17 +63,15 @@ export class SuperAdminDashboard implements OnInit {
   ngOnInit(): void {
     this.loadDashboard();
     this.loadApprovalRequests();
+    this.loadAdminActivityReport(); // ← NEW
   }
 
   loadDashboard() {
     this.superAdminService.getDashboardStats().subscribe({
       next: (data: DashboardStats) => {
-        console.log('API DATA:', data);
-
         this.totalAdmins = data.totalAdmins;
         this.totalEvents = data.totalEvents;
         this.totalStudents = data.totalStudents;
-
         this.cdr.detectChanges();
       },
       error: (err) => console.log('Dashboard error:', err)
@@ -81,8 +96,8 @@ export class SuperAdminDashboard implements OnInit {
           }))
           .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-        // Keep Total Admins card aligned with approved admin accounts only.
         this.totalAdmins = this.adminApprovalRequests.filter((item) => item.status === 'approved').length;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.adminApprovalRequests = [];
@@ -90,17 +105,53 @@ export class SuperAdminDashboard implements OnInit {
     });
   }
 
+  // ── NEW: Load real admin activity data ──────────────────────
+  loadAdminActivityReport(): void {
+    this.isLoadingActivity = true;
+    this.activityError = null;
+
+    this.superAdminService.getAdminActivityReport()
+      .subscribe({
+        next: (data) => {
+          this.adminActivityList = data;
+          this.isLoadingActivity = false;
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error('Admin activity report error:', err);
+          this.activityError = 'Failed to load activity report.';
+          this.isLoadingActivity = false;
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
+  // ── NEW: Helper to get CSS tag class per activity level ─────
+  getActivityTagClass(level: string): string {
+    switch (level) {
+      case 'High':   return 'tag tag-high';
+      case 'Medium': return 'tag tag-medium';
+      case 'Low':    return 'tag tag-low';
+      default:       return 'tag';
+    }
+  }
+
+  getActivityIconClass(level: string): string {
+    switch (level) {
+      case 'High':   return 'event-icon activity-high';
+      case 'Medium': return 'event-icon activity-medium';
+      case 'Low':    return 'event-icon activity-low';
+      default:       return 'event-icon';
+    }
+  }
+  // ─────────────────────────────────────────────────────────────
+
   get filteredAdminApprovalRequests(): AdminRequestItem[] {
     const query = this.searchTerm.trim().toLowerCase();
     return this.adminApprovalRequests.filter((item) => {
       const statusOk = this.statusFilter === 'all' || item.status === this.statusFilter;
-      if (!statusOk) {
-        return false;
-      }
-
-      if (!query) {
-        return true;
-      }
+      if (!statusOk) return false;
+      if (!query) return true;
 
       const haystack = [
         item.name,
@@ -109,9 +160,7 @@ export class SuperAdminDashboard implements OnInit {
         item.college || '',
         item.status,
         item.rejectionReason || ''
-      ]
-        .join(' ')
-        .toLowerCase();
+      ].join(' ').toLowerCase();
 
       return haystack.includes(query);
     });

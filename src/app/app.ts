@@ -94,7 +94,7 @@ export class App implements OnInit, OnDestroy {
       this.activeRole.set('admin');
       return;
     }
-    if (url.includes('student-dashboard') || url.includes('new-student-dashboard') || url.includes('student-events') || url.includes('student-profile')) {
+    if (url.includes('student-dashboard') || url.includes('new-student-dashboard') || url.includes('student-events') || url.includes('student-event') || url.includes('student-profile')) {
       this.activeRole.set('student');
       return;
     }

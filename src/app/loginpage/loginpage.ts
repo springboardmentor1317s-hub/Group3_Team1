@@ -18,6 +18,8 @@ export class Loginpage {
   show = false;
   errorMessage = '';
   isLoggingIn = false;
+  popupMessage = '';
+  isPopupOpen = false;
   user = {
     email: '',
     password: '',
@@ -57,18 +59,47 @@ export class Loginpage {
     // }
   // }
 
-  login() {
+  private readonly emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
+  closePopup(): void {
+    this.isPopupOpen = false;
+  }
+
+  private openPopup(message: string): void {
+    this.popupMessage = message;
+    this.isPopupOpen = true;
+    this.cdr.detectChanges();
+  }
+
+  private isValidEmail(identifier: string): boolean {
+    return this.emailPattern.test(identifier.trim().toLowerCase());
+  }
+
+  login() {
   this.errorMessage = '';
+
+  const trimmedIdentifier = this.user.email.trim().toLowerCase();
+  if (!this.isValidEmail(trimmedIdentifier)) {
+    this.openPopup('Please enter a valid email address like name@gmail.com.');
+    return;
+  }
+
+  if (!this.user.password.trim()) {
+    this.openPopup('Please enter your password.');
+    return;
+  }
+
+  this.user.email = trimmedIdentifier;
   this.isLoggingIn = true;
   this.studentDashboardService.resetDashboardState();
 
      if (this.user.role === 'super_admin') {
-          if (this.user.email === 'super@campus.com' && this.user.password === 'super@123') {
+          if (this.user.email.toLowerCase() === 'super@campus.com' && this.user.password === 'super@123') {
           this.auth.setRole('super_admin');
           this.router.navigate(['/super-admin-dashboard']);
       } else {
         this.errorMessage = 'Invalid credentials';
+        this.openPopup('Please enter a valid super admin email and password.');
         this.cdr.detectChanges();
       }
       this.isLoggingIn = false;
@@ -86,19 +117,22 @@ export class Loginpage {
       if (actualRole && selectedRole && actualRole !== selectedRole) {
         this.errorMessage = `Account role is ${actualRole.replace('_', ' ')}. Please select the correct role.`;
         this.isLoggingIn = false;
+        this.openPopup(this.errorMessage);
         this.cdr.detectChanges();
         return;
       }
 
       // store token and role
       if (res.token) localStorage.setItem('token', res.token);
-      const currentUser = {
+const currentUser = {
   id: res.userId || '',
   name: res.name || 'Student',
   userId: res.userId || '',
   email: res.email || this.user.email,
   role: res.role || 'student',
-  college: res.college || 'Not Set'
+  profileCompleted: res.profileCompleted !== false,
+  college: res.college || 'Not Set',
+  profileImageUrl: res.profileImageUrl || ''
 };
 localStorage.setItem('currentUser', JSON.stringify(currentUser));
 localStorage.setItem('userName', currentUser.name)
@@ -121,6 +155,7 @@ localStorage.setItem('role', res.role);
           error: (dashboardError) => {
             this.isLoggingIn = false;
             this.errorMessage = dashboardError?.error?.message || 'Student dashboard data load nahi hua. Please try again.';
+            this.openPopup(this.errorMessage);
             this.cdr.detectChanges();
           }
         });
@@ -138,6 +173,7 @@ localStorage.setItem('role', res.role);
         return;
       }
       this.errorMessage = err?.error?.message || 'Invalid credentials';
+      this.openPopup(this.errorMessage);
       this.cdr.detectChanges();
     }
   });
