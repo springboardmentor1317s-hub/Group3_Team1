@@ -1,0 +1,38 @@
+<div class="container">
+  <header class="luxury-header">
+    <div class="header-inner">
+      <a class="brand-block" routerLink="/super-admin-dashboard" aria-label="Go to super admin dashboard">
+        <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub">
+        <span class="brand-name">
+          <span class="brand-campus">Campus</span>
+          <span class="brand-eventhub">Event Hub</span>
+        </span>
+      </a>
+
+      <nav class="header-nav" aria-label="Super admin navigation">
+        <a class="nav-link" routerLink="/super-admin-dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Dashboard</a>
+        <a class="nav-link" routerLink="/super-admin/students" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Students</a>
+        <a class="nav-link" routerLink="/super-admin/admins" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Admins</a>
+        <a class="nav-link" routerLink="/super-admin/events" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Events</a>
+      </nav>
+
+      <div class="header-actions">
+        <button class="action-btn export-btn" type="button">
+          <i class="fa-solid fa-download"></i>
+          Export Reports
+        </button>
+        <button class="action-btn logout-btn" type="button" (click)="logout()">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          Logout
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <section class="content-placeholder">
+    <div class="placeholder-card">
+      <h3>Events</h3>
+      <p>Super admin events page placeholder. Content will be added here.</p>
+    </div>
+  </section>
+</div>
