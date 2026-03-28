@@ -5,7 +5,7 @@ const User = require('./backend/models/User');
 
 async function setupAdmin() {
   try {
-await mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/campus-event-hub');
+await mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/CompushEventHub');
     console.log('✅ Connected to MongoDB');
 
     // Check if user exists

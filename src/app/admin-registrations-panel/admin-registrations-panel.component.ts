@@ -42,6 +42,5 @@ export class AdminRegistrationsPanelComponent {
 
   @Output() searchQueryChange = new EventEmitter<string>();
   @Output() back = new EventEmitter<void>();
-  @Output() approve = new EventEmitter<Registration>();
-  @Output() reject = new EventEmitter<Registration>();
+  @Output() review = new EventEmitter<Registration>();
 }

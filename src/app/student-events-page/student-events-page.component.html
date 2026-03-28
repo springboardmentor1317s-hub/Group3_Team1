@@ -49,9 +49,9 @@
       </div>
     </section>
 
-    <section *ngIf="loading" class="state-card">Loading events...</section>
+    <section *ngIf="loading && !hasVisibleEventsData" class="state-card">Loading events...</section>
 
-    <section class="event-grid" *ngIf="!loading && filteredEvents.length > 0">
+    <section class="event-grid" *ngIf="filteredEvents.length > 0">
 
       <div class="event-card-stack" *ngFor="let event of filteredEvents; trackBy: trackById">
         <app-event-card
@@ -69,7 +69,7 @@
 
     </section>
 
-    <section *ngIf="!loading && filteredEvents.length === 0" class="state-card">
+    <section *ngIf="!loading && !hasVisibleEventsData && filteredEvents.length === 0" class="state-card">
       No events matched the selected filters.
     </section>
   </main>

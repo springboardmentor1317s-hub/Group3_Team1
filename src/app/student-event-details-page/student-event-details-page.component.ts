@@ -2,10 +2,11 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { finalize, forkJoin, of } from 'rxjs';
+import { finalize, forkJoin, of, timeout } from 'rxjs';
 import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
-import { StudentDashboardService, StudentEventCard, StudentEventComment } from '../services/student-dashboard.service';
+import { StudentDashboardService, StudentEventCard, StudentEventComment, StudentRegistrationRecord } from '../services/student-dashboard.service';
+import { EventService } from '../services/event.service';
 
 interface ReplyThreadNode {
   id: string;
@@ -45,7 +46,9 @@ interface PublicCommentView {
 })
 export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
   event: StudentEventCard | null = null;
+  currentRegistration: StudentRegistrationRecord | null = null;
   loading = true;
+  registrationStateLoading = true;
   commentsLoading = true;
   actionEventId = '';
   errorMessage = '';
@@ -71,7 +74,8 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private studentDashboardService: StudentDashboardService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private eventService: EventService
   ) {}
 
   ngOnInit(): void {
@@ -142,6 +146,10 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     if (!this.event) return 'Open';
     if (this.isEventExpired(this.event)) return 'Closed';
 
+    if (this.currentRegistration?.status === 'APPROVED') return 'Approved';
+    if (this.currentRegistration?.status === 'PENDING') return 'Pending Review';
+    if (this.currentRegistration?.status === 'REJECTED') return 'Rejected';
+
     const normalizedStatus = String(this.event.status || '').toLowerCase();
     if (normalizedStatus === 'registered') return 'Registered';
     if (normalizedStatus === 'closed') return 'Closed';
@@ -169,7 +177,10 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
 
   get registerDisabled(): boolean {
     if (!this.event) return true;
-    return this.isEventExpired(this.event) || this.event.status !== 'Open' || this.actionEventId === this.event.id;
+    if (this.registrationStateLoading) return true;
+    if (this.isEventExpired(this.event) || this.actionEventId === this.event.id) return true;
+    if (this.currentRegistration?.status === 'APPROVED' || this.currentRegistration?.status === 'PENDING') return true;
+    return this.event.status !== 'Open' && this.currentRegistration?.status !== 'REJECTED';
   }
 
   get canShowFeedbackPanel(): boolean {
@@ -213,6 +224,11 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
   getRegisterLabel(): string {
     if (!this.event) return 'Register Now';
     if (this.isEventExpired(this.event)) return 'Closed';
+    if (this.registrationStateLoading) return 'Checking Status...';
+
+    if (this.currentRegistration?.status === 'APPROVED') return 'Approved';
+    if (this.currentRegistration?.status === 'PENDING') return 'Under Review';
+    if (this.currentRegistration?.status === 'REJECTED') return 'Update And Resubmit';
 
     const normalizedStatus = String(this.event.status || '').toLowerCase();
     if (normalizedStatus === 'registered') return 'Registered';
@@ -224,22 +240,10 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
 
   registerForEvent(): void {
     if (!this.event || this.registerDisabled) return;
-    const currentEventId = this.event.id;
-
-    this.actionEventId = currentEventId;
-    this.studentDashboardService.registerForEvent(currentEventId).pipe(
-      finalize(() => {
-        this.actionEventId = '';
-      })
-    ).subscribe({
-      next: () => {
-        this.studentDashboardService.refreshDashboardSnapshot().subscribe({
-          next: () => this.loadEvent(currentEventId),
-          error: () => this.loadEvent(currentEventId)
-        });
-      },
-      error: (error) => {
-        this.errorMessage = error?.error?.error || error?.error?.message || 'Registration failed. Please try again.';
+    this.router.navigate(['/student-event-registration', this.event.id], {
+      state: {
+        event: this.event,
+        registration: this.currentRegistration
       }
     });
   }
@@ -458,28 +462,77 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
 
   private loadEvent(eventId: string): void {
     this.loading = true;
+    this.registrationStateLoading = true;
     this.errorMessage = '';
 
     const cached = this.studentDashboardService.getCachedEvents().find((item) => item.id === eventId) || null;
+    const cachedRegistration = this.studentDashboardService.getCachedRegistrations().find((item) => item.eventId === eventId) || null;
     if (cached) {
       this.event = cached;
       this.loading = false;
     }
+    if (cachedRegistration) {
+      this.currentRegistration = cachedRegistration;
+      this.registrationStateLoading = false;
+    }
 
-    this.studentDashboardService.getEvents().subscribe({
+    this.studentDashboardService.fetchLatestRegistrations().pipe(
+      timeout(12000)
+    ).subscribe({
+      next: (registrations) => {
+        this.currentRegistration = registrations.find((item) => item.eventId === eventId) || null;
+        this.registrationStateLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.currentRegistration = this.studentDashboardService.getCachedRegistrations().find((item) => item.eventId === eventId) || null;
+        this.registrationStateLoading = false;
+        this.cdr.detectChanges();
+      }
+    });
+
+    this.studentDashboardService.getEvents().pipe(
+      timeout(9000)
+    ).subscribe({
       next: (events) => {
         this.event = events.find((item) => item.id === eventId) || null;
         this.loading = false;
         this.loadPublicComments(eventId, true);
         if (!this.event) {
+          this.loadEventFromDirectSource(eventId);
+          return;
+        }
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.loadEventFromDirectSource(eventId);
+      }
+    });
+  }
+
+  private loadEventFromDirectSource(eventId: string): void {
+    this.eventService.fetchEvents().pipe(
+      timeout(9000)
+    ).subscribe({
+      next: (events) => {
+        const directEvent = (events || [])
+          .map((item) => this.eventService.convertToFrontendEvent(item) as StudentEventCard)
+          .find((item) => String(item.id) === eventId) || null;
+        this.event = directEvent || this.event;
+        this.loading = false;
+        this.loadPublicComments(eventId, true);
+        if (!this.event) {
           this.errorMessage = 'Event not found.';
         }
+        this.cdr.detectChanges();
       },
       error: (error) => {
         this.loading = false;
+        this.loadPublicComments(eventId, true);
         if (!this.event) {
           this.errorMessage = error?.error?.message || 'Unable to load event details right now.';
         }
+        this.cdr.detectChanges();
       }
     });
   }

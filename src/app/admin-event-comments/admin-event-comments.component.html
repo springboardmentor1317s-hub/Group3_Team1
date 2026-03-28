@@ -1,9 +1,22 @@
 <div class="admin-comments-shell">
+  <app-admin-common-header
+    [activeTab]="'none'"
+    [userName]="userName"
+    [userAvatarUrl]="userAvatarUrl"
+    [showSearch]="false"
+    [showNotifications]="true"
+    [showExport]="false"
+    (brandClick)="goToDashboard()"
+    (activeTabChange)="handleTabChange($event)"
+    (notificationsTriggered)="handleTabChange('registrations')"
+    (logoutTriggered)="logout()"
+  ></app-admin-common-header>
+
   <header class="page-header">
     <div>
-      <p class="eyebrow">Event Details</p>
-      <h1>{{ event?.name || 'Event Details' }}</h1>
-      <p class="muted">Student detail page jaisa view with comments only. Feedback hidden hai.</p>
+      <p class="eyebrow">Event Studio</p>
+      <h1>Discussion & Activity</h1>
+      <p class="muted">Review the live event summary, key details, and public conversation from one admin view.</p>
     </div>
     <div class="header-actions">
       <button type="button" class="ghost-btn" (click)="goBack()">Back To My Events</button>
@@ -22,60 +35,166 @@
         <h2>{{ event.name }}</h2>
         <p>{{ event.category || 'General' }}</p>
         <div class="hero-meta">
-          <span><span class="material-icons">calendar_today</span>{{ formatTime(event.dateTime) }}</span>
+          <span><span class="material-icons">calendar_today</span>{{ formatDateOnly(event.dateTime) }}</span>
           <span><span class="material-icons">event_available</span>Last Registration: {{ registrationDeadlineText }}</span>
           <span><span class="material-icons">location_on</span>{{ event.location || 'Campus Venue' }}</span>
+        </div>
+        <div class="hero-highlights">
+          <article class="highlight-pill">
+            <strong>{{ statusLabel }}</strong>
+            <span>Current Event Status</span>
+          </article>
+          <article class="highlight-pill">
+            <strong>{{ event.registrations || 0 }}/{{ (event.maxAttendees && event.maxAttendees > 0) ? event.maxAttendees : 'Unlimited' }}</strong>
+            <span>Seats Filled</span>
+          </article>
+          <article class="highlight-pill">
+            <strong>{{ comments.length }}</strong>
+            <span>Public Threads</span>
+          </article>
         </div>
       </div>
     </section>
 
-    <section class="detail-card">
-      <h3>Event Details</h3>
-      <p class="description">{{ event.description || 'No description available.' }}</p>
-      <div class="detail-grid">
-        <div><strong>Organizer</strong><span>{{ event.organizer || 'Campus Event Hub' }}</span></div>
-        <div><strong>Contact</strong><span>{{ event.contact || 'Not available' }}</span></div>
-        <div><strong>College</strong><span>{{ event.collegeName || 'Campus Event Hub' }}</span></div>
-        <div><strong>Seats</strong><span>{{ event.registrations || 0 }}/{{ event.maxAttendees || event.participants || 0 }}</span></div>
-      </div>
-    </section>
-
-    <section class="comments-card">
-      <div class="comments-head">
-        <h3>Public Comments</h3>
-        <span class="muted">{{ comments.length }} threads</span>
-      </div>
-
-      <section *ngIf="commentsLoading" class="state-card">Loading comments...</section>
-      <section *ngIf="!commentsLoading && comments.length === 0" class="state-card">
-        Is event par abhi koi public comment nahi hai.
+    <section class="detail-layout">
+      <section class="detail-card">
+        <div class="section-intro">
+          <p class="section-kicker">Overview</p>
+          <h3>Event Details</h3>
+        </div>
+        <p class="description">{{ event.description || 'No description available.' }}</p>
+        <div class="detail-grid">
+          <div><strong>Event Date</strong><span>{{ formatDateOnly(event.dateTime) }}</span></div>
+          <div><strong>Registration Deadline</strong><span>{{ registrationDeadlineText }}</span></div>
+          <div><strong>Organizer</strong><span>{{ event.organizer || 'Campus Event Hub' }}</span></div>
+          <div><strong>Contact</strong><span>{{ event.contact || 'Not available' }}</span></div>
+          <div><strong>College</strong><span>{{ event.collegeName || 'Campus Event Hub' }}</span></div>
+          <div><strong>Seats</strong><span>{{ event.registrations || 0 }}/{{ (event.maxAttendees && event.maxAttendees > 0) ? event.maxAttendees : 'Unlimited' }}</span></div>
+        </div>
       </section>
 
-      <section class="comments-list" *ngIf="!commentsLoading && comments.length > 0">
-        <article class="comment-item" *ngFor="let item of comments; trackBy: trackByCommentId">
-          <img class="avatar-img" [src]="item.avatarUrl" [alt]="item.name">
-          <div class="comment-body">
-            <div class="comment-head">
-              <strong>{{ item.name }}</strong>
-              <span>{{ formatTime(item.createdAt) }}</span>
-            </div>
-            <p>{{ item.text }}</p>
-
-            <div class="reply-list" *ngIf="item.replies.length > 0">
-              <article class="reply-item" *ngFor="let reply of item.replies; trackBy: trackByCommentId">
-                <img class="reply-avatar-img" [src]="reply.avatarUrl" [alt]="reply.name">
-                <div class="reply-body">
-                  <div class="comment-head">
-                    <strong>{{ reply.name }}</strong>
-                    <span>{{ formatTime(reply.createdAt) }}</span>
-                  </div>
-                  <p>{{ reply.text }}</p>
-                </div>
-              </article>
-            </div>
+      <section class="comments-card">
+        <div class="comments-head">
+          <div class="section-intro">
+            <p class="section-kicker">Conversation</p>
+            <h3>Public Comments</h3>
           </div>
-        </article>
+          <span class="thread-badge">{{ comments.length }} threads</span>
+        </div>
+
+        <div class="composer">
+          <textarea
+            [(ngModel)]="publicCommentDraft"
+            rows="3"
+            placeholder="Write a public comment as admin..."
+          ></textarea>
+
+          <button
+            type="button"
+            class="comment-btn"
+            [disabled]="publicCommentActionInProgress || !publicCommentDraft.trim()"
+            (click)="postPublicComment()"
+          >
+            {{ publicCommentActionInProgress ? 'Posting...' : 'Post Comment' }}
+          </button>
+        </div>
+
+        <section *ngIf="commentsLoading" class="state-card">Loading comments...</section>
+        <section *ngIf="!commentsLoading && comments.length === 0" class="state-card">
+          No public comments have been posted for this event yet.
+        </section>
+
+        <section class="comments-list" *ngIf="!commentsLoading && comments.length > 0">
+          <article class="comment-item" *ngFor="let item of comments; trackBy: trackByCommentId">
+            <img class="avatar-img" [src]="item.avatarUrl" [alt]="item.name">
+            <div class="comment-body">
+              <div class="comment-head">
+                <strong>{{ item.name }}</strong>
+                <span>{{ formatTime(item.createdAt) }}</span>
+              </div>
+              <p *ngIf="!item.isEditing">{{ item.text }}</p>
+              <div class="reply-box" *ngIf="item.isEditing">
+                <textarea [(ngModel)]="item.editDraft" rows="2" placeholder="Edit comment..."></textarea>
+                <div class="comment-actions compact">
+                  <button type="button" class="reply-submit-btn" (click)="saveEditEntry(item)">Save</button>
+                  <button type="button" class="action-btn" (click)="cancelEditEntry(item)">Cancel</button>
+                </div>
+              </div>
+
+              <div class="comment-actions">
+                <button type="button" class="action-btn" [class.active]="isLikedByMe(item)" (click)="toggleLike(item)">
+                  <span class="material-icons">{{ isLikedByMe(item) ? 'thumb_up' : 'thumb_up_off_alt' }}</span>
+                  <span>Like</span>
+                  <span *ngIf="item.likes.length > 0">({{ item.likes.length }})</span>
+                </button>
+                <button type="button" class="action-btn" (click)="toggleReplyBox(item)">
+                  <span class="material-icons">reply</span>
+                  <span>Reply</span>
+                </button>
+                <button *ngIf="canManageEntry(item)" type="button" class="action-btn" (click)="startEditEntry(item)">
+                  <span class="material-icons">edit</span>
+                  <span>Edit</span>
+                </button>
+                <button *ngIf="canManageEntry(item)" type="button" class="action-btn" (click)="deleteEntry(item)">
+                  <span class="material-icons">delete</span>
+                  <span>Delete</span>
+                </button>
+              </div>
+
+              <div class="reply-box" *ngIf="item.replyOpen">
+                <textarea [(ngModel)]="item.replyDraft" rows="2" placeholder="Write a reply..."></textarea>
+                <button type="button" class="reply-submit-btn" (click)="postReply(item)">Post Reply</button>
+              </div>
+
+              <ng-container *ngTemplateOutlet="replyThread; context: { $implicit: item.replies }"></ng-container>
+            </div>
+          </article>
+        </section>
       </section>
     </section>
   </ng-container>
+
+  <ng-template #replyThread let-replies>
+    <div class="reply-list" *ngIf="replies?.length">
+      <article class="reply-item" *ngFor="let reply of replies; trackBy: trackByCommentId">
+        <img class="reply-avatar-img" [src]="reply.avatarUrl" [alt]="reply.name">
+        <div class="reply-body">
+          <div class="comment-head">
+            <strong>{{ reply.name }}</strong>
+            <span>{{ formatTime(reply.createdAt) }}</span>
+          </div>
+          <p *ngIf="!reply.isEditing">{{ reply.text }}</p>
+          <div class="reply-box" *ngIf="reply.isEditing">
+            <textarea [(ngModel)]="reply.editDraft" rows="2" placeholder="Edit reply..."></textarea>
+            <div class="comment-actions compact">
+              <button type="button" class="reply-submit-btn" (click)="saveEditEntry(reply)">Save</button>
+              <button type="button" class="action-btn" (click)="cancelEditEntry(reply)">Cancel</button>
+            </div>
+          </div>
+
+          <div class="comment-actions compact">
+            <button type="button" class="action-btn" (click)="toggleReplyBox(reply)">
+              <span class="material-icons">reply</span>
+              <span>Reply</span>
+            </button>
+            <button *ngIf="canManageEntry(reply)" type="button" class="action-btn" (click)="startEditEntry(reply)">
+              <span class="material-icons">edit</span>
+              <span>Edit</span>
+            </button>
+            <button *ngIf="canManageEntry(reply)" type="button" class="action-btn" (click)="deleteEntry(reply)">
+              <span class="material-icons">delete</span>
+              <span>Delete</span>
+            </button>
+          </div>
+
+          <div class="reply-box" *ngIf="reply.replyOpen">
+            <textarea [(ngModel)]="reply.replyDraft" rows="2" placeholder="Write a reply..."></textarea>
+            <button type="button" class="reply-submit-btn" (click)="postReply(reply)">Post Reply</button>
+          </div>
+
+          <ng-container *ngTemplateOutlet="replyThread; context: { $implicit: reply.replies }"></ng-container>
+        </div>
+      </article>
+    </div>
+  </ng-template>
 </div>

@@ -2905,7 +2905,7 @@
     radial-gradient(circle at 90% 4%, rgba(56, 189, 248, 0.16), transparent 24%),
     radial-gradient(circle at 50% 35%, rgba(236, 72, 153, 0.08), transparent 24%),
     linear-gradient(180deg, #f7f3ea 0%, #f7fbff 40%, #edf3ff 100%);
-  padding: 118px 0 1.2rem;
+  padding: 128px 0 1.2rem;
   box-shadow: none;
   border-radius: 0;
 }
@@ -2913,17 +2913,25 @@
 .admin-shell .dashboard-layout {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
-  gap: 0;
+  gap: 0.8rem;
   width: 100%;
+  max-width: none;
   margin: 0;
-  padding: 0 1.1rem 2rem 0;
+  padding: 14px 0.8rem 2rem 0;
+  align-items: start;
+  transition: grid-template-columns 0.35s ease, gap 0.35s ease;
+}
+
+.admin-shell .dashboard-layout.sidebar-collapsed {
+  grid-template-columns: 82px minmax(0, 1fr);
 }
 
 .admin-shell .content.dashboard-main {
   min-width: 0;
   width: 100%;
+  max-width: none;
   margin: 0;
-  padding: 0 0 0 1.2rem;
+  padding: 0;
   display: grid;
   gap: 1.2rem;
 }
@@ -3302,6 +3310,7 @@
 @media (max-width: 1180px) {
   .admin-shell .dashboard-layout {
     grid-template-columns: 1fr;
+    gap: 1rem;
   }
 
   .admin-shell .stat-grid,

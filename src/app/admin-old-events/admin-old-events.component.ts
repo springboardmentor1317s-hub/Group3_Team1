@@ -1,17 +1,18 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { EventService, BackendEvent } from '../services/event.service';
-import { buildAdminProfileIdentifiers, filterEventsOwnedByAdmin } from '../shared/admin-owned-events.util';
 import { AdminEventCardComponent } from '../shared/admin-event-card/admin-event-card.component';
 import { StudentEventCard } from '../services/student-dashboard.service';
 import { AdminDashboardSidebarComponent } from '../admin-dashboard-sidebar/admin-dashboard-sidebar.component';
 import { isEventClosedByDate, parseEventLocalDay, resolveEventDateCandidate } from '../shared/event-date.util';
+import { AdminCommonHeaderComponent } from '../shared/admin-common-header/admin-common-header.component';
+import { Auth } from '../auth/auth';
 
 @Component({
   selector: 'app-admin-old-events',
   standalone: true,
-  imports: [CommonModule, RouterLink, AdminEventCardComponent, AdminDashboardSidebarComponent],
+  imports: [CommonModule, AdminEventCardComponent, AdminDashboardSidebarComponent, AdminCommonHeaderComponent],
   templateUrl: './admin-old-events.component.html',
   styleUrls: ['./admin-old-events.component.css']
 })
@@ -19,43 +20,24 @@ export class AdminOldEventsComponent implements OnInit {
   loading = true;
   errorMessage = '';
   userName = 'College Admin';
+  userAvatarUrl: string | null = null;
+  sidebarCollapsed = false;
   eventCards: StudentEventCard[] = [];
 
   constructor(
     private readonly eventService: EventService,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly auth: Auth
   ) {}
 
   ngOnInit(): void {
     const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
     this.userName = currentUser?.name || this.userName;
-    const identifiers = buildAdminProfileIdentifiers({
-      userId: currentUser?.userId,
-      id: currentUser?.id || currentUser?._id,
-      email: currentUser?.email,
-      name: currentUser?.name,
-      college: currentUser?.college
-    });
+    this.userAvatarUrl = currentUser?.profileImageUrl || null;
 
-    this.eventService.fetchEvents().subscribe({
+    this.eventService.fetchMyEvents().subscribe({
       next: (events) => {
-        const allEvents = events || [];
-        const ownedEvents = filterEventsOwnedByAdmin(allEvents, identifiers);
-        const ownedStrict = allEvents.filter((event) => {
-          const ownerCandidates = [
-            event?.createdById,
-            event?.ownerId,
-            event?.adminId,
-            event?.userId,
-            event?.email
-          ]
-            .filter(Boolean)
-            .map((value) => String(value).toLowerCase());
-          return ownerCandidates.some((value) => identifiers.includes(value));
-        });
-
-        const visibleSource = ownedStrict.length > 0 ? ownedStrict : ownedEvents;
-        const oldEvents = visibleSource
+        const oldEvents = (events || [])
           .filter((event) => this.isPastEvent(event))
           .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
 
@@ -73,6 +55,11 @@ export class AdminOldEventsComponent implements OnInit {
     this.router.navigate(['/admin-dashboard']);
   }
 
+  logout(): void {
+    this.auth.logout();
+    this.router.navigate(['/login']);
+  }
+
   goToMyEvents(): void {
     this.router.navigate(['/admin-my-events']);
   }
@@ -83,6 +70,10 @@ export class AdminOldEventsComponent implements OnInit {
 
   openCreateEvent(): void {
     this.router.navigate(['/admin-dashboard'], { queryParams: { tab: 'events', create: 'true' } });
+  }
+
+  setSidebarCollapsed(collapsed: boolean): void {
+    this.sidebarCollapsed = collapsed;
   }
 
   trackByEventId(_index: number, event: StudentEventCard): string {
@@ -116,7 +107,7 @@ export class AdminOldEventsComponent implements OnInit {
       contact: event.contact || 'Contact admin',
       status: 'Closed',
       registrations: event.registrations || 0,
-      maxAttendees: event.maxAttendees || event.participants || 100,
+      maxAttendees: event.maxAttendees ?? null,
       collegeName: event.collegeName || 'Campus Event Hub',
       endDate: event.endDate ?? null
     };

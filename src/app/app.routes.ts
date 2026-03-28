@@ -4,7 +4,7 @@ import { Loginpage } from './loginpage/loginpage';
 import { Homepage } from './homepage/homepage';
 // import { StudentDashboardComponent } from './student-dashboard/student-dashboard';
 import { AdminDashboard } from './admin-dashboard/admin-dashboard';
-import { AdminProfile } from './admin-profile/admin-profile';
+import { AdminProfilePageComponent } from './admin-profile/admin-profile-page';
 import { SuperAdminDashboard } from './super-admin-dashboard/super-admin-dashboard';
 import { SignupSuccessComponent } from './signup-success/signup-success.component';
 import { roleGuard } from './role/role';
@@ -32,7 +32,7 @@ export const routes: Routes = [
 
   {
     path: 'admin-profile',
-    component: AdminProfile,
+    component: AdminProfilePageComponent,
     canActivate: [roleGuard('college_admin')]
   },
   {
@@ -53,6 +53,11 @@ export const routes: Routes = [
   {
     path: 'admin-old-events',
     loadComponent: () => import('./admin-old-events/admin-old-events.component').then(m => m.AdminOldEventsComponent),
+    canActivate: [roleGuard('college_admin')]
+  },
+  {
+    path: 'admin-create-event',
+    loadComponent: () => import('./create-event/admin-create-event-page.component').then(m => m.AdminCreateEventPageComponent),
     canActivate: [roleGuard('college_admin')]
   },
 
@@ -77,6 +82,11 @@ export const routes: Routes = [
   {
     path: 'student-event/:id',
     loadComponent: () => import('./student-event-details-page/student-event-details-page.component').then(m => m.StudentEventDetailsPageComponent),
+    canActivate: [roleGuard('student')]
+  },
+  {
+    path: 'student-event-registration/:id',
+    loadComponent: () => import('./student-event-registration-page/student-event-registration-page.component').then(m => m.StudentEventRegistrationPageComponent),
     canActivate: [roleGuard('student')]
   },
 

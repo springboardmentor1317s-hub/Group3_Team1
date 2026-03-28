@@ -1,0 +1,410 @@
+:host {
+  display: block;
+}
+
+.student-registration-shell {
+  min-height: 100vh;
+  padding: 108px 1rem 1rem;
+  background:
+    radial-gradient(circle at top left, rgba(250, 204, 21, 0.14), transparent 24%),
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.16), transparent 26%),
+    linear-gradient(180deg, #f7f3ea 0%, #f7fbff 42%, #edf3ff 100%);
+}
+
+.registration-main {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
+}
+
+.banner,
+.state-card,
+.status-card,
+.registration-form-card {
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.1);
+}
+
+.banner {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  font-weight: 700;
+}
+
+.error-banner {
+  color: #b91c1c;
+  background: rgba(254, 242, 242, 0.96);
+}
+
+.success-banner {
+  color: #047857;
+  background: rgba(236, 253, 245, 0.96);
+}
+
+.state-card {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: #334155;
+}
+
+.hero-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.4rem 1.45rem;
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.9), transparent 28%),
+    linear-gradient(135deg, rgba(13, 27, 67, 0.98), rgba(30, 64, 175, 0.96) 58%, rgba(79, 70, 229, 0.94));
+  color: #fff;
+  box-shadow: 0 30px 56px rgba(30, 64, 175, 0.22);
+}
+
+.hero-copy {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+  flex: 1 1 560px;
+}
+
+.eyebrow {
+  margin: 0;
+  color: rgba(191, 219, 254, 0.88);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.hero-copy h1,
+.status-card h2,
+.form-head h2,
+.section-title h3 {
+  margin: 0;
+}
+
+.hero-copy h1 {
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 0.96;
+  letter-spacing: -0.05em;
+  overflow-wrap: anywhere;
+}
+
+.hero-copy p,
+.status-card p,
+.form-head p,
+.section-title span {
+  margin: 0;
+  color: #64748b;
+}
+
+.hero-card .hero-copy p {
+  color: rgba(255, 255, 255, 0.86);
+  max-width: 720px;
+  overflow-wrap: anywhere;
+}
+
+.hero-side {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: end;
+  flex: 0 0 auto;
+  align-self: stretch;
+}
+
+.hero-chip,
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hero-chip {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.back-btn,
+.submit-btn {
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 800;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.back-btn {
+  padding: 0.88rem 1.16rem;
+  background: rgba(255, 255, 255, 0.94);
+  color: #132238;
+  box-shadow: inset 0 0 0 1px rgba(191, 219, 254, 0.9), 0 14px 24px rgba(148, 163, 184, 0.12);
+}
+
+.subtle-back {
+  background: rgba(248, 250, 252, 0.96);
+}
+
+.submit-btn {
+  padding: 0.95rem 1.4rem;
+  background: linear-gradient(135deg, #2563eb, #4f46e5 55%, #7c3aed);
+  color: #fff;
+  box-shadow: 0 20px 34px rgba(79, 70, 229, 0.24);
+}
+
+.submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.back-btn:hover,
+.submit-btn:hover {
+  transform: translateY(-1px);
+}
+
+.status-card,
+.registration-form-card {
+  padding: 1.25rem;
+}
+
+.status-header,
+.form-head,
+.submit-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.status-pill.pending {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(251, 191, 36, 0.24));
+  color: #9a3412;
+}
+
+.status-pill.approved {
+  background: rgba(16, 185, 129, 0.14);
+  color: #047857;
+}
+
+.status-pill.rejected {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.16), rgba(251, 113, 133, 0.18));
+  color: #b91c1c;
+}
+
+.rejection-note {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.3rem;
+  padding: 1rem;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(255, 241, 242, 0.97), rgba(255, 247, 237, 0.95));
+  border: 1px solid rgba(254, 202, 202, 0.92);
+}
+
+.rejection-note strong {
+  color: #b91c1c;
+}
+
+.registration-form-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.form-head {
+  padding-bottom: 0.25rem;
+}
+
+.form-head > div {
+  min-width: 0;
+  flex: 1 1 520px;
+}
+
+.form-section,
+.submit-card {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.84), transparent 26%),
+    rgba(248, 250, 252, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.95);
+}
+
+.section-title {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.form-grid {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.form-grid.two-column {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.field span {
+  color: #475569;
+  font-size: 0.83rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  border-radius: 18px;
+  padding: 0.95rem 1rem;
+  background: rgba(255, 255, 255, 0.98);
+  color: #0f172a;
+  outline: none;
+  resize: vertical;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  min-width: 0;
+}
+
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled {
+  background: rgba(241, 245, 249, 0.95);
+  color: #475569;
+}
+
+.field-wide {
+  grid-column: 1 / -1;
+}
+
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.95rem 1rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.95);
+  color: #132238;
+  font-weight: 700;
+}
+
+.rejection-note span,
+.field,
+.form-head p,
+.section-title span {
+  overflow-wrap: anywhere;
+}
+
+.popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(10px);
+}
+
+.popup-card {
+  width: min(460px, 100%);
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.4rem 1.3rem;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.24);
+  text-align: center;
+}
+
+.popup-card h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.4rem;
+}
+
+.popup-card p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.popup-btn {
+  justify-self: center;
+  min-width: 140px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.9rem 1.4rem;
+  background: linear-gradient(135deg, #2563eb, #4f46e5 55%, #7c3aed);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 18px 34px rgba(79, 70, 229, 0.22);
+}
+
+@media (max-width: 900px) {
+  .student-registration-shell {
+    padding: 108px 0.8rem 1rem;
+  }
+
+  .hero-card,
+  .status-header,
+  .form-head,
+  .submit-actions,
+  .form-grid.two-column {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .hero-side,
+  .submit-actions {
+    justify-items: stretch;
+  }
+
+  .hero-side {
+    width: 100%;
+  }
+
+  .back-btn,
+  .submit-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .registration-main {
+    gap: 0.85rem;
+  }
+
+  .hero-card,
+  .status-card,
+  .registration-form-card {
+    padding: 1rem;
+  }
+
+  .hero-copy h1 {
+    font-size: 2.3rem;
+    line-height: 1.02;
+  }
+}
