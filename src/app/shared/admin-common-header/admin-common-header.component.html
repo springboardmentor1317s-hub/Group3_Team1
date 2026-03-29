@@ -40,15 +40,23 @@
         </button>
         <div class="notification-panel" *ngIf="notificationsOpen">
           <div class="notification-header">
-            <span>New Registrations</span>
+            <div class="notification-title-wrap">
+              <span class="notification-title">New Registrations</span>
+              <span class="notification-count-chip">{{ notifications.length }}</span>
+            </div>
             <button type="button" class="notification-clear-btn" *ngIf="notifications.length > 0" (click)="clearNotifications.emit()">
               Clear All
             </button>
           </div>
           <div class="notification-list" *ngIf="notifications.length > 0; else noNotifications">
             <div class="notification-item" *ngFor="let notification of notifications | slice:0:10">
-              <p>{{ notification.message }}</p>
-              <span>{{ notification.timeLabel }}</span>
+              <div class="notification-item-icon">
+                <span class="material-icons">notifications_active</span>
+              </div>
+              <div class="notification-item-copy">
+                <p>{{ notification.message }}</p>
+                <span>{{ notification.timeLabel }}</span>
+              </div>
             </div>
           </div>
           <ng-template #noNotifications>

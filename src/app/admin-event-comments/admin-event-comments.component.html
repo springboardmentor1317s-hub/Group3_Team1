@@ -66,6 +66,7 @@
         <div class="detail-grid">
           <div><strong>Event Date</strong><span>{{ formatDateOnly(event.dateTime) }}</span></div>
           <div><strong>Registration Deadline</strong><span>{{ registrationDeadlineText }}</span></div>
+          <div><strong>Event Creator</strong><span>{{ eventCreatorName }}</span></div>
           <div><strong>Organizer</strong><span>{{ event.organizer || 'Campus Event Hub' }}</span></div>
           <div><strong>Contact</strong><span>{{ event.contact || 'Not available' }}</span></div>
           <div><strong>College</strong><span>{{ event.collegeName || 'Campus Event Hub' }}</span></div>
@@ -98,6 +99,7 @@
             {{ publicCommentActionInProgress ? 'Posting...' : 'Post Comment' }}
           </button>
         </div>
+        <p *ngIf="commentActionError" class="error-text">{{ commentActionError }}</p>
 
         <section *ngIf="commentsLoading" class="state-card">Loading comments...</section>
         <section *ngIf="!commentsLoading && comments.length === 0" class="state-card">
@@ -108,8 +110,9 @@
           <article class="comment-item" *ngFor="let item of comments; trackBy: trackByCommentId">
             <img class="avatar-img" [src]="item.avatarUrl" [alt]="item.name">
             <div class="comment-body">
-              <div class="comment-head">
+              <div class="comment-head" [class.admin-head]="isAdminEntry(item)">
                 <strong>{{ item.name }}</strong>
+                <span class="admin-author-badge" *ngIf="isAdminEntry(item)">Admin Reply</span>
                 <span>{{ formatTime(item.createdAt) }}</span>
               </div>
               <p *ngIf="!item.isEditing">{{ item.text }}</p>
@@ -143,7 +146,14 @@
 
               <div class="reply-box" *ngIf="item.replyOpen">
                 <textarea [(ngModel)]="item.replyDraft" rows="2" placeholder="Write a reply..."></textarea>
-                <button type="button" class="reply-submit-btn" (click)="postReply(item)">Post Reply</button>
+                <button
+                  type="button"
+                  class="reply-submit-btn"
+                  [disabled]="replyActionInProgressById[item.id]"
+                  (click)="postReply(item)"
+                >
+                  {{ replyActionInProgressById[item.id] ? 'Posting...' : 'Post Reply' }}
+                </button>
               </div>
 
               <ng-container *ngTemplateOutlet="replyThread; context: { $implicit: item.replies }"></ng-container>
@@ -159,8 +169,9 @@
       <article class="reply-item" *ngFor="let reply of replies; trackBy: trackByCommentId">
         <img class="reply-avatar-img" [src]="reply.avatarUrl" [alt]="reply.name">
         <div class="reply-body">
-          <div class="comment-head">
+          <div class="comment-head" [class.admin-head]="isAdminEntry(reply)">
             <strong>{{ reply.name }}</strong>
+            <span class="admin-author-badge" *ngIf="isAdminEntry(reply)">Admin Reply</span>
             <span>{{ formatTime(reply.createdAt) }}</span>
           </div>
           <p *ngIf="!reply.isEditing">{{ reply.text }}</p>
@@ -189,7 +200,14 @@
 
           <div class="reply-box" *ngIf="reply.replyOpen">
             <textarea [(ngModel)]="reply.replyDraft" rows="2" placeholder="Write a reply..."></textarea>
-            <button type="button" class="reply-submit-btn" (click)="postReply(reply)">Post Reply</button>
+            <button
+              type="button"
+              class="reply-submit-btn"
+              [disabled]="replyActionInProgressById[reply.id]"
+              (click)="postReply(reply)"
+            >
+              {{ replyActionInProgressById[reply.id] ? 'Posting...' : 'Post Reply' }}
+            </button>
           </div>
 
           <ng-container *ngTemplateOutlet="replyThread; context: { $implicit: reply.replies }"></ng-container>

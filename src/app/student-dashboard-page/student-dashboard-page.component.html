@@ -1,6 +1,6 @@
 <div class="student-shell">
   <app-student-header
-    activeTab="dashboard"
+    [activeTab]="activeHeaderTab"
     [studentName]="studentName"
     [studentPhotoUrl]="profilePhotoUrl"
     notificationMode="dropdown"
@@ -94,7 +94,7 @@
           <app-event-card
             [event]="event"
             [registerLabel]="getRegisterLabel(event)"
-            [registerDisabled]="event.status !== 'Open' || isEventCompleted(event) || actionEventId === event.id"
+            [registerDisabled]="isRegisterDisabled(event)"
             [showRegisterButton]="!shouldShowRating(event)"
             [showRatingSummary]="isEventCompleted(event)"
             [ratingAverage]="getEventRatingAverage(event.id)"
@@ -160,7 +160,7 @@
       </div>
     </section>
 
-    <section class="panel feedback-panel" id="feedback-section">
+    <section class="panel feedback-panel" id="query-section">
       <div class="panel-head">
         <div>
           <p class="section-kicker">Student Support Desk</p>

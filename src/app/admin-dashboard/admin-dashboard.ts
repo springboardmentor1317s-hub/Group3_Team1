@@ -15,8 +15,10 @@ import { AdminDashboardSidebarComponent } from '../admin-dashboard-sidebar/admin
 import { AdminRegistrationsPanelComponent } from '../admin-registrations-panel/admin-registrations-panel.component';
 import { isEventClosedByDate, parseEventLocalDay, resolveEventDateCandidate } from '../shared/event-date.util';
 import { AdminCommonHeaderComponent } from '../shared/admin-common-header/admin-common-header.component';
+import { AdminStudentStatusPanelComponent } from '../admin-student-status-panel/admin-student-status-panel.component';
+import { AdminQueryPanelComponent, AdminStudentQuery } from '../admin-query-panel/admin-query-panel.component';
 
-type DashboardTab = 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback';
+type DashboardTab = 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries';
 
 interface OrganizerEvent {
   id: string;
@@ -78,7 +80,7 @@ interface RegistrationGroup {
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminFeedbackPanelComponent, AdminEventCardComponent, AdminDashboardSidebarComponent, AdminRegistrationsPanelComponent, AdminCommonHeaderComponent],
+  imports: [CommonModule, FormsModule, AdminFeedbackPanelComponent, AdminEventCardComponent, AdminDashboardSidebarComponent, AdminRegistrationsPanelComponent, AdminCommonHeaderComponent, AdminStudentStatusPanelComponent, AdminQueryPanelComponent],
   templateUrl: './admin-dashboard.html',
   styleUrls: ['./admin-dashboard.css']
 })
@@ -92,14 +94,20 @@ export class AdminDashboard implements OnInit, OnDestroy {
   private readonly COLLEGE_EVENTS_API_URL = '/api/events/college';
   private readonly REGISTRATIONS_API_URL = '/api/registrations';
   private readonly COLLEGE_REGISTRATIONS_API_URL = '/api/registrations/college';
+  private readonly STUDENT_QUERIES_API_URL = '/api/student-queries';
+  private readonly COLLEGE_QUERIES_API_URL = '/api/student-queries/college';
   private readonly NOTIFICATION_POLL_INTERVAL_MS = 12000;
   private notificationPollTimer: ReturnType<typeof setInterval> | null = null;
   private sidebarHoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
   private knownRegistrationIds = new Set<string>();
   private knownRegistrationStatuses = new Map<string, Registration['status']>();
+  private knownQueryIds = new Set<string>();
+  private knownQueryUpdateAt = new Map<string, string>();
+  private queryBootstrapDone = false;
   private notificationStorageKey = 'admin-dashboard-last-seen-registration-at';
   private myEventsCacheStorageKey = 'admin-my-events-cache';
   private currentCollege = '';
+  adminCollegeName = '';
 
   constructor(
     private readonly http: HttpClient,
@@ -158,6 +166,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
 
   events: OrganizerEvent[] = [];
   registrations: Registration[] = [];
+  studentQueries: AdminStudentQuery[] = [];
   filteredRegistrations: Registration[] = [];
   registrationStatusFilter: 'All' | 'Pending' | 'Approved' | 'Rejected' = 'All';
   registrationSearchText: string = '';
@@ -167,6 +176,9 @@ export class AdminDashboard implements OnInit, OnDestroy {
   showNotifications = false;
   unreadNotificationCount = 0;
   notifications: AdminNotification[] = [];
+  queryLoading = false;
+  queryErrorMessage = '';
+  querySavingId = '';
   showToast = false;
   toastMessage = '';
   toastType: 'success' | 'error' = 'success';
@@ -180,6 +192,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
     this.notificationStorageKey = `admin-dashboard-last-seen-registration-at-${userId}`;
     this.myEventsCacheStorageKey = this.buildMyEventsCacheStorageKey(user);
     this.currentCollege = String(user.college || '').trim().toLowerCase();
+    this.adminCollegeName = String(user.college || '').trim();
 
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark' || (savedTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -188,7 +201,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
 
     this.route.queryParamMap.subscribe((params) => {
       const tab = params.get('tab') as DashboardTab | null;
-      if (tab && ['overview', 'events', 'analytics', 'registrations', 'feedback'].includes(tab)) {
+      if (tab && ['overview', 'events', 'analytics', 'registrations', 'feedback', 'approvedStudents', 'queries'].includes(tab)) {
         this.activeTab = tab;
       }
       if (params.get('create') === 'true') {
@@ -220,7 +233,8 @@ export class AdminDashboard implements OnInit, OnDestroy {
         
         this.feedbacks = (feedbacks || []).filter((feedback) => eventIds.has(String(feedback.eventId)));
         
-        this.initializeNotifications(registrations);
+        this.initializeNotifications(registrations, []);
+        this.fetchCollegeQueries();
         this.startNotificationPolling();
         this.isLoading = false;
         this.cdr.detectChanges();
@@ -280,6 +294,9 @@ export class AdminDashboard implements OnInit, OnDestroy {
 
   setTab(tab: DashboardTab): void {
     this.activeTab = tab;
+    if (tab === 'queries') {
+      this.fetchCollegeQueries();
+    }
   }
 
   get isSidebarVisible(): boolean {
@@ -395,7 +412,8 @@ export class AdminDashboard implements OnInit, OnDestroy {
   private pollLatestRegistrations(): void {
     this.http.get<Registration[]>(this.COLLEGE_REGISTRATIONS_API_URL, { headers: this.getAuthHeaders() }).subscribe({
       next: (registrations) => {
-        this.handleRegistrationUpdates(registrations);
+        this.handleRegistrationUpdates(registrations || []);
+        this.fetchCollegeQueries(true);
       },
       error: (err) => {
         console.error('Notification poll failed', err);
@@ -403,21 +421,63 @@ export class AdminDashboard implements OnInit, OnDestroy {
     });
   }
 
-  private initializeNotifications(registrations: Registration[]): void {
+  private fetchCollegeQueries(silent = false): void {
+    if (!silent) {
+      this.queryLoading = true;
+      this.queryErrorMessage = '';
+    }
+
+    this.http.get<AdminStudentQuery[]>(this.COLLEGE_QUERIES_API_URL, { headers: this.getAuthHeaders() }).subscribe({
+      next: (queries) => {
+        const normalized = (queries || []).map((query) => this.normalizeAdminQuery(query));
+
+        if (!this.queryBootstrapDone) {
+          this.studentQueries = normalized;
+          this.initializeNotifications(this.registrations, normalized);
+          this.queryBootstrapDone = true;
+        } else {
+          this.handleQueryUpdates(normalized);
+        }
+
+        this.queryLoading = false;
+      },
+      error: (error) => {
+        if (!silent) {
+          this.queryLoading = false;
+          this.queryErrorMessage = error?.error?.message || 'Unable to load student queries right now.';
+        }
+      }
+    });
+  }
+
+  private initializeNotifications(registrations: Registration[], queries: AdminStudentQuery[] = []): void {
     this.knownRegistrationIds = new Set(registrations.map((reg) => reg.id));
     this.knownRegistrationStatuses = new Map(registrations.map((reg) => [reg.id, reg.status]));
+    this.knownQueryIds = new Set((queries || []).map((query) => query.id));
+    this.knownQueryUpdateAt = new Map((queries || []).map((query) => [query.id, String(query.updatedAt || query.createdAt || '')]));
     const sortedRegistrations = [...registrations].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-    this.notifications = sortedRegistrations.slice(0, 25).map((reg) => this.buildNotification(reg));
+    const queryNotifications = (queries || [])
+      .slice()
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 25)
+      .map((query) => this.buildQueryNotification(query));
+    this.notifications = [...queryNotifications, ...sortedRegistrations.slice(0, 25).map((reg) => this.buildNotification(reg))]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 25);
     const lastSeenAt = localStorage.getItem(this.notificationStorageKey) || '';
     if (!lastSeenAt) {
       this.markNotificationsAsRead(registrations);
       return;
     }
-    const unread = sortedRegistrations
+    const unreadRegistrationNotifications = sortedRegistrations
       .filter((reg) => new Date(reg.createdAt).getTime() > new Date(lastSeenAt).getTime())
       .map((reg) => this.buildNotification(reg));
+    const unreadQueryNotifications = (queries || [])
+      .filter((query) => new Date(query.createdAt).getTime() > new Date(lastSeenAt).getTime())
+      .map((query) => this.buildQueryNotification(query));
+    const unread = [...unreadQueryNotifications, ...unreadRegistrationNotifications];
     this.unreadNotificationCount = unread.length;
   }
 
@@ -456,6 +516,51 @@ export class AdminDashboard implements OnInit, OnDestroy {
     this.syncEventRegistrationStats(registrations);
   }
 
+  private handleQueryUpdates(queries: AdminStudentQuery[]): void {
+    const normalizedQueries = (queries || []).map((query) => this.normalizeAdminQuery(query));
+    const freshQueries = normalizedQueries
+      .filter((query) => !this.knownQueryIds.has(query.id))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    const updatedReplies = normalizedQueries
+      .filter((query) => {
+        const knownTime = this.knownQueryUpdateAt.get(query.id) || '';
+        const nextTime = String(query.updatedAt || query.createdAt || '');
+        if (!knownTime) return false;
+        if (knownTime === nextTime) return false;
+        return !!String(query.adminResponse || '').trim();
+      })
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
+
+    if (freshQueries.length > 0) {
+      const queryNotifications = freshQueries.map((query) => this.buildQueryNotification(query));
+      this.notifications = [...queryNotifications, ...this.notifications]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 25);
+      this.unreadNotificationCount += queryNotifications.length;
+      this.showSuccessToast(`${freshQueries[0].studentName} raised a new query.`);
+    }
+
+    if (updatedReplies.length > 0) {
+      const replyNotifications = updatedReplies.map((query) => ({
+        id: `${query.id}-reply-update`,
+        studentName: query.studentName,
+        eventName: query.subject || 'Student Query',
+        createdAt: query.updatedAt || query.createdAt,
+        message: `Query updated for ${query.studentName}: ${query.subject || 'Support Query'}`,
+        timeLabel: this.formatNotificationTime(query.updatedAt || query.createdAt)
+      }));
+      this.notifications = [...replyNotifications, ...this.notifications]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 25);
+      this.unreadNotificationCount += replyNotifications.length;
+    }
+
+    this.studentQueries = normalizedQueries;
+    this.knownQueryIds = new Set(normalizedQueries.map((query) => query.id));
+    this.knownQueryUpdateAt = new Map(normalizedQueries.map((query) => [query.id, String(query.updatedAt || query.createdAt || '')]));
+  }
+
   private buildNotification(registration: Registration): AdminNotification {
     return {
       id: registration.id,
@@ -480,10 +585,17 @@ export class AdminDashboard implements OnInit, OnDestroy {
 
   private markNotificationsAsRead(sourceRegs: Registration[] = this.registrations): void {
     this.unreadNotificationCount = 0;
-    const latest = sourceRegs
+    const latestRegistrationTime = sourceRegs
       .map((reg) => reg.createdAt)
       .filter(Boolean)
       .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+    const latestQueryTime = (this.studentQueries || [])
+      .map((query) => query.createdAt)
+      .filter(Boolean)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+    const latest = [latestRegistrationTime, latestQueryTime]
+      .filter(Boolean)
+      .sort((a, b) => new Date(String(b)).getTime() - new Date(String(a)).getTime())[0];
     if (latest) {
       localStorage.setItem(this.notificationStorageKey, latest);
     }
@@ -568,6 +680,46 @@ export class AdminDashboard implements OnInit, OnDestroy {
     this.setTab('registrations');
     this.registrationSearchQuery = '';
     this.dashboardSearchQuery = '';
+  }
+
+  onSubmitQueryReply(payload: {
+    queryId: string;
+    adminResponse: string;
+    status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
+    progressNote: string;
+  }): void {
+    const queryId = String(payload?.queryId || '').trim();
+    const adminResponse = String(payload?.adminResponse || '').trim();
+    if (!queryId || adminResponse.length < 3 || this.querySavingId) {
+      return;
+    }
+
+    this.querySavingId = queryId;
+    this.queryErrorMessage = '';
+
+    this.http.patch<AdminStudentQuery>(
+      `${this.STUDENT_QUERIES_API_URL}/${encodeURIComponent(queryId)}/reply`,
+      {
+        adminResponse,
+        status: payload.status,
+        progressNote: String(payload.progressNote || '').trim()
+      },
+      { headers: this.getAuthHeaders() }
+    ).subscribe({
+      next: (updatedQuery) => {
+        this.querySavingId = '';
+        const nextId = String(updatedQuery?.id || queryId);
+        this.studentQueries = this.studentQueries.map((query) => query.id === nextId ? {
+          ...query,
+          ...updatedQuery
+        } : query);
+        this.showSuccessToast('Query reply sent successfully.');
+      },
+      error: (error) => {
+        this.querySavingId = '';
+        this.queryErrorMessage = error?.error?.message || 'Unable to save query reply right now.';
+      }
+    });
   }
 
   getFilteredRegistrations(): any[] {
@@ -806,6 +958,51 @@ export class AdminDashboard implements OnInit, OnDestroy {
 
   getRejectedRegistrationsCount(): number {
     return this.getRejectedCount();
+  }
+
+  private buildQueryNotification(query: AdminStudentQuery): AdminNotification {
+    return {
+      id: `query-${query.id}`,
+      studentName: query.studentName,
+      eventName: query.subject || 'Student Query',
+      createdAt: query.createdAt,
+      message: `${query.studentName} asked: ${query.subject || 'Support Query'}`,
+      timeLabel: this.formatNotificationTime(query.createdAt)
+    };
+  }
+
+  private normalizeAdminQuery(query: AdminStudentQuery): AdminStudentQuery {
+    const normalizedStatus = String(query?.status || 'OPEN').toUpperCase() as AdminStudentQuery['status'];
+    const studentCollege = this.resolveStudentCollegeForQuery(query);
+    return {
+      ...query,
+      status: normalizedStatus,
+      studentCollege
+    };
+  }
+
+  private resolveStudentCollegeForQuery(query: AdminStudentQuery): string {
+    const queryCollege = String(query?.studentCollege || '').trim();
+    if (queryCollege) {
+      return queryCollege;
+    }
+
+    const queryStudentId = String(query?.studentId || '').trim().toLowerCase();
+    const queryEmail = String(query?.studentEmail || '').trim().toLowerCase();
+
+    const matchedRegistration = (this.registrations || []).find((registration) => {
+      const regStudentId = String(registration?.studentId || '').trim().toLowerCase();
+      const regEmail = String(registration?.studentEmail || registration?.email || '').trim().toLowerCase();
+      if (queryStudentId && regStudentId && queryStudentId === regStudentId) {
+        return true;
+      }
+      if (queryEmail && regEmail && queryEmail === regEmail) {
+        return true;
+      }
+      return false;
+    });
+
+    return String(matchedRegistration?.college || '').trim();
   }
 
   get avatarText(): string {

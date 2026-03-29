@@ -20,6 +20,8 @@ export class Loginpage {
   isLoggingIn = false;
   popupMessage = '';
   isPopupOpen = false;
+  private pendingRouteAfterPopup: string | null = null;
+  private pendingQueryParamsAfterPopup: Record<string, string> | null = null;
   user = {
     email: '',
     password: '',
@@ -63,6 +65,13 @@ export class Loginpage {
 
   closePopup(): void {
     this.isPopupOpen = false;
+    if (this.pendingRouteAfterPopup) {
+      const route = this.pendingRouteAfterPopup;
+      const queryParams = this.pendingQueryParamsAfterPopup || undefined;
+      this.pendingRouteAfterPopup = null;
+      this.pendingQueryParamsAfterPopup = null;
+      this.router.navigate([route], queryParams ? { queryParams } : undefined);
+    }
   }
 
   private openPopup(message: string): void {
@@ -139,6 +148,12 @@ localStorage.setItem('role', res.role);
       // navigate
       if (res.role === 'admin' || res.role === 'college_admin') {
         this.isLoggingIn = false;
+        if (res.profileCompleted === false) {
+          this.pendingRouteAfterPopup = '/admin-profile';
+          this.pendingQueryParamsAfterPopup = { requireProfileUpdate: '1' };
+          this.openPopup('Please complete your admin profile first. Dashboard access will be enabled after profile completion.');
+          return;
+        }
         this.router.navigate(['/admin-dashboard']);
       } else if (res.role === 'super_admin') {
         this.isLoggingIn = false;

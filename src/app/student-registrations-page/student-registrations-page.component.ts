@@ -205,7 +205,15 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
   }
 
   cancelRegistration(registration: StudentRegistrationRecord): void {
-    const shouldCancel = window.confirm('Are you sure want to cancel from this event?');
+    if (!this.canDeleteRegistration(registration) || this.actionEventId === registration.eventId) {
+      return;
+    }
+
+    const shouldCancel = window.confirm(
+      registration.status === 'REJECTED'
+        ? 'Are you sure you want to delete this rejected registration?'
+        : 'Are you sure you want to delete this pending registration?'
+    );
     if (!shouldCancel) {
       return;
     }
@@ -237,6 +245,10 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
 
   getRegistrationStatusLabel(status: StudentRegistrationRecord['status']): string {
     return this.studentDashboardService.formatRegistrationStatus(status);
+  }
+
+  canDeleteRegistration(registration: StudentRegistrationRecord): boolean {
+    return registration.status === 'PENDING' || registration.status === 'REJECTED';
   }
 
   isEventCompleted(registration: StudentRegistrationRecord): boolean {

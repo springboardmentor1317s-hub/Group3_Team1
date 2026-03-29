@@ -5,6 +5,10 @@
 /* ================= CARD ================= */
 
 .event-card {
+  height: 100%;
+  min-height: 460px;
+  display: flex;
+  flex-direction: column;
   border-radius: 24px;
   overflow: hidden;
   backdrop-filter: blur(12px);
@@ -15,7 +19,7 @@
 }
 
 .event-card:hover {
-  transform: translateY(-10px) scale(1.02);
+  transform: translateY(-6px);
   box-shadow: 0 28px 50px rgba(15, 23, 42, 0.2);
 }
 
@@ -78,6 +82,9 @@
 /* CONTENT */
 .event-content {
   padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .category-pill {
@@ -150,6 +157,9 @@
   color: #64748b;
   font-size: 0.88rem;
   line-height: 1.55;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* META */
@@ -157,6 +167,7 @@
   display: grid;
   gap: 0.4rem;
   margin: 0.75rem 0;
+  min-height: 4.3rem;
 }
 
 .meta-list span {
@@ -176,6 +187,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.6rem;
+  margin-top: auto;
 }
 
 .view-btn,

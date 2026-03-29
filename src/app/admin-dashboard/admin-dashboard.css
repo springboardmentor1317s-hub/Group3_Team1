@@ -3191,7 +3191,14 @@
 
 .admin-shell .event-card-stack {
   display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
   gap: 0.75rem;
+  height: 100%;
+}
+
+.admin-shell .event-card-stack app-admin-event-card {
+  display: block;
+  height: 100%;
 }
 
 .admin-shell .admin-event-actions {

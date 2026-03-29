@@ -1,0 +1,70 @@
+<section class="panel registrations-panel">
+  <div class="panel-head">
+    <div>
+      <p class="section-kicker">{{ panelKicker }}</p>
+      <h2>{{ panelTitle }}</h2>
+      <p class="panel-subtitle">{{ panelSubtitle }}</p>
+    </div>
+
+    <div class="status-toggle">
+      <button
+        type="button"
+        class="toggle-btn"
+        [class.active]="activeStatus === 'APPROVED'"
+        (click)="setStatus('APPROVED')"
+      >
+        Approved Students
+      </button>
+      <button
+        type="button"
+        class="toggle-btn"
+        [class.active]="activeStatus === 'REJECTED'"
+        (click)="setStatus('REJECTED')"
+      >
+        Rejected Students
+      </button>
+    </div>
+  </div>
+
+  <div class="event-wise-list" *ngIf="groupedRows.length > 0; else emptyList">
+    <article class="event-group-card" *ngFor="let group of groupedRows; trackBy: trackByEventName">
+      <div class="event-group-head">
+        <h3>{{ group.eventName }}</h3>
+        <span class="event-count">{{ group.rows.length }} Students</span>
+      </div>
+
+      <div class="table-shell">
+        <table class="student-table">
+          <thead>
+            <tr>
+              <th>Student Name</th>
+              <th>College</th>
+              <th>Status</th>
+              <th *ngIf="activeStatus === 'REJECTED'">Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of group.rows; trackBy: trackByRegistrationId">
+              <td>{{ row.studentName || 'Not available' }}</td>
+              <td>{{ row.college || 'Not available' }}</td>
+              <td>
+                <span class="status-chip" [class.rejected]="activeStatus === 'REJECTED'">
+                  {{ activeStatus === 'APPROVED' ? 'Approved' : 'Rejected' }}
+                </span>
+              </td>
+              <td *ngIf="activeStatus === 'REJECTED'">{{ row.rejectionReason || 'Not provided' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </article>
+  </div>
+
+  <ng-template #emptyList>
+    <div class="empty-state compact">
+      <span class="material-icons">person_off</span>
+      <h3>No {{ activeStatus === 'APPROVED' ? 'approved' : 'rejected' }} students yet</h3>
+      <p>Student names with college and event details will appear here.</p>
+    </div>
+  </ng-template>
+</section>

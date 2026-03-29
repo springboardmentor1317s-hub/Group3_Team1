@@ -63,7 +63,6 @@ export class StudentDashboardPageComponent implements OnInit {
   registrationsLoading = true;
   notificationsLoading = true;
   notificationsDropdownOpen = false;
-  actionEventId = '';
   reviewActionEventId = '';
   supportQuerySubject = '';
   supportQueryMessage = '';
@@ -74,6 +73,7 @@ export class StudentDashboardPageComponent implements OnInit {
   errorMessage = '';
   silentRefreshing = false;
   activeTab: 'dashboard' | 'events' | 'registrations' | 'feedback' = 'dashboard';
+  activeHeaderTab: 'dashboard' | 'events' | 'registrations' | 'feedback' | 'query' = 'dashboard';
   private notificationsRefreshTimer: ReturnType<typeof setInterval> | null = null;
   private ratingRefreshTimer: ReturnType<typeof setInterval> | null = null;
   private feedbackSavedTimerByEventId: Record<string, ReturnType<typeof setTimeout>> = {};
@@ -92,10 +92,22 @@ export class StudentDashboardPageComponent implements OnInit {
   ngOnInit(): void {
     this.route.fragment.subscribe((fragment) => {
       if (fragment === 'feedback-section') {
+        this.activeHeaderTab = 'feedback';
         setTimeout(() => {
-          document.getElementById('feedback-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          document.getElementById('query-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 150);
+        return;
       }
+
+      if (fragment === 'query-section') {
+        this.activeHeaderTab = 'query';
+        setTimeout(() => {
+          document.getElementById('query-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 150);
+        return;
+      }
+
+      this.activeHeaderTab = 'dashboard';
     });
     this.prefillFromCache();
     this.loadDashboard();
@@ -247,6 +259,7 @@ export class StudentDashboardPageComponent implements OnInit {
 
   navigateTab(tab: 'dashboard' | 'events' | 'registrations' | 'feedback'): void {
     this.activeTab = tab;
+    this.activeHeaderTab = tab === 'feedback' ? 'feedback' : tab;
 
     if (tab === 'events') {
       this.router.navigate(['/student-events']);
@@ -384,22 +397,15 @@ export class StudentDashboardPageComponent implements OnInit {
   }
 
   registerForEvent(event: StudentEventCard): void {
-    if (event.status !== 'Open' || this.isEventExpired(event)) {
+    if (this.isRegisterDisabled(event)) {
       return;
     }
 
-    this.actionEventId = event.id;
-    this.studentDashboardService.applyOptimisticRegistration(event, this.profile);
-    this.prefillFromCache();
-    this.studentDashboardService.registerForEvent(event.id).subscribe({
-      next: () => {
-        this.actionEventId = '';
-        this.loadDashboard();
-      },
-      error: (error) => {
-        this.actionEventId = '';
-        this.errorMessage = error?.error?.error || error?.error?.message || 'Registration failed. Please try again.';
-        this.loadDashboard();
+    const registration = this.registrations.find((item) => item.eventId === event.id) || null;
+    this.router.navigate(['/student-event-registration', event.id], {
+      state: {
+        event,
+        registration
       }
     });
   }
@@ -411,14 +417,21 @@ export class StudentDashboardPageComponent implements OnInit {
 
   getRegisterLabel(event: StudentEventCard): string {
     const normalizedStatus = String(event.status || '').toLowerCase();
+    const registration = this.getRegistrationForEvent(event.id);
+    if (registration?.status === 'APPROVED') {
+      return 'Approved';
+    }
+    if (registration?.status === 'PENDING') {
+      return 'Under Review';
+    }
+    if (this.hasRejectedRegistration(event.id)) {
+      return 'Update & Resubmit';
+    }
     if (this.isEventExpired(event)) {
       return 'Event Closed';
     }
     if (normalizedStatus === 'registered') {
       return 'Registered';
-    }
-    if (this.actionEventId === event.id) {
-      return 'Joining...';
     }
     if (normalizedStatus === 'full') {
       return 'Full';
@@ -427,6 +440,37 @@ export class StudentDashboardPageComponent implements OnInit {
       return 'Closed';
     }
     return 'Register Now';
+  }
+
+  hasRejectedRegistration(eventId: string): boolean {
+    return this.registrations.some((item) => item.eventId === eventId && item.status === 'REJECTED');
+  }
+
+  isRegisterDisabled(event: StudentEventCard): boolean {
+    if (this.isEventExpired(event)) {
+      return true;
+    }
+
+    const normalizedStatus = String(event.status || '').toLowerCase();
+    if (normalizedStatus === 'closed' || normalizedStatus === 'full') {
+      return true;
+    }
+
+    const registration = this.getRegistrationForEvent(event.id);
+    if (registration && registration.status !== 'REJECTED') {
+      return true;
+    }
+
+    const rejected = this.hasRejectedRegistration(event.id);
+    if (rejected) {
+      return false;
+    }
+
+    return false;
+  }
+
+  private getRegistrationForEvent(eventId: string): StudentRegistrationRecord | null {
+    return this.registrations.find((item) => item.eventId === eventId) || null;
   }
 
   isEventRegistered(event: StudentEventCard): boolean {
@@ -801,7 +845,7 @@ export class StudentDashboardPageComponent implements OnInit {
   }
 
   private flushView(): void {
-    this.cdr.detectChanges();
+    this.cdr.markForCheck();
   }
 
   private startRatingsRefresh(): void {

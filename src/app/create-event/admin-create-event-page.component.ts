@@ -8,7 +8,7 @@ import { AdminCommonHeaderComponent, AdminHeaderTab } from '../shared/admin-comm
 import { Auth } from '../auth/auth';
 import { EventService } from '../services/event.service';
 
-type DashboardTab = 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback';
+type DashboardTab = 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries';
 
 @Component({
   selector: 'app-admin-create-event-page',

@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { finalize, timeout } from 'rxjs/operators';
 import { AdminCommonHeaderComponent } from '../shared/admin-common-header/admin-common-header.component';
@@ -16,9 +16,15 @@ interface AdminProfileResponse {
   role: string;
   college: string;
   phone?: string;
+  gender?: string;
+  dateOfBirth?: string;
   location?: string;
+  currentState?: string;
+  currentDistrict?: string;
+  currentCity?: string;
   department?: string;
   departmentOther?: string;
+  profileCompleted?: boolean;
   profileImageUrl?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -51,7 +57,12 @@ export class AdminProfilePageComponent implements OnInit {
   college = 'Campus Event Hub';
   role = 'College Admin';
   phone = '';
+  gender = '';
+  dateOfBirth = '';
   location = '';
+  currentState = '';
+  currentDistrict = '';
+  currentCity = '';
   department = '';
   departmentOther = '';
   profileImageUrl: string | null = null;
@@ -81,11 +92,17 @@ export class AdminProfilePageComponent implements OnInit {
   constructor(
     private readonly http: HttpClient,
     private readonly cdr: ChangeDetectorRef,
+    private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly auth: Auth
   ) {}
 
   ngOnInit(): void {
+    this.route.queryParamMap.subscribe((params) => {
+      if (params.get('requireProfileUpdate') === '1') {
+        this.saveError = 'Please complete your profile before accessing the dashboard.';
+      }
+    });
     this.hydrateFromLocalStorage();
     this.fetchProfile();
     this.fetchEventStats();
@@ -102,13 +119,17 @@ export class AdminProfilePageComponent implements OnInit {
     const completedFields = [
       this.userName,
       this.email,
+      this.college,
       this.phone,
-      this.location,
-      this.displayDepartment
+      this.gender,
+      this.dateOfBirth,
+      this.currentState,
+      this.currentDistrict,
+      this.currentCity
     ].filter((value) => String(value || '').trim()).length;
 
     if (this.saveSuccess) return 'Profile updated';
-    if (completedFields >= 5) return 'Profile active';
+    if (completedFields >= 9) return 'Profile active';
     return 'Profile setup pending';
   }
 
@@ -136,17 +157,20 @@ export class AdminProfilePageComponent implements OnInit {
     this.saveSuccess = '';
 
     const payload = {
-      name: this.editForm.userName.trim(),
-      email: this.editForm.email.trim(),
       phone: this.editForm.phone.trim(),
+      dateOfBirth: this.editForm.dateOfBirth.trim(),
+      gender: this.editForm.gender.trim(),
       location: this.editForm.location.trim(),
+      currentState: this.editForm.currentState.trim(),
+      currentDistrict: this.editForm.currentDistrict.trim(),
+      currentCity: this.editForm.currentCity.trim(),
       department: this.editForm.department.trim(),
       departmentOther: this.editForm.department === 'Other' ? this.editForm.departmentOther.trim() : '',
       profileImageUrl: this.profileImageUrl
     };
 
-    if (!payload.name || !payload.email) {
-      this.saveError = 'Name and email are required.';
+    if (!payload.phone) {
+      this.saveError = 'Phone is required.';
       return;
     }
 
@@ -274,7 +298,7 @@ export class AdminProfilePageComponent implements OnInit {
     this.router.navigate(['/admin-dashboard']);
   }
 
-  handleTabChange(tab: 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback'): void {
+  handleTabChange(tab: 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries'): void {
     if (tab === 'registrations') {
       this.router.navigate(['/admin-registration-details']);
       return;
@@ -333,7 +357,12 @@ export class AdminProfilePageComponent implements OnInit {
     this.college = profile.college || this.college;
     this.role = this.formatRole(profile.role || this.role);
     this.phone = profile.phone || '';
+    this.gender = profile.gender || '';
+    this.dateOfBirth = profile.dateOfBirth || '';
     this.location = profile.location || '';
+    this.currentState = profile.currentState || '';
+    this.currentDistrict = profile.currentDistrict || '';
+    this.currentCity = profile.currentCity || '';
     this.department = profile.department || '';
     this.departmentOther = profile.departmentOther || '';
     this.profileImageUrl = profile.profileImageUrl || null;
@@ -351,8 +380,14 @@ export class AdminProfilePageComponent implements OnInit {
       email: profile?.email ?? this.email,
       college: profile?.college ?? this.college,
       role: profile?.role ?? existing.role,
+      profileCompleted: profile?.profileCompleted ?? existing.profileCompleted,
       phone: profile?.phone ?? this.phone,
+      gender: profile?.gender ?? this.gender,
+      dateOfBirth: profile?.dateOfBirth ?? this.dateOfBirth,
       location: profile?.location ?? this.location,
+      currentState: profile?.currentState ?? this.currentState,
+      currentDistrict: profile?.currentDistrict ?? this.currentDistrict,
+      currentCity: profile?.currentCity ?? this.currentCity,
       department: profile?.department ?? this.department,
       departmentOther: profile?.departmentOther ?? this.departmentOther,
       profileImageUrl: profile?.profileImageUrl ?? this.profileImageUrl
@@ -369,7 +404,12 @@ export class AdminProfilePageComponent implements OnInit {
     this.college = cached.college || this.college;
     this.role = this.formatRole(cached.role || this.role);
     this.phone = cached.phone || this.phone;
+    this.gender = cached.gender || this.gender;
+    this.dateOfBirth = cached.dateOfBirth || this.dateOfBirth;
     this.location = cached.location || this.location;
+    this.currentState = cached.currentState || this.currentState;
+    this.currentDistrict = cached.currentDistrict || this.currentDistrict;
+    this.currentCity = cached.currentCity || this.currentCity;
     this.department = cached.department || this.department;
     this.departmentOther = cached.departmentOther || this.departmentOther;
     this.profileImageUrl = cached.profileImageUrl || this.profileImageUrl;
@@ -400,28 +440,37 @@ export class AdminProfilePageComponent implements OnInit {
 
   private resetEditForm(): void {
     this.editForm = {
-      userName: this.userName,
-      email: this.email,
       phone: this.phone,
+      dateOfBirth: this.dateOfBirth,
+      gender: this.gender,
       location: this.location,
+      currentState: this.currentState,
+      currentDistrict: this.currentDistrict,
+      currentCity: this.currentCity,
       department: this.department,
       departmentOther: this.departmentOther
     };
   }
 
   private getEmptyEditForm(): {
-    userName: string;
-    email: string;
     phone: string;
+    dateOfBirth: string;
+    gender: string;
     location: string;
+    currentState: string;
+    currentDistrict: string;
+    currentCity: string;
     department: string;
     departmentOther: string;
   } {
     return {
-      userName: '',
-      email: '',
       phone: '',
+      dateOfBirth: '',
+      gender: '',
       location: '',
+      currentState: '',
+      currentDistrict: '',
+      currentCity: '',
       department: '',
       departmentOther: ''
     };
