@@ -24,6 +24,9 @@ export class AdminEventCardComponent {
   }
 
   get statusLabel(): 'Open' | 'Closed' {
+    const explicitStatus = String(this.event?.status || '').trim().toLowerCase();
+    if (explicitStatus === 'closed') return 'Closed';
+    if (explicitStatus === 'open') return 'Open';
     return isEventClosedByDate(this.event as StudentEventCard & Record<string, unknown>) ? 'Closed' : 'Open';
   }
 
@@ -51,6 +54,12 @@ export class AdminEventCardComponent {
     const parsed = new Date(rawDate);
     if (Number.isNaN(parsed.getTime())) return 'Not specified';
     return parsed.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  }
+
+  get seatCapacityLabel(): string {
+    return typeof this.event?.maxAttendees === 'number' && this.event.maxAttendees > 0
+      ? String(this.event.maxAttendees)
+      : 'Unlimited';
   }
 
   openDetails(): void {

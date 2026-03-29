@@ -11,6 +11,8 @@ router.post('/', protect, registrationController.createRegistration);
 
 // Admin dashboard
 router.get('/', registrationController.getAllRegistrations);
+router.get('/college', protect, registrationController.getCollegeRegistrations);
+router.get('/college/:id/review', protect, registrationController.getCollegeRegistrationReview);
 
 
 // Student dashboard
@@ -21,11 +23,11 @@ router.delete('/student/:studentId/event/:eventId', protect, registrationControl
 
 
 // Admin approve
-router.patch('/:id/approve', registrationController.approveRegistration);
+router.patch('/:id/approve', protect, registrationController.approveRegistration);
 
 
 // Admin reject
-router.patch('/:id/reject', registrationController.rejectRegistration);
+router.patch('/:id/reject', protect, registrationController.rejectRegistration);
 
 
 module.exports = router;

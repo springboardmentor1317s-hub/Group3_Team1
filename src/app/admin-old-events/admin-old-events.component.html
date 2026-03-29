@@ -1,28 +1,23 @@
 <div class="student-shell admin-events-shell">
-  <header class="luxury-header">
-    <div class="header-inner">
-      <button class="brand-block" type="button" (click)="goToDashboard()">
-        <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub" />
-        <div class="brand-copy">
-          <span class="brand-name">
-            <span class="brand-campus">Campus</span>
-            <span class="brand-eventhub">Event Hub</span>
-          </span>
-          <span class="brand-role">College Admin Dashboard</span>
-        </div>
-      </button>
+  <app-admin-common-header
+    [activeTab]="'none'"
+    [userName]="userName"
+    [userAvatarUrl]="userAvatarUrl"
+    [showSearch]="false"
+    [showNotifications]="true"
+    [showExport]="false"
+    (brandClick)="goToDashboard()"
+    (activeTabChange)="handleTabChange($event)"
+    (notificationsTriggered)="handleTabChange('registrations')"
+    (logoutTriggered)="logout()"
+  ></app-admin-common-header>
 
-      <div class="header-actions">
-        <button type="button" class="back-btn ghost" (click)="goToMyEvents()">My Events</button>
-        <a class="back-btn" routerLink="/admin-dashboard">Back To Dashboard</a>
-      </div>
-    </div>
-  </header>
-
-  <div class="dashboard-layout">
+  <div class="dashboard-layout" [class.sidebar-collapsed]="sidebarCollapsed">
     <app-admin-dashboard-sidebar
       [activeTab]="'events'"
+      [collapsed]="sidebarCollapsed"
       (tabChange)="handleTabChange($event)"
+      (collapsedChange)="setSidebarCollapsed($event)"
       (createEvent)="openCreateEvent()"
       (myEvents)="goToMyEvents()"
     ></app-admin-dashboard-sidebar>
@@ -32,7 +27,7 @@
         <div>
           <p class="eyebrow">Closed Events</p>
           <h1>{{ userName }}'s Old Events</h1>
-          <p class="muted">Yahan sirf wahi events dikh rahe hain jo close ho chuke hain.</p>
+          <p class="muted">Only events that have already closed are shown here.</p>
         </div>
       </header>
 
@@ -49,7 +44,7 @@
       </section>
 
       <section class="state-card" *ngIf="!loading && eventCards.length === 0">
-        Aapke closed events abhi available nahi hain.
+        No closed events are available right now.
       </section>
     </main>
   </div>

@@ -22,7 +22,7 @@ const eventSchema = new mongoose.Schema({
   adminId: { type: String, default: "", trim: true },
   userId: { type: String, default: "", trim: true },
   email: { type: String, default: "", trim: true },
-  maxAttendees: { type: Number, default: 100 },
+  maxAttendees: { type: Number, default: null },
   attendeeIds: [{ type: String }],
   createdAt: { type: Date, default: Date.now }
 });

@@ -253,6 +253,16 @@
   background: linear-gradient(135deg, #dcfce7, #bbf7d0);
 }
 
+.status-pill.pending-review {
+  color: #9a3412;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+}
+
+.status-pill.rejected {
+  color: #b91c1c;
+  background: linear-gradient(135deg, #fee2e2, #fecdd3);
+}
+
 .status-pill.closed {
   background: linear-gradient(135deg, #334155, #1e293b);
 }
@@ -287,6 +297,7 @@
 }
 
 .detail-card,
+.registration-status-card,
 .comments-card,
 .feedback-card {
   border-radius: 24px;
@@ -302,6 +313,7 @@
 }
 
 .detail-card h2,
+.registration-status-card h2,
 .comments-card h2,
 .feedback-card h2 {
   margin: 0 0 0.7rem;
@@ -309,11 +321,72 @@
 }
 
 .detail-card p,
+.registration-status-card p,
 .comments-subtitle,
 .feedback-subtitle {
   margin: 0;
   color: #475569;
   line-height: 1.7;
+}
+
+.registration-status-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.status-kicker {
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.inline-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.inline-status.pending {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #9a3412;
+}
+
+.inline-status.approved {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  color: #047857;
+}
+
+.inline-status.rejected {
+  background: linear-gradient(135deg, #fee2e2, #fecdd3);
+  color: #b91c1c;
+}
+
+.rejection-reason-card {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(255, 241, 242, 0.98), rgba(255, 247, 237, 0.95));
+  border: 1px solid rgba(254, 202, 202, 0.92);
+}
+
+.rejection-reason-card strong {
+  color: #b91c1c;
+}
+
+.retry-btn {
+  margin-top: 0.25rem;
 }
 
 .feedback-state {

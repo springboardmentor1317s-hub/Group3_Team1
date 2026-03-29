@@ -38,8 +38,11 @@
           <div class="reg-item" *ngFor="let reg of group.registrations">
             <div class="avatar small">{{ reg.studentName.charAt(0) }}</div>
             <div class="reg-copy">
-              <div class="student-headline">
-                <h5>{{ reg.studentName }}</h5>
+              <div class="student-topline">
+                <div class="student-headline">
+                  <h5>{{ reg.studentName }}</h5>
+                  <p>{{ reg.college }}</p>
+                </div>
                 <span
                   class="status-badge"
                   [class.approved]="reg.status === 'APPROVED'"
@@ -49,15 +52,19 @@
                   {{ reg.status }}
                 </span>
               </div>
-              <div class="student-meta">
-                <span><strong>College:</strong> {{ reg.college }}</span>
-                <span><strong>Email:</strong> {{ reg.email }}</span>
-                <span><strong>Student ID:</strong> {{ reg.studentId }}</span>
+
+              <div class="student-meta premium-meta">
+                <span class="meta-chip"><strong>Email</strong><em>{{ reg.email }}</em></span>
+                <span class="meta-chip"><strong>Submitted</strong><em>{{ reg.createdAt | date:'medium' }}</em></span>
+              </div>
+
+              <div class="reason-banner" *ngIf="reg.rejectionReason">
+                <strong>Review Note</strong>
+                <span>{{ reg.rejectionReason }}</span>
               </div>
             </div>
             <div class="row-actions">
-              <button class="pill-btn approve-btn" (click)="approve.emit(reg)" *ngIf="reg.status === 'PENDING'">Approve</button>
-              <button class="pill-btn reject-btn" (click)="reject.emit(reg)" *ngIf="reg.status === 'PENDING'">Reject</button>
+              <button class="pill-btn review-btn" (click)="review.emit(reg)">Review Details</button>
             </div>
           </div>
         </div>
@@ -68,8 +75,11 @@
       <div class="reg-item" *ngFor="let reg of flatRegistrations">
         <div class="avatar small">{{ reg.studentName.charAt(0) }}</div>
         <div class="reg-copy">
-          <div class="student-headline">
-            <h4>{{ reg.studentName }}</h4>
+          <div class="student-topline">
+            <div class="student-headline">
+              <h4>{{ reg.studentName }}</h4>
+              <p>{{ reg.college }}</p>
+            </div>
             <span
               class="status-badge"
               [class.approved]="reg.status === 'APPROVED'"
@@ -79,11 +89,18 @@
               {{ reg.status }}
             </span>
           </div>
-          <div class="student-meta">
-            <span><strong>Event:</strong> {{ reg.eventName }}</span>
-            <span><strong>College:</strong> {{ reg.college }}</span>
-            <span><strong>Email:</strong> {{ reg.email }}</span>
+          <div class="student-meta premium-meta">
+            <span class="meta-chip"><strong>Event</strong><em>{{ reg.eventName }}</em></span>
+            <span class="meta-chip"><strong>Email</strong><em>{{ reg.email }}</em></span>
+            <span class="meta-chip"><strong>Submitted</strong><em>{{ reg.createdAt | date:'medium' }}</em></span>
           </div>
+          <div class="reason-banner" *ngIf="reg.rejectionReason">
+            <strong>Review Note</strong>
+            <span>{{ reg.rejectionReason }}</span>
+          </div>
+        </div>
+        <div class="row-actions">
+          <button class="pill-btn review-btn" (click)="review.emit(reg)">Review Details</button>
         </div>
       </div>
     </ng-template>

@@ -4,7 +4,7 @@ import { Loginpage } from './loginpage/loginpage';
 import { Homepage } from './homepage/homepage';
 // import { StudentDashboardComponent } from './student-dashboard/student-dashboard';
 import { AdminDashboard } from './admin-dashboard/admin-dashboard';
-import { AdminProfile } from './admin-profile/admin-profile';
+import { AdminProfilePageComponent } from './admin-profile/admin-profile-page';
 import { SuperAdminDashboard } from './super-admin-dashboard/super-admin-dashboard';
 import { SignupSuccessComponent } from './signup-success/signup-success.component';
 import { roleGuard } from './role/role';
@@ -32,7 +32,7 @@ export const routes: Routes = [
 
   {
     path: 'admin-profile',
-    component: AdminProfile,
+    component: AdminProfilePageComponent,
     canActivate: [roleGuard('college_admin')]
   },
   {
@@ -55,10 +55,33 @@ export const routes: Routes = [
     loadComponent: () => import('./admin-old-events/admin-old-events.component').then(m => m.AdminOldEventsComponent),
     canActivate: [roleGuard('college_admin')]
   },
+  {
+    path: 'admin-create-event',
+    loadComponent: () => import('./create-event/admin-create-event-page.component').then(m => m.AdminCreateEventPageComponent),
+    canActivate: [roleGuard('college_admin')]
+  },
 
   {
     path: 'super-admin-dashboard',
     component: SuperAdminDashboard,
+    canActivate: [roleGuard('super_admin')]
+  },
+
+  {
+    path: 'super-admin/students',
+    loadComponent: () => import('./super-admin-dashboard/super-admin-students.component').then(m => m.SuperAdminStudentsComponent),
+    canActivate: [roleGuard('super_admin')]
+  },
+
+  {
+    path: 'super-admin/admins',
+    loadComponent: () => import('./super-admin-dashboard/super-admin-admins.component').then(m => m.SuperAdminAdminsComponent),
+    canActivate: [roleGuard('super_admin')]
+  },
+
+  {
+    path: 'super-admin/events',
+    loadComponent: () => import('./super-admin-dashboard/super-admin-events.component').then(m => m.SuperAdminEventsComponent),
     canActivate: [roleGuard('super_admin')]
   },
 
@@ -77,6 +100,11 @@ export const routes: Routes = [
   {
     path: 'student-event/:id',
     loadComponent: () => import('./student-event-details-page/student-event-details-page.component').then(m => m.StudentEventDetailsPageComponent),
+    canActivate: [roleGuard('student')]
+  },
+  {
+    path: 'student-event-registration/:id',
+    loadComponent: () => import('./student-event-registration-page/student-event-registration-page.component').then(m => m.StudentEventRegistrationPageComponent),
     canActivate: [roleGuard('student')]
   },
 

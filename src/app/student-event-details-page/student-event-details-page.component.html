@@ -13,7 +13,13 @@
       <section class="hero-card" [style.background-image]="cardBackground">
         <div class="hero-overlay"></div>
         <div class="hero-content">
-          <span class="status-pill" [class.registered]="statusLabel === 'Registered'" [class.closed]="statusLabel === 'Closed' || statusLabel === 'Full'">
+          <span
+            class="status-pill"
+            [class.registered]="statusLabel === 'Registered' || statusLabel === 'Approved'"
+            [class.pending-review]="statusLabel === 'Pending Review'"
+            [class.rejected]="statusLabel === 'Rejected'"
+            [class.closed]="statusLabel === 'Closed' || statusLabel === 'Full'"
+          >
             {{ statusLabel }}
           </span>
           <h1>{{ details.title }}</h1>
@@ -32,6 +38,32 @@
         </div>
       </section>
 
+      <section class="registration-status-card" *ngIf="currentRegistration">
+        <div class="registration-status-head">
+          <div>
+            <p class="status-kicker">Your Registration Status</p>
+            <h2>{{ currentRegistration.eventName }}</h2>
+          </div>
+          <span
+            class="inline-status"
+            [class.pending]="currentRegistration.status === 'PENDING'"
+            [class.approved]="currentRegistration.status === 'APPROVED'"
+            [class.rejected]="currentRegistration.status === 'REJECTED'"
+          >
+            {{ currentRegistration.status }}
+          </span>
+        </div>
+
+        <p *ngIf="currentRegistration.status === 'PENDING'">Your registration is waiting for admin review. Please check back soon.</p>
+        <p *ngIf="currentRegistration.status === 'APPROVED'">Your registration has been approved. You are all set for this event.</p>
+
+        <div class="rejection-reason-card" *ngIf="currentRegistration.status === 'REJECTED'">
+          <strong>Reason For Rejection</strong>
+          <span>{{ currentRegistration.rejectionReason || 'Please update your profile details and submit again.' }}</span>
+          <button type="button" class="register-btn retry-btn" (click)="registerForEvent()">Update Details And Resubmit</button>
+        </div>
+      </section>
+
       <section class="detail-card">
         <h2>Event Details</h2>
         <p>{{ details.description }}</p>
@@ -39,7 +71,7 @@
           <div><span class="material-icons">apartment</span>{{ details.collegeName || 'Campus Event Hub' }}</div>
           <div><span class="material-icons">person</span>{{ details.organizer || 'Campus Event Hub' }}</div>
           <div><span class="material-icons">call</span>{{ details.contact }}</div>
-          <div><span class="material-icons">groups</span>{{ details.registrations }}/{{ details.maxAttendees }} seats filled</div>
+          <div><span class="material-icons">groups</span>{{ details.registrations }}/{{ details.maxAttendees && details.maxAttendees > 0 ? details.maxAttendees : 'Unlimited' }} seats filled</div>
         </div>
       </section>
 

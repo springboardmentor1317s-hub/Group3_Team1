@@ -1,23 +1,34 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { StudentDashboardService, StudentEventComment } from '../services/student-dashboard.service';
 import { EventService, BackendEvent } from '../services/event.service';
-import { buildAdminProfileIdentifiers, filterEventsOwnedByAdmin } from '../shared/admin-owned-events.util';
+import { AdminCommonHeaderComponent } from '../shared/admin-common-header/admin-common-header.component';
+import { Auth } from '../auth/auth';
+import { finalize } from 'rxjs';
+import { AuthService } from '../services/auth.service';
 
 interface AdminCommentView {
   id: string;
+  authorId: string;
   name: string;
   avatarUrl: string;
   text: string;
   createdAt: string;
+  likes: string[];
   replies: AdminCommentView[];
+  replyOpen: boolean;
+  replyDraft: string;
+  isEditing: boolean;
+  editDraft: string;
 }
 
 @Component({
   selector: 'app-admin-event-comments',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, AdminCommonHeaderComponent],
   templateUrl: './admin-event-comments.component.html',
   styleUrls: ['./admin-event-comments.component.css']
 })
@@ -27,18 +38,43 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
   commentsLoading = true;
   errorMessage = '';
   comments: AdminCommentView[] = [];
+  userName = 'College Admin';
+  userAvatarUrl: string | null = null;
+  publicCommentDraft = '';
+  publicCommentActionInProgress = false;
 
   private eventId = '';
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
+  private currentUserIdentifiers = new Set<string>();
+  private readonly profileApiUrl = '/api/profile/me';
 
   constructor(
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly eventService: EventService,
-    private readonly studentDashboardService: StudentDashboardService
+    private readonly studentDashboardService: StudentDashboardService,
+    private readonly auth: Auth,
+    private readonly cdr: ChangeDetectorRef,
+    private readonly http: HttpClient,
+    private readonly authService: AuthService
   ) {}
 
   ngOnInit(): void {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    this.userName = currentUser?.name || this.userName;
+    this.userAvatarUrl = currentUser?.profileImageUrl || null;
+    this.currentUserIdentifiers = new Set(
+      [
+        currentUser?.id,
+        currentUser?._id,
+        currentUser?.userId,
+        currentUser?.email
+      ]
+        .map((value) => String(value || '').trim().toLowerCase())
+        .filter(Boolean)
+    );
+    this.hydrateCurrentUserIdentifiersFromProfile();
+
     this.route.paramMap.subscribe((params) => {
       this.eventId = String(params.get('id') || '').trim();
       if (!this.eventId) {
@@ -72,6 +108,16 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
     });
   }
 
+  formatDateOnly(value: string): string {
+    const ts = new Date(value).getTime();
+    if (Number.isNaN(ts)) return 'Date not available';
+    return new Date(value).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  }
+
   get statusLabel(): 'Open' | 'Closed' {
     if (!this.event) return 'Open';
     return this.isEventExpired(this.event) ? 'Closed' : 'Open';
@@ -96,8 +142,148 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
     return item.id;
   }
 
+  toggleLike(target: AdminCommentView): void {
+    this.studentDashboardService.toggleEventCommentLike(target.id).subscribe({
+      next: (updated) => {
+        target.likes = Array.isArray(updated?.likes) ? updated.likes.filter((id) => typeof id === 'string') : [];
+      },
+      error: () => undefined
+    });
+  }
+
+  isLikedByMe(target: AdminCommentView): boolean {
+    const currentUserId = this.getCurrentUserIdentifier();
+    return !!currentUserId && target.likes.includes(currentUserId);
+  }
+
+  postPublicComment(): void {
+    const text = this.publicCommentDraft.trim();
+    if (!text || !this.eventId) return;
+
+    const optimisticComment: AdminCommentView = {
+      id: this.generateTempId(),
+      authorId: this.getCurrentUserIdentifier(),
+      name: this.userName,
+      avatarUrl: this.getCurrentUserAvatarUrl(),
+      text,
+      createdAt: new Date().toISOString(),
+      likes: [],
+      replies: [],
+      replyOpen: false,
+      replyDraft: '',
+      isEditing: false,
+      editDraft: text
+    };
+
+    this.comments = [optimisticComment, ...this.comments];
+    this.publicCommentDraft = '';
+    this.publicCommentActionInProgress = true;
+
+    this.studentDashboardService.postEventComment(this.eventId, text).pipe(
+      finalize(() => {
+        this.publicCommentActionInProgress = false;
+      })
+    ).subscribe({
+      next: (created) => {
+        const normalized = this.normalizeComments([created])[0];
+        this.comments = this.comments.map((item) => item.id === optimisticComment.id ? normalized : item);
+      },
+      error: () => {
+        this.comments = this.comments.filter((item) => item.id !== optimisticComment.id);
+        this.publicCommentDraft = text;
+      }
+    });
+  }
+
+  toggleReplyBox(target: AdminCommentView): void {
+    target.replyOpen = !target.replyOpen;
+  }
+
+  postReply(target: AdminCommentView): void {
+    const text = target.replyDraft.trim();
+    if (!text || !this.eventId) return;
+
+    const optimisticReply: AdminCommentView = {
+      id: this.generateTempId(),
+      authorId: this.getCurrentUserIdentifier(),
+      name: this.userName,
+      avatarUrl: this.getCurrentUserAvatarUrl(),
+      text,
+      createdAt: new Date().toISOString(),
+      likes: [],
+      replies: [],
+      replyOpen: false,
+      replyDraft: '',
+      isEditing: false,
+      editDraft: text
+    };
+
+    target.replies = [...target.replies, optimisticReply];
+    target.replyDraft = '';
+    target.replyOpen = false;
+
+    this.studentDashboardService.postEventComment(this.eventId, text, target.id).subscribe({
+      next: () => this.loadComments(),
+      error: () => {
+        target.replies = target.replies.filter((reply) => reply.id !== optimisticReply.id);
+      }
+    });
+  }
+
+  canManageEntry(target: AdminCommentView): boolean {
+    return this.currentUserIdentifiers.has(String(target.authorId || '').trim().toLowerCase());
+  }
+
+  startEditEntry(target: AdminCommentView): void {
+    if (!this.canManageEntry(target)) return;
+    target.isEditing = true;
+    target.editDraft = target.text;
+  }
+
+  cancelEditEntry(target: AdminCommentView): void {
+    target.isEditing = false;
+    target.editDraft = target.text;
+  }
+
+  saveEditEntry(target: AdminCommentView): void {
+    if (!this.canManageEntry(target)) return;
+    const nextText = target.editDraft.trim();
+    if (!nextText) return;
+
+    const prevText = target.text;
+    target.text = nextText;
+    target.isEditing = false;
+    this.studentDashboardService.updateEventComment(target.id, nextText).subscribe({
+      next: () => undefined,
+      error: () => {
+        target.text = prevText;
+      }
+    });
+  }
+
+  deleteEntry(target: AdminCommentView): void {
+    if (!this.canManageEntry(target)) return;
+    this.studentDashboardService.deleteEventComment(target.id).subscribe({
+      next: () => this.loadComments(),
+      error: () => undefined
+    });
+  }
+
   goBack(): void {
     this.router.navigate(['/admin-my-events']);
+  }
+
+  goToDashboard(): void {
+    this.router.navigate(['/admin-dashboard']);
+  }
+
+  handleTabChange(tab: 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback'): void {
+    this.router.navigate(['/admin-dashboard'], { queryParams: { tab } });
+  }
+
+  logout(): void {
+    this.auth.logout();
+    this.router.navigate(['/login']);
   }
 
   private loadEventAndComments(): void {
@@ -105,22 +291,12 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
     this.commentsLoading = true;
     this.errorMessage = '';
 
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-    const identifiers = buildAdminProfileIdentifiers({
-      userId: currentUser?.userId,
-      id: currentUser?.id || currentUser?._id,
-      email: currentUser?.email,
-      name: currentUser?.name,
-      college: currentUser?.college
-    });
-
-    this.eventService.fetchEvents().subscribe({
+    this.eventService.fetchCollegeEvents().subscribe({
       next: (events) => {
-        const ownedEvents = filterEventsOwnedByAdmin(events || [], identifiers);
         const findById = (source: BackendEvent[]) =>
           source.find((item) => String(item.id || (item as BackendEvent & Record<string, unknown>)['_id'] || '') === this.eventId) || null;
 
-        this.event = findById(ownedEvents) || findById(events || []);
+        this.event = findById(events || []);
         this.loading = false;
 
         if (!this.event) {
@@ -145,10 +321,12 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
       next: (comments) => {
         this.comments = this.normalizeComments(comments || []);
         this.commentsLoading = false;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.comments = [];
         this.commentsLoading = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -168,12 +346,47 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
   private normalizeComments(items: StudentEventComment[]): AdminCommentView[] {
     return (items || []).map((item) => ({
       id: String(item.id),
+      authorId: String(item.authorId || '').trim().toLowerCase(),
       name: String(item.name || 'Student'),
       avatarUrl: item.avatarUrl || this.getDefaultAvatarUrl(item.name || 'Student'),
       text: String(item.text || ''),
       createdAt: String(item.createdAt || ''),
-      replies: this.normalizeComments(item.replies || [])
+      likes: Array.isArray(item.likes) ? item.likes.filter((id) => typeof id === 'string') : [],
+      replies: this.normalizeComments(item.replies || []),
+      replyOpen: false,
+      replyDraft: '',
+      isEditing: false,
+      editDraft: String(item.text || '')
     }));
+  }
+
+  private getCurrentUserIdentifier(): string {
+    return Array.from(this.currentUserIdentifiers)[0] || '';
+  }
+
+  private hydrateCurrentUserIdentifiersFromProfile(): void {
+    this.http.get<any>(this.profileApiUrl, { headers: this.authService.getAuthHeaders() }).subscribe({
+      next: (profile) => {
+        [
+          profile?.id,
+          profile?._id,
+          profile?.userId,
+          profile?.email
+        ]
+          .map((value) => String(value || '').trim().toLowerCase())
+          .filter(Boolean)
+          .forEach((value) => this.currentUserIdentifiers.add(value));
+      },
+      error: () => undefined
+    });
+  }
+
+  private getCurrentUserAvatarUrl(): string {
+    return this.userAvatarUrl || this.getDefaultAvatarUrl(this.userName);
+  }
+
+  private generateTempId(): string {
+    return `temp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
 
   private isEventExpired(event: BackendEvent): boolean {

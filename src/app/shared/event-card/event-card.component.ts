@@ -40,6 +40,12 @@ export class EventCardComponent {
     return 'Open';
   }
 
+  get seatCapacityLabel(): string {
+    return typeof this.event?.maxAttendees === 'number' && this.event.maxAttendees > 0
+      ? String(this.event.maxAttendees)
+      : 'Unlimited';
+  }
+
   get cardBackground(): string {
     if (this.event?.imageUrl) {
       return `linear-gradient(180deg, rgba(2, 6, 23, 0.1), rgba(2, 6, 23, 0.72)), url(${this.event.imageUrl})`;

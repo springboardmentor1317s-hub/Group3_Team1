@@ -64,9 +64,9 @@
       </div>
     </section>
 
-    <section *ngIf="loading" class="state-card">Loading your registrations...</section>
+    <section *ngIf="loading && !hasVisibleRegistrationsData" class="state-card">Loading your registrations...</section>
 
-    <section class="registration-grid" *ngIf="!loading && filteredRegistrations.length > 0">
+    <section class="registration-grid" *ngIf="filteredRegistrations.length > 0">
       <article class="registration-card" *ngFor="let registration of filteredRegistrations; trackBy: trackById">
         <div class="registration-card-wrap">
           <span class="status-pill" [attr.data-tone]="getRegistrationTone(registration.status)">
@@ -82,7 +82,7 @@
       </article>
     </section>
 
-    <section *ngIf="!loading && filteredRegistrations.length === 0" class="state-card empty-card">
+    <section *ngIf="!loading && !hasVisibleRegistrationsData && filteredRegistrations.length === 0" class="state-card empty-card">
       <span class="material-icons">inventory_2</span>
       <h3>No registrations matched your filters</h3>
       <p>Try switching status or date filters, or register for a new event.</p>

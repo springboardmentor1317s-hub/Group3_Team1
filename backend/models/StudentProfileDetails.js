@@ -29,6 +29,10 @@ const studentProfileDetailsSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  location: {
+    type: String,
+    default: ""
+  },
   parentPhone: {
     type: String,
     default: ""

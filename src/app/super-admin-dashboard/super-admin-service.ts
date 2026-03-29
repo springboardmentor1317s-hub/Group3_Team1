@@ -22,6 +22,30 @@ export interface ReviewableUser {
   createdAt?: string;
 }
 
+export interface SuperAdminStudent {
+  _id: string;
+  name: string;
+  userId: string;
+  email: string;
+  college?: string;
+  role: string;
+  department?: string;
+  phone?: string;
+  currentAddressLine?: string;
+  permanentAddressLine?: string;
+  profileImageUrl?: string;
+  isBlocked?: boolean;
+  createdAt?: string;
+}
+
+export interface StudentRegistrationSummary {
+  id: string;
+  eventId: string;
+  eventName: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | string;
+  createdAt?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -88,5 +112,23 @@ export class SuperAdminService {
       headers = headers.set('Authorization', `Bearer ${token}`);
     }
     return this.http.get<any[]>(`${this.baseUrl}/admin-activity`, { headers });
+  }
+
+  getAllStudents(): Observable<SuperAdminStudent[]> {
+    const token = localStorage.getItem('token');
+    let headers = new HttpHeaders();
+    if (token) {
+      headers = headers.set('Authorization', `Bearer ${token}`);
+    }
+    return this.http.get<SuperAdminStudent[]>(`${this.baseUrl}/students`, { headers });
+  }
+
+  getStudentRegistrations(studentId: string): Observable<StudentRegistrationSummary[]> {
+    const token = localStorage.getItem('token');
+    let headers = new HttpHeaders();
+    if (token) {
+      headers = headers.set('Authorization', `Bearer ${token}`);
+    }
+    return this.http.get<StudentRegistrationSummary[]>(`${this.baseUrl}/students/${encodeURIComponent(studentId)}/events`, { headers });
   }
 }

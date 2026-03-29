@@ -2,8 +2,14 @@ const express = require("express");
 const router = express.Router();
 const Event = require("../models/Event");
 const Registration = require("../models/Registration");
+const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const protect = require("../middleware/authMiddleware");
+const {
+  normalizeValue,
+  escapeRegex,
+  getCollegeScopedEvents
+} = require("../utils/adminCollegeScope");
 
 function toClient(eventDoc, options = {}) {
   const obj = eventDoc.toObject({ versionKey: false });
@@ -31,7 +37,7 @@ function toClient(eventDoc, options = {}) {
     status: obj.status,
     participants: obj.participants ?? 0,
     registrations: registrationsCount,
-    maxAttendees: obj.maxAttendees || 100,
+    maxAttendees: obj.maxAttendees ?? null,
     collegeName: obj.collegeName,
     createdBy: obj.createdBy || "",
     createdById: obj.createdById || "",
@@ -56,51 +62,140 @@ function getUserIdFromRequest(req) {
   }
 }
 
+function buildExactStringMatch(field, value) {
+  const trimmed = normalizeValue(value);
+  if (!trimmed) {
+    return null;
+  }
+
+  return {
+    [field]: { $regex: `^${escapeRegex(trimmed)}$`, $options: "i" }
+  };
+}
+
+async function buildOwnershipFilter(userId) {
+  if (!userId) {
+    return null;
+  }
+
+  const user = await User.findById(userId).select("name email userId college").lean();
+  if (!user) {
+    return {
+      strict: { $or: [] },
+      fallback: { $or: [] }
+    };
+  }
+
+  const strictCandidates = Array.from(new Set([
+    normalizeValue(user._id),
+    normalizeValue(user.userId),
+    normalizeValue(user.email),
+    normalizeValue(user.name)
+  ].filter(Boolean)));
+
+  const fallbackCandidates = Array.from(new Set([
+    normalizeValue(user.name),
+    normalizeValue(user.college)
+  ].filter(Boolean)));
+
+  const strictFilter = strictCandidates.flatMap((candidate) => ([
+    buildExactStringMatch("createdById", candidate),
+    buildExactStringMatch("ownerId", candidate),
+    buildExactStringMatch("adminId", candidate),
+    buildExactStringMatch("userId", candidate),
+    buildExactStringMatch("email", candidate),
+    buildExactStringMatch("createdBy", candidate)
+  ].filter(Boolean)));
+
+  const fallbackFilter = fallbackCandidates.flatMap((candidate) => ([
+    buildExactStringMatch("createdBy", candidate),
+    buildExactStringMatch("organizer", candidate)
+  ].filter(Boolean)));
+
+  if (normalizeValue(user.college)) {
+    fallbackFilter.push(buildExactStringMatch("collegeName", user.college));
+  }
+
+  return {
+    strict: { $or: strictFilter.filter(Boolean) },
+    fallback: { $or: fallbackFilter.filter(Boolean) }
+  };
+}
+
+async function appendRegistrationCounts(events, currentUserId) {
+  const eventIds = events.map((event) => String(event._id));
+
+  const registrationCounts = await Registration.aggregate([
+    {
+      $match: {
+        eventId: { $in: eventIds },
+        status: { $ne: "REJECTED" }
+      }
+    },
+    {
+      $group: {
+        _id: "$eventId",
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  const countMap = new Map(
+    registrationCounts.map((row) => [String(row._id), row.count])
+  );
+
+  let registeredSet = new Set();
+  if (currentUserId) {
+    const userRegs = await Registration.find({
+      studentId: String(currentUserId),
+      eventId: { $in: eventIds },
+      status: { $ne: "REJECTED" }
+    }).select("eventId");
+    registeredSet = new Set(userRegs.map((r) => String(r.eventId)));
+  }
+
+  return events.map((event) =>
+    toClient(event, {
+      registrationsCount: countMap.get(String(event._id)) || 0,
+      registered: registeredSet.has(String(event._id))
+    })
+  );
+}
+
 // Get Events
 router.get("/", async (req, res) => {
   try {
     const currentUserId = getUserIdFromRequest(req);
     const events = await Event.find().sort({ createdAt: -1 });
+    res.json(await appendRegistrationCounts(events, currentUserId));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-    const eventIds = events.map((event) => String(event._id));
+router.get("/mine", protect, async (req, res) => {
+  try {
+    const ownershipFilter = await buildOwnershipFilter(req.user?.id);
+    let events = [];
 
-    const registrationCounts = await Registration.aggregate([
-      {
-        $match: {
-          eventId: { $in: eventIds },
-          status: { $ne: "REJECTED" }
-        }
-      },
-      {
-        $group: {
-          _id: "$eventId",
-          count: { $sum: 1 }
-        }
-      }
-    ]);
-
-    const countMap = new Map(
-      registrationCounts.map((row) => [String(row._id), row.count])
-    );
-
-    let registeredSet = new Set();
-    if (currentUserId) {
-      const userRegs = await Registration.find({
-        studentId: String(currentUserId),
-        eventId: { $in: eventIds },
-        status: { $ne: "REJECTED" }
-      }).select("eventId");
-      registeredSet = new Set(userRegs.map((r) => String(r.eventId)));
+    if (ownershipFilter?.strict?.$or?.length) {
+      events = await Event.find(ownershipFilter.strict).sort({ createdAt: -1 });
     }
 
-    res.json(
-      events.map((event) =>
-        toClient(event, {
-          registrationsCount: countMap.get(String(event._id)) || 0,
-          registered: registeredSet.has(String(event._id))
-        })
-      )
-    );
+    if (!events.length && ownershipFilter?.fallback?.$or?.length) {
+      events = await Event.find(ownershipFilter.fallback).sort({ createdAt: -1 });
+    }
+
+    res.json(await appendRegistrationCounts(events, String(req.user?.id || "")));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/college", protect, async (req, res) => {
+  try {
+    const events = await getCollegeScopedEvents(req.user?.id);
+    res.json(await appendRegistrationCounts(events, String(req.user?.id || "")));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -146,7 +241,7 @@ router.post("/", async (req, res) => {
         ? null
         : Number(teamSizeValue),
       maxAttendees: maxAttendeesValue === "" || maxAttendeesValue === null || maxAttendeesValue === undefined
-        ? 100
+        ? null
         : Number(maxAttendeesValue)
     };
 
@@ -154,7 +249,7 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "teamSize must be a positive number." });
     }
 
-    if (!Number.isFinite(payload.maxAttendees) || payload.maxAttendees < 1) {
+    if (payload.maxAttendees !== null && (!Number.isFinite(payload.maxAttendees) || payload.maxAttendees < 1)) {
       return res.status(400).json({ error: "maxAttendees must be a positive number." });
     }
 
@@ -264,9 +359,13 @@ async function updateEvent(req, res) {
     }
 
     if (updates.maxAttendees !== undefined) {
-      updates.maxAttendees = Number(updates.maxAttendees);
-      if (!Number.isFinite(updates.maxAttendees) || updates.maxAttendees < 1) {
-        return res.status(400).json({ error: "maxAttendees must be a positive number." });
+      if (updates.maxAttendees === "" || updates.maxAttendees === null) {
+        updates.maxAttendees = null;
+      } else {
+        updates.maxAttendees = Number(updates.maxAttendees);
+        if (!Number.isFinite(updates.maxAttendees) || updates.maxAttendees < 1) {
+          return res.status(400).json({ error: "maxAttendees must be a positive number." });
+        }
       }
     }
 

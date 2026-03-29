@@ -1,89 +1,27 @@
 ﻿<div class="app student-shell admin-shell" [class.dark]="isDarkMode">
-  <header class="luxury-header">
-    <div class="header-inner">
-      <button class="brand-block" type="button" (click)="setTab('overview')">
-        <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub" />
-        <div class="brand-copy">
-          <span class="brand-name">
-            <span class="brand-campus">Campus</span>
-            <span class="brand-eventhub">Event Hub</span>
-          </span>
-          <span class="brand-role">College Admin Dashboard</span>
-        </div>
-      </button>
+  <app-admin-common-header
+    [activeTab]="activeTab === 'events' ? 'events' : activeTab === 'registrations' ? 'registrations' : 'overview'"
+    [userName]="userName"
+    [userAvatarUrl]="userAvatarUrl"
+    [(searchQuery)]="dashboardSearchQuery"
+    [unreadNotificationCount]="unreadNotificationCount"
+    [notificationsOpen]="showNotifications"
+    [notifications]="notifications"
+    (brandClick)="setTab('overview')"
+    (activeTabChange)="setTab($event)"
+    (searchTriggered)="onDashboardSearchClick()"
+    (notificationsTriggered)="toggleNotifications()"
+    (clearNotifications)="clearAllNotifications()"
+    (exportTriggered)="exportEvents()"
+    (logoutTriggered)="logout()"
+  ></app-admin-common-header>
 
-      <nav class="header-nav">
-        <button class="nav-link" [class.active]="activeTab === 'overview'" (click)="setTab('overview')">Dashboard</button>
-        <button class="nav-link" [class.active]="activeTab === 'events'" (click)="setTab('events')">Manage Events</button>
-        <button class="nav-link" [class.active]="activeTab === 'registrations'" (click)="setTab('registrations')">Registrations</button>
-        <!-- <button class="nav-link" [class.active]="activeTab === 'feedback'" (click)="setTab('feedback')">Feedback</button> -->
-        <!-- <button class="nav-link" type="button" (click)="goToMyEvents()">My Events</button> -->
-        <!-- <button class="nav-link" type="button" (click)="openCreateModal()">Create Event</button> -->
-      </nav>
-
-      <div class="header-actions">
-        <input
-          #dashboardSearchInput
-          class="top-search"
-          type="text"
-          placeholder="Search events or registrations..."
-          [(ngModel)]="dashboardSearchQuery"
-          (input)="applyDashboardSearch()"
-        />
-        <button type="button" class="icon-btn" aria-label="Search" title="Search" (click)="onDashboardSearchClick()">
-          <span class="material-icons">search</span>
-        </button>
-
-        <div class="notification-wrapper" (click)="$event.stopPropagation()">
-          <button class="notification-btn" aria-label="Notifications" title="Notifications" (click)="toggleNotifications()">
-            <span class="material-icons">notifications</span>
-            <span class="notification-badge" *ngIf="unreadNotificationCount > 0">
-              {{ unreadNotificationCount > 99 ? '99+' : unreadNotificationCount }}
-            </span>
-          </button>
-          <div class="notification-panel" *ngIf="showNotifications">
-            <div class="notification-header">
-              <span>New Registrations</span>
-              <button type="button" class="notification-clear-btn" *ngIf="notifications.length > 0" (click)="clearAllNotifications()">
-                Clear All
-              </button>
-            </div>
-            <div class="notification-list" *ngIf="notifications.length > 0; else noNotifications">
-              <div class="notification-item" *ngFor="let notification of notifications | slice:0:10">
-                <p>{{ notification.message }}</p>
-                <span>{{ notification.timeLabel }}</span>
-              </div>
-            </div>
-            <ng-template #noNotifications>
-              <div class="notification-empty">No new student registrations.</div>
-            </ng-template>
-          </div>
-        </div>
-
-        <button class="icon-btn" aria-label="Export" title="Export" (click)="exportEvents()">
-          <span class="material-icons">download</span>
-        </button>
-
-        <a class="profile-chip profile-chip-link" routerLink="/admin-profile">
-          <div class="profile-chip-avatar-wrap">
-            <img *ngIf="userAvatarUrl" [src]="userAvatarUrl" alt="Profile photo" />
-            <span *ngIf="!userAvatarUrl" class="profile-chip-fallback">{{ avatarText }}</span>
-          </div>
-          <span class="profile-chip-name">{{ userName }}</span>
-        </a>
-
-        <button type="button" class="logout-btn" (click)="logout()">
-          <span class="material-icons">logout</span>
-          <span>Logout</span>
-        </button>
-      </div>
-    </div>
-  </header>
-
-  <div class="layout dashboard-layout">
+  <div class="layout dashboard-layout" [class.sidebar-collapsed]="sidebarCollapsed">
     <app-admin-dashboard-sidebar
       [activeTab]="activeTab"
+      [collapsed]="sidebarCollapsed"
       (tabChange)="setTab($event)"
+      (collapsedChange)="setSidebarCollapsed($event)"
       (createEvent)="openCreateModal()"
       (myEvents)="goToMyEvents()"
     />
@@ -187,7 +125,7 @@
         <div>
           <p class="section-kicker">Quick Actions</p>
           <h3>Open the separate registrations page to see event-wise student counts.</h3>
-          <p>Wahan har event ke liye total, pending, approved aur rejected registrations alag dikhेंगे.</p>
+          <p>You can view separate totals for pending, approved, and rejected registrations for each event there.</p>
         </div>
         <button type="button" class="solid-btn" (click)="setTab('registrations')">Go To Registrations</button>
       </div>
@@ -214,7 +152,7 @@
             [event]="event"
             [detailsRouteBase]="'/admin-my-events'"
           ></app-admin-event-card>
-          <div class="admin-event-actions" *ngIf="getActiveOwnedFilteredEvents()[idx] as rawEvent">
+          <div class="admin-event-actions" *ngIf="getActiveCollegeFilteredEvents()[idx] as rawEvent">
             <button type="button" class="ghost-btn" (click)="openEditModal(rawEvent)">Edit Event</button>
             <button type="button" class="solid-btn danger-btn" (click)="deleteEvent(rawEvent)">Delete Event</button>
           </div>
@@ -238,8 +176,7 @@
       [registrationFilter]="registrationFilter"
       (searchQueryChange)="registrationSearchQuery = $event; applyRegistrationFilter()"
       (back)="setTab('overview')"
-      (approve)="approveRegistration($event)"
-      (reject)="openRejectModal($event)"
+      (review)="reviewRegistration($event)"
     />
 
     <section class="panel registrations-panel" *ngIf="activeTab === 'analytics'">
@@ -278,168 +215,6 @@
     </section>
     </main>
   </div>
-
-  <div class="modal-backdrop" *ngIf="approveModalOpen" (click)="closeApproveModal()">
-    <div
-      class="modal approve-modal"
-      (click)="$event.stopPropagation()"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Approve registration"
-    >
-      <div class="modal__hero approve-hero">
-        <button type="button" class="modal__close" (click)="closeApproveModal()" aria-label="Close">&times;</button>
-        <div class="modal__heroText">
-          <h2>Approve Registration</h2>
-          <p>Confirm student registration approval</p>
-        </div>
-      </div>
-
-      <div class="modal__body">
-        <div class="approve-info" *ngIf="selectedRegistration">
-          <div class="info-grid">
-            <div class="info-block">
-              <span class="info-icon">&#128100;</span>
-              <div>
-                <div class="info-label">Student Name</div>
-                <div class="info-text">{{ selectedRegistration.studentName }}</div>
-              </div>
-            </div>
-            <div class="info-block">
-              <span class="info-icon">&#127380;</span>
-              <div>
-                <div class="info-label">Student ID</div>
-                <div class="info-text">{{ selectedRegistration.studentId }}</div>
-              </div>
-            </div>
-            <div class="info-block">
-              <span class="info-icon">&#128231;</span>
-              <div>
-                <div class="info-label">Email</div>
-                <div class="info-text">{{ selectedRegistration.email }}</div>
-              </div>
-            </div>
-            <div class="info-block">
-              <span class="info-icon">&#127979;</span>
-              <div>
-                <div class="info-label">College</div>
-                <div class="info-text">{{ selectedRegistration.college }}</div>
-              </div>
-            </div>
-            <div class="info-block">
-              <span class="info-icon">&#127919;</span>
-              <div>
-                <div class="info-label">Event</div>
-                <div class="info-text">{{ selectedRegistration.eventName }}</div>
-              </div>
-            </div>
-            <div class="info-block">
-              <span class="info-icon">&#128197;</span>
-              <div>
-                <div class="info-label">Submitted</div>
-                <div class="info-text">{{ formatDateTime(selectedRegistration.createdAt) }}</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="approval-message">
-            <div class="message-icon">&#8505;</div>
-            <p>The student will receive an immediate notification upon approval and can attend the event.</p>
-          </div>
-        </div>
-
-        <div class="modal__footer">
-          <button type="button" class="btn btn--ghost" (click)="closeApproveModal()">Cancel</button>
-          <button type="button" class="btn btn--success" (click)="confirmApproveRegistration()">
-            Approve Registration
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal-backdrop" *ngIf="rejectModalOpen" (click)="closeRejectModal()">
-    <div
-      class="modal reject-modal"
-      (click)="$event.stopPropagation()"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Reject registration"
-    >
-      <div class="modal__hero reject-hero">
-        <button type="button" class="modal__close" (click)="closeRejectModal()" aria-label="Close">&times;</button>
-        <div class="modal__heroText">
-          <h2>Reject Registration</h2>
-          <p>Provide a reason for rejecting this registration</p>
-        </div>
-      </div>
-
-      <div class="modal__body">
-        <div class="reject-info" *ngIf="selectedRegistration">
-          <div class="info-grid">
-            <div class="info-block">
-              <span class="info-icon">&#128100;</span>
-              <div>
-                <div class="info-label">Student Name</div>
-                <div class="info-text">{{ selectedRegistration.studentName }}</div>
-              </div>
-            </div>
-            <div class="info-block">
-              <span class="info-icon">&#127919;</span>
-              <div>
-                <div class="info-label">Event</div>
-                <div class="info-text">{{ selectedRegistration.eventName }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="field field--full">
-          <label for="rejectionReason">
-            <span class="field__icon">&#128221;</span>
-            Rejection Reason
-            <span class="field__required">*</span>
-          </label>
-          <textarea
-            id="rejectionReason"
-            name="rejectionReason"
-            [(ngModel)]="rejectionReason"
-            rows="4"
-            placeholder="Please provide a clear reason for rejection (minimum 10 characters)..."
-            class="rejection-textarea"
-            (click)="$event.stopPropagation()"
-            (keydown)="$event.stopPropagation()"
-            (input)="$event.stopPropagation()"
-          ></textarea>
-          <div class="help">Minimum 10 characters required. This will be shown to the student.</div>
-        </div>
-
-        <div class="rejection-warning">
-          <div class="warning-icon">&#9888;</div>
-          <p>The student will be notified with this reason. Please be clear and professional.</p>
-        </div>
-
-        <div class="modal__footer">
-          <button type="button" class="btn btn--ghost" (click)="closeRejectModal()">Cancel</button>
-          <button
-            type="button"
-            class="btn btn--danger"
-            [disabled]="!rejectionReason || rejectionReason.trim().length < 10"
-            (click)="confirmRejectRegistration()"
-          >
-            Reject Registration
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <app-create-event
-    [visible]="createEventVisible"
-    [editingEvent]="editingEvent"
-    (visibleChange)="createEventVisible = $event"
-    (eventSaved)="handleEventSaved($event)">
-  </app-create-event>
 
   <div class="toast-container">
     <div

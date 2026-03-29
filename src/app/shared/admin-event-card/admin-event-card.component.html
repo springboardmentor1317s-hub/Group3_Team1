@@ -1,7 +1,7 @@
 <article class="admin-event-card">
   <div class="event-media" [style.background-image]="cardBackground">
     <span class="status-badge" [class.closed]="statusLabel === 'Closed'">{{ statusLabel }}</span>
-    <span class="seat-pill">{{ event.registrations }}/{{ event.maxAttendees }} seats</span>
+    <span class="seat-pill">{{ event.registrations }}/{{ seatCapacityLabel }} seats</span>
   </div>
 
   <div class="event-content">

@@ -1,13 +1,20 @@
 const User = require("../models/User");
 const StudentProfileDetails = require("../models/StudentProfileDetails");
+const AdminProfileDetails = require("../models/AdminProfileDetails");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const Event = require("../models/Event");
 const Registration = require("../models/Registration");
 const { buildMergedStudentProfile } = require("../utils/studentProfile");
+const { buildMergedAdminProfile, ensureAdminProfileDetails } = require("../utils/adminProfile");
 
 function normalizeText(value) {
   return String(value || "").trim().toLowerCase();
+}
+
+function isAdminRole(role) {
+  const normalized = normalizeText(role);
+  return normalized === "college_admin" || normalized === "admin";
 }
 
 function isValidEmail(value) {
@@ -44,12 +51,12 @@ function buildNotification(id, title, message, tone, createdAt, icon, category) 
 }
 
 function determineEventStatus(event, isRegistered) {
-  const maxAttendees = event.maxAttendees || event.participants || 100;
+  const maxAttendees = event.maxAttendees ?? null;
   const registrations = event.registrations || 0;
 
   if (event.status === "Past") return "Closed";
   if (isRegistered) return "Registered";
-  if (registrations >= maxAttendees) return "Full";
+  if (typeof maxAttendees === "number" && maxAttendees > 0 && registrations >= maxAttendees) return "Full";
   return "Open";
 }
 
@@ -75,7 +82,7 @@ function mapDashboardEvent(event, registeredSet) {
     contact: event.contact || "Contact admin",
     status: determineEventStatus(event, isRegistered),
     registrations: event.registrations || 0,
-    maxAttendees: event.maxAttendees || event.participants || 100,
+    maxAttendees: event.maxAttendees ?? null,
     collegeName: event.collegeName || "Campus Event Hub"
   };
 }
@@ -109,7 +116,7 @@ function mapRegistration(registration, event) {
       posterDataUrl: event.posterDataUrl || null,
       status: event.status,
       registrations: event.registrations || 0,
-      maxAttendees: event.maxAttendees || event.participants || 100,
+      maxAttendees: event.maxAttendees ?? null,
       dateLabel: eventDate && !Number.isNaN(eventDate.getTime())
         ? eventDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
         : event?.dateTime || ""
@@ -367,6 +374,12 @@ exports.signup = async (req, res) => {
         userId: user.userId,
         email: user.email
       });
+    } else if (isAdminRole(normalizedRole)) {
+      await AdminProfileDetails.create({
+        user: user._id,
+        userId: user.userId,
+        email: user.email
+      });
     }
 
     res.status(201).json({ message: "User registered successfully" });
@@ -409,12 +422,16 @@ exports.login = async (req, res) => {
     }
 
     const normalizedRole = (user.role || "").toLowerCase();
-    const isCollegeAdmin = normalizedRole === "college_admin" || normalizedRole === "admin";
+    const isCollegeAdmin = isAdminRole(normalizedRole);
     const approvalStatus = user.adminApprovalStatus || "pending";
     const details = normalizedRole === "student"
       ? await StudentProfileDetails.findOne({ user: user._id }).lean()
-      : null;
-    const mergedProfile = buildMergedStudentProfile(user, details);
+      : isCollegeAdmin
+        ? await ensureAdminProfileDetails(user)
+        : null;
+    const mergedProfile = normalizedRole === "student"
+      ? buildMergedStudentProfile(user, details)
+      : buildMergedAdminProfile(user, details);
 
     if (isCollegeAdmin && approvalStatus === "pending") {
       return res.status(403).json({
@@ -458,12 +475,17 @@ exports.login = async (req, res) => {
 exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
-    const details = await StudentProfileDetails.findOne({ user: req.user.id }).lean();
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
+    if (isAdminRole(user.role)) {
+      const details = await ensureAdminProfileDetails(user);
+      return res.json(buildMergedAdminProfile(user, details));
+    }
+
+    const details = await StudentProfileDetails.findOne({ user: req.user.id }).lean();
     res.json(buildMergedStudentProfile(user, details));
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch profile" });

@@ -14,6 +14,7 @@ function buildMergedStudentProfile(user, details) {
     gender: details?.gender || "",
     dateOfBirth: details?.dateOfBirth || "",
     phone: details?.phone || "",
+    location: details?.location || "",
     parentPhone: details?.parentPhone || "",
     department: details?.department || "",
     departmentOther: details?.departmentOther || "",

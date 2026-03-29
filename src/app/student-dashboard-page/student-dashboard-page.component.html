@@ -87,9 +87,9 @@
         </div>
       </div>
 
-      <div *ngIf="loading" class="loading-card">Loading events and registrations...</div>
+      <div *ngIf="loading && !hasVisibleEventsData" class="loading-card">Loading events and registrations...</div>
 
-      <div class="event-grid" *ngIf="!loading && displayedEvents.length > 0">
+      <div class="event-grid" *ngIf="displayedEvents.length > 0">
         <div class="event-card-stack" *ngFor="let event of displayedEvents; trackBy: trackById">
           <app-event-card
             [event]="event"
@@ -107,7 +107,7 @@
         </div>
       </div>
 
-      <div *ngIf="!loading && filteredEvents.length === 0" class="empty-state">
+      <div *ngIf="!loading && !hasVisibleEventsData && filteredEvents.length === 0" class="empty-state">
         <span class="material-icons">event_busy</span>
         <h3>No events found</h3>
         <p>Try changing your search, category, or date filters.</p>
@@ -122,9 +122,9 @@
         <button type="button" class="view-all-btn" (click)="openRegistrationsPage()">Open Full Page</button>
       </div>
 
-      <div *ngIf="registrationsLoading" class="loading-card">Loading your registrations summary...</div>
+      <div *ngIf="registrationsLoading && !hasVisibleRegistrationsData" class="loading-card">Loading your registrations summary...</div>
 
-      <div class="registrations-spotlight" *ngIf="!registrationsLoading">
+      <div class="registrations-spotlight" *ngIf="!registrationsLoading || hasVisibleRegistrationsData">
         <article class="registration-summary-card">
           <span class="summary-icon material-icons">inventory_2</span>
           <div>
@@ -150,7 +150,7 @@
         </article>
       </div>
 
-      <div class="registrations-cta" *ngIf="!registrationsLoading">
+      <div class="registrations-cta" *ngIf="!registrationsLoading || hasVisibleRegistrationsData">
         <div>
           <p class="section-kicker">Dedicated Registrations Hub</p>
           <h3>Use the new page for filters, status tracking, and full registration history.</h3>
