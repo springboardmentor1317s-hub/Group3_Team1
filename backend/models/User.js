@@ -127,6 +127,10 @@ const userSchema = new mongoose.Schema({
   adminReviewedAt: {
     type: Date,
     default: null
+  },
+  isBlocked: {
+    type: Boolean,
+    default: false
   }
 }, { timestamps: true });
 

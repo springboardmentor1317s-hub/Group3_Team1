@@ -1,0 +1,125 @@
+<div class="container">
+  <header class="luxury-header">
+    <div class="header-inner">
+      <a class="brand-block" routerLink="/super-admin-dashboard" aria-label="Go to super admin dashboard">
+        <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub">
+        <span class="brand-name">
+          <span class="brand-campus">Campus</span>
+          <span class="brand-eventhub">Event Hub</span>
+        </span>
+      </a>
+
+      <nav class="header-nav" aria-label="Super admin navigation">
+        <a class="nav-link" routerLink="/super-admin-dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Dashboard</a>
+        <a class="nav-link" routerLink="/super-admin/students" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Students</a>
+        <a class="nav-link" routerLink="/super-admin/admins" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Admins</a>
+        <a class="nav-link" routerLink="/super-admin/events" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Events</a>
+      </nav>
+
+      <div class="header-actions">
+        <button class="action-btn export-btn" type="button">
+          <i class="fa-solid fa-download"></i>
+          Export Reports
+        </button>
+        <button class="action-btn logout-btn" type="button" (click)="logout()">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          Logout
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <section class="admins-wrap">
+    <div class="admins-header">
+      <h3>Admins Across All Colleges</h3>
+      <div class="admins-controls">
+        <input
+          type="text"
+          class="admins-search"
+          [(ngModel)]="searchTerm"
+          placeholder="Search admins"
+          aria-label="Search admins"
+        >
+        <select
+          class="college-filter"
+          [(ngModel)]="selectedCollege"
+          aria-label="Filter by college"
+        >
+          <option value="all">Filter by college</option>
+          <option *ngFor="let college of collegeOptions" [value]="college">{{ college }}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="admins-state" *ngIf="isLoadingAdmins">
+      Loading admins...
+    </div>
+
+    <div class="admins-state error" *ngIf="!isLoadingAdmins && adminsError">
+      {{ adminsError }}
+    </div>
+
+    <div class="admins-state" *ngIf="!isLoadingAdmins && !adminsError && admins.length === 0">
+      No admins found.
+    </div>
+
+    <div class="admins-state" *ngIf="!isLoadingAdmins && !adminsError && admins.length > 0 && filteredAdmins.length === 0">
+      No admins match your search or selected college.
+    </div>
+
+    <div class="admins-list" *ngIf="!isLoadingAdmins && !adminsError && filteredAdmins.length > 0">
+      <article class="admin-box" *ngFor="let admin of filteredAdmins; trackBy: trackAdmin">
+        <div class="admin-main">
+          <h4>{{ admin.name }}</h4>
+          <p>{{ admin.college || 'College not provided' }}</p>
+        </div>
+
+        <div class="admin-actions">
+          <button type="button" class="admin-btn ghost" (click)="openAdminDetails(admin)">View details</button>
+          <button type="button" class="admin-btn info" (click)="openAdminEvents(admin)">View Events</button>
+          <button type="button" class="admin-btn danger">Block</button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <div class="modal-overlay" *ngIf="showDetailsModal" (click)="closeModals()">
+    <section class="admin-modal" (click)="$event.stopPropagation()" aria-label="Admin details dialog">
+      <div class="modal-head">
+        <h4>Admin Details</h4>
+        <button type="button" class="modal-close" (click)="closeModals()">X</button>
+      </div>
+
+      <div class="modal-details" *ngIf="selectedAdmin as admin">
+        <p><strong>Name:</strong> {{ admin.name }}</p>
+        <p><strong>College:</strong> {{ admin.college || 'Not provided' }}</p>
+        <p><strong>Status:</strong> {{ getAdminStatus(admin) }}</p>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal-overlay" *ngIf="showEventsModal" (click)="closeModals()">
+    <section class="admin-modal events-modal" (click)="$event.stopPropagation()" aria-label="Admin events dialog">
+      <div class="modal-head">
+        <h4>Created Events - {{ selectedAdmin?.name }}</h4>
+        <button type="button" class="modal-close" (click)="closeModals()">X</button>
+      </div>
+
+      <div class="admins-state" *ngIf="isLoadingAdminEvents">Loading events...</div>
+      <div class="admins-state error" *ngIf="!isLoadingAdminEvents && adminEventsError">{{ adminEventsError }}</div>
+      <div class="admins-state" *ngIf="!isLoadingAdminEvents && !adminEventsError && selectedAdminEvents.length === 0">
+        No created events found for this admin.
+      </div>
+
+      <ul class="event-list" *ngIf="!isLoadingAdminEvents && !adminEventsError && selectedAdminEvents.length > 0">
+        <li *ngFor="let event of selectedAdminEvents">
+          <div>
+            <h5>{{ event.name }}</h5>
+            <p>{{ event.collegeName || 'College not provided' }} &middot; {{ event.dateTime || 'Date not provided' }}</p>
+          </div>
+          <span class="event-status">{{ event.status || 'Active' }}</span>
+        </li>
+      </ul>
+    </section>
+  </div>
+</div>
