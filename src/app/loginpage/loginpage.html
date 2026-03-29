@@ -122,7 +122,7 @@
 
   <div class="popup-backdrop" *ngIf="isPopupOpen" (click)="closePopup()">
     <div class="popup-card" (click)="$event.stopPropagation()" role="alertdialog" aria-modal="true" aria-labelledby="login-popup-title">
-      <h3 id="login-popup-title">Validation Message</h3>
+      <h3 id="login-popup-title">Notice</h3>
       <p>{{ popupMessage }}</p>
       <button type="button" class="popup-btn" (click)="closePopup()">OK</button>
     </div>

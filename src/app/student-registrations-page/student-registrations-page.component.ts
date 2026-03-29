@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
@@ -53,7 +53,9 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
   constructor(
     private studentDashboardService: StudentDashboardService,
     private auth: Auth,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef,
+    private zone: NgZone
   ) {}
 
   ngOnInit(): void {
@@ -113,21 +115,34 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
     return this.registrations.filter((item) => item.status === 'PENDING').length;
   }
 
+  get hasVisibleRegistrationsData(): boolean {
+    return this.registrations.length > 0 || this.filteredRegistrations.length > 0;
+  }
+
   loadRegistrationsPage(): void {
     this.errorMessage = '';
     this.loading = !this.registrations.length;
     this.notificationsLoading = !this.notifications.length;
 
-    this.studentDashboardService.refreshDashboardSnapshot().subscribe({
+    this.studentDashboardService.refreshDashboardSnapshot().pipe(
+      timeout(9000)
+    ).subscribe({
       next: (snapshot) => {
-        this.applySnapshot(snapshot);
+        this.zone.run(() => {
+          this.applySnapshot(snapshot);
+          this.flushView();
+        });
       },
       error: (error) => {
-        this.loading = false;
-        this.notificationsLoading = false;
-        if (!this.registrations.length) {
-          this.errorMessage = error?.error?.message || 'Unable to load registrations right now.';
-        }
+        this.zone.run(() => {
+          this.prefillFromCache();
+          this.loading = false;
+          this.notificationsLoading = false;
+          if (!this.registrations.length) {
+            this.errorMessage = error?.error?.message || 'Unable to load registrations right now.';
+          }
+          this.flushView();
+        });
       }
     });
   }
@@ -274,7 +289,7 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
       contact: registration.event?.contact || registration.email || 'Contact admin',
       status: eventStatus,
       registrations: Number(registration.event?.registrations || 0),
-      maxAttendees: Number(registration.event?.maxAttendees || 0),
+      maxAttendees: registration.event?.maxAttendees ?? null,
       collegeName: registration.college || 'Campus Event Hub',
       registered: registration.status === 'APPROVED',
       endDate: null,
@@ -467,6 +482,7 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
 
     if (cachedSnapshot) {
       this.applySnapshot(cachedSnapshot);
+      this.flushView();
       return;
     }
 
@@ -483,6 +499,7 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
 
     this.notifications = this.studentDashboardService.getCachedNotifications();
     this.notificationsLoading = false;
+    this.flushView();
   }
 
   private applySnapshot(snapshot: StudentDashboardSnapshot): void {
@@ -494,13 +511,19 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
     this.loadVisibleEventRatingSummaries(this.registrations, true);
     this.loading = false;
     this.notificationsLoading = false;
+    this.flushView();
   }
 
   private startNotificationsRefresh(): void {
     this.notificationsRefreshTimer = setInterval(() => {
-      this.studentDashboardService.refreshDashboardSnapshot().subscribe({
+      this.studentDashboardService.refreshDashboardSnapshot().pipe(
+        timeout(9000)
+      ).subscribe({
         next: (snapshot) => {
-          this.applySnapshot(snapshot);
+          this.zone.run(() => {
+            this.applySnapshot(snapshot);
+            this.flushView();
+          });
         },
         error: () => undefined
       });
@@ -563,6 +586,10 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
 
       this.fetchEventRatingSummary(eventId);
     }
+  }
+
+  private flushView(): void {
+    this.cdr.detectChanges();
   }
 
   private fetchEventRatingSummary(eventId: string): void {

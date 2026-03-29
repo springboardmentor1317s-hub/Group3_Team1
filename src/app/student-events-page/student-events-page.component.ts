@@ -1,6 +1,6 @@
 
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
@@ -50,7 +50,9 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
     private studentDashboardService: StudentDashboardService,
     private auth: Auth,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private cdr: ChangeDetectorRef,
+    private zone: NgZone
   ) {}
 
   ngOnInit(): void {
@@ -92,21 +94,34 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
     ).trim();
   }
 
+  get hasVisibleEventsData(): boolean {
+    return this.events.length > 0 || this.filteredEvents.length > 0;
+  }
+
   loadEvents(): void {
     this.errorMessage = '';
 
-    this.studentDashboardService.getEvents().subscribe({
+    this.studentDashboardService.getEvents().pipe(
+      timeout(9000)
+    ).subscribe({
       next: (events) => {
-        this.setEvents(events);
-        this.loading = false;
-        setTimeout(() => this.scrollToFocusedEvent(), 0);
+        this.zone.run(() => {
+          this.setEvents(events);
+          this.loading = false;
+          this.flushView();
+          setTimeout(() => this.scrollToFocusedEvent(), 0);
+        });
       },
       error: (error) => {
-        this.setEvents(this.studentDashboardService.getCachedEvents());
-        this.loading = false;
-        if (!this.events.length) {
-          this.errorMessage = error?.error?.message || 'Unable to load events right now.';
-        }
+        this.zone.run(() => {
+          this.prefillFromCache();
+          this.setEvents(this.studentDashboardService.getCachedEvents());
+          this.loading = false;
+          if (!this.events.length) {
+            this.errorMessage = error?.error?.message || 'Unable to load events right now.';
+          }
+          this.flushView();
+        });
       }
     });
   }
@@ -258,6 +273,8 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
       this.notifications = cachedNotifications;
       this.notificationsLoading = false;
     }
+
+    this.flushView();
   }
 
   private setEvents(events: StudentEventCard[]): void {
@@ -266,6 +283,7 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
     this.colleges = ['All', ...Array.from(new Set(this.events.map((event) => event.collegeName).filter(Boolean)))];
     this.applyFilters();
     this.loadVisibleEventRatingSummaries(this.events, true);
+    this.flushView();
   }
 
   private loadVisibleEventRatingSummaries(sourceEvents: StudentEventCard[] = this.filteredEvents, forceRefresh = false): void {
@@ -366,10 +384,12 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
       next: (snapshot) => {
         this.notifications = snapshot.notifications || [];
         this.notificationsLoading = false;
+        this.flushView();
       },
       error: () => {
         this.notifications = this.studentDashboardService.getCachedNotifications();
         this.notificationsLoading = false;
+        this.flushView();
       }
     });
   }
@@ -380,6 +400,7 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
         next: (snapshot) => {
           this.notifications = snapshot.notifications || [];
           this.notificationsLoading = false;
+          this.flushView();
         },
         error: () => void 0
       });
@@ -390,5 +411,9 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
     this.ratingRefreshTimer = setInterval(() => {
       this.loadVisibleEventRatingSummaries(this.filteredEvents, true);
     }, 8000);
+  }
+
+  private flushView(): void {
+    this.cdr.detectChanges();
   }
 }

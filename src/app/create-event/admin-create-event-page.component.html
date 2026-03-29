@@ -1,0 +1,49 @@
+<div class="admin-create-shell">
+  <app-admin-common-header
+    activeTab="none"
+    [userName]="userName"
+    [userAvatarUrl]="userAvatarUrl"
+    [showSearch]="false"
+    [showNotifications]="false"
+    [showExport]="false"
+    (brandClick)="handleHeaderTabChange('overview')"
+    (activeTabChange)="handleHeaderTabChange($event)"
+    (logoutTriggered)="logout()"
+  ></app-admin-common-header>
+
+  <div class="layout create-layout" [class.sidebar-collapsed]="sidebarCollapsed">
+    <app-admin-dashboard-sidebar
+      activeTab="none"
+      [collapsed]="sidebarCollapsed"
+      (tabChange)="handleSidebarTabChange($event)"
+      (collapsedChange)="setSidebarCollapsed($event)"
+      (createEvent)="goToCreateEvent()"
+      (myEvents)="goToMyEvents()"
+    />
+
+    <main class="create-main">
+      <section class="create-hero">
+        <div class="create-hero-copy">
+          <p class="create-kicker">Event Publishing Workspace</p>
+          <h1>{{ pageTitle }}</h1>
+          <p class="create-subtitle">{{ pageSubtitle }}</p>
+        </div>
+      </section>
+
+      <section class="create-form-panel">
+        <section *ngIf="isLoadingEditEvent" class="edit-loading-card">
+          Loading event details...
+        </section>
+
+        <app-create-event
+          *ngIf="!isLoadingEditEvent"
+          mode="page"
+          [visible]="true"
+          [editingEvent]="editingEvent"
+          (eventSaved)="handleEventSaved($event)"
+          (cancelRequested)="handleCancel()"
+        ></app-create-event>
+      </section>
+    </main>
+  </div>
+</div>

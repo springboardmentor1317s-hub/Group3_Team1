@@ -20,10 +20,16 @@ export interface BackendEvent {
   status: 'Active' | 'Draft' | 'Past';
   registrations: number;
   participants: number;
-  maxAttendees?: number;
+  maxAttendees?: number | null;
   attendeeIds?: string[];
   registered?: boolean;
   collegeName?: string;
+  createdBy?: string;
+  createdById?: string;
+  ownerId?: string;
+  adminId?: string;
+  userId?: string;
+  email?: string;
 }
 
 @Injectable({
@@ -53,6 +59,24 @@ export class EventService {
           .filter((event) => event.registered === true)
           .map((event) => String(event.id));
         this.saveRegistrations(registeredIds);
+      })
+    );
+  }
+
+  fetchMyEvents(): Observable<BackendEvent[]> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.get<BackendEvent[]>(`${this.apiUrl}/events/mine`, { headers }).pipe(
+      tap((events) => {
+        this.eventsSubject.next(events || []);
+      })
+    );
+  }
+
+  fetchCollegeEvents(): Observable<BackendEvent[]> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.get<BackendEvent[]>(`${this.apiUrl}/events/college`, { headers }).pipe(
+      tap((events) => {
+        this.eventsSubject.next(events || []);
       })
     );
   }
@@ -169,7 +193,10 @@ export class EventService {
   convertToFrontendEvent(backendEvent: BackendEvent): any {
     const dateObj = backendEvent.dateTime ? new Date(backendEvent.dateTime) : null;
     const isRegistered = backendEvent.registered === true;
-    const isFull = (backendEvent.registrations || 0) >= (backendEvent.maxAttendees || backendEvent.participants || 100);
+    const capacity = backendEvent.maxAttendees ?? null;
+    const isFull = typeof capacity === 'number' && capacity > 0
+      ? (backendEvent.registrations || 0) >= capacity
+      : false;
 
     let status: 'Open' | 'Registered' | 'Full' | 'Closed' = 'Open';
     if (backendEvent.status === 'Past') {
@@ -188,7 +215,7 @@ export class EventService {
       location: backendEvent.location,
       category: backendEvent.category || this.determineCategory(backendEvent.name, backendEvent.description || ''),
       attendees: backendEvent.registrations || 0,
-      maxAttendees: backendEvent.maxAttendees || backendEvent.participants || 100,
+      maxAttendees: backendEvent.maxAttendees ?? null,
       status,
       description: backendEvent.description,
       registered: isRegistered,

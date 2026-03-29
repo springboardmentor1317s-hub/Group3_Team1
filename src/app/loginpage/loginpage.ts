@@ -106,9 +106,7 @@ export class Loginpage {
       return;
     } 
 
-  const payload: any = { identifier: this.user.email, password: this.user.password };
-
-  this.authService.login(payload).subscribe({
+  this.authService.login({ identifier: this.user.email, password: this.user.password }).subscribe({
     next: (res: any) => {
       console.log('Login Success', res);
 
@@ -153,10 +151,10 @@ localStorage.setItem('role', res.role);
             this.router.navigate(['/student-dashboard']);
           },
           error: (dashboardError) => {
+            console.error('Student dashboard preload failed', dashboardError);
             this.isLoggingIn = false;
-            this.errorMessage = dashboardError?.error?.message || 'Student dashboard data load nahi hua. Please try again.';
-            this.openPopup(this.errorMessage);
-            this.cdr.detectChanges();
+            this.errorMessage = '';
+            this.router.navigate(['/student-dashboard']);
           }
         });
       }

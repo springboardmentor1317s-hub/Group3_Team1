@@ -1,6 +1,7 @@
 const Event = require("../models/Event");
 const Registration = require("../models/Registration");
 const EventReview = require("../models/EventReview");
+const { getCollegeScopedEventIds } = require("../utils/adminCollegeScope");
 
 async function assertStudentCanReview(studentId, eventId) {
   try {
@@ -100,6 +101,29 @@ exports.getEventRatingSummaries = async (req, res) => {
     );
   } catch (error) {
     res.status(500).json({ message: "Failed to load rating summaries" });
+  }
+};
+
+exports.getCollegeReviews = async (req, res) => {
+  try {
+    const eventIds = await getCollegeScopedEventIds(req.user?.id);
+    if (!eventIds.length) {
+      return res.json([]);
+    }
+
+    const reviews = await EventReview.find({ eventId: { $in: eventIds } }).sort({ updatedAt: -1 });
+    res.json(
+      reviews.map((review) => ({
+        id: review._id.toString(),
+        eventId: String(review.eventId),
+        rating: review.rating,
+        feedback: review.feedback || "",
+        createdAt: review.createdAt,
+        updatedAt: review.updatedAt
+      }))
+    );
+  } catch (error) {
+    res.status(500).json({ message: "Failed to load college reviews" });
   }
 };
 

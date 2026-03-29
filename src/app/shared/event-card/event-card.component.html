@@ -3,7 +3,7 @@
     <span class="status-badge" [class.registered]="statusLabel === 'Registered'" [class.closed]="statusLabel !== 'Open' && statusLabel !== 'Registered'">
       {{ statusLabel }}
     </span>
-    <span class="seat-pill">{{ event.registrations }}/{{ event.maxAttendees }} seats</span>
+    <span class="seat-pill">{{ event.registrations }}/{{ seatCapacityLabel }} seats</span>
   </div>
 
   <div class="event-content">

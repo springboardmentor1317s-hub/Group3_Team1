@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
@@ -84,7 +84,9 @@ export class StudentDashboardPageComponent implements OnInit {
     private studentDashboardService: StudentDashboardService,
     private auth: Auth,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private cdr: ChangeDetectorRef,
+    private zone: NgZone
   ) {}
 
   ngOnInit(): void {
@@ -173,6 +175,14 @@ export class StudentDashboardPageComponent implements OnInit {
     return [1, 2, 3, 4, 5];
   }
 
+  get hasVisibleEventsData(): boolean {
+    return this.allEvents.length > 0 || this.filteredEvents.length > 0;
+  }
+
+  get hasVisibleRegistrationsData(): boolean {
+    return this.registrations.length > 0 || this.statsState.myRegistrations > 0;
+  }
+
   loadDashboard(): void {
     this.errorMessage = '';
     const hasWarmCache = !!this.studentDashboardService.getCachedSnapshot();
@@ -184,18 +194,27 @@ export class StudentDashboardPageComponent implements OnInit {
       this.silentRefreshing = true;
     }
 
-    this.studentDashboardService.refreshDashboardSnapshot().subscribe({
+    this.studentDashboardService.refreshDashboardSnapshot().pipe(
+      timeout(9000)
+    ).subscribe({
       next: (snapshot) => {
-        this.applySnapshot(snapshot);
+        this.zone.run(() => {
+          this.applySnapshot(snapshot);
+          this.flushView();
+        });
       },
       error: (error) => {
-        this.loading = false;
-        this.registrationsLoading = false;
-        this.notificationsLoading = false;
-        this.silentRefreshing = false;
-        if (!this.allEvents.length && !this.registrations.length) {
-          this.errorMessage = error?.error?.message || 'Unable to load student dashboard right now.';
-        }
+        this.zone.run(() => {
+          this.prefillFromCache();
+          this.loading = false;
+          this.registrationsLoading = false;
+          this.notificationsLoading = false;
+          this.silentRefreshing = false;
+          if (!this.allEvents.length && !this.registrations.length) {
+            this.errorMessage = error?.error?.message || 'Unable to load student dashboard right now.';
+          }
+          this.flushView();
+        });
       }
     });
   }
@@ -604,6 +623,7 @@ export class StudentDashboardPageComponent implements OnInit {
 
     if (cachedSnapshot) {
       this.applySnapshot(cachedSnapshot);
+      this.flushView();
       return;
     }
 
@@ -629,6 +649,7 @@ export class StudentDashboardPageComponent implements OnInit {
     this.statsState = this.studentDashboardService.getCachedStats();
     this.notifications = this.studentDashboardService.getCachedNotifications();
     this.notificationsLoading = false;
+    this.flushView();
   }
 
   private applySnapshot(snapshot: StudentDashboardSnapshot): void {
@@ -648,6 +669,7 @@ export class StudentDashboardPageComponent implements OnInit {
     this.registrationsLoading = false;
     this.notificationsLoading = false;
     this.silentRefreshing = false;
+    this.flushView();
   }
 
   private setEvents(events: StudentEventCard[]): void {
@@ -741,9 +763,14 @@ export class StudentDashboardPageComponent implements OnInit {
 
   private startNotificationsRefresh(): void {
     this.notificationsRefreshTimer = setInterval(() => {
-      this.studentDashboardService.refreshDashboardSnapshot().subscribe({
+      this.studentDashboardService.refreshDashboardSnapshot().pipe(
+        timeout(9000)
+      ).subscribe({
         next: (snapshot) => {
-          this.applySnapshot(snapshot);
+          this.zone.run(() => {
+            this.applySnapshot(snapshot);
+            this.flushView();
+          });
         },
         error: () => void 0
       });
@@ -762,13 +789,19 @@ export class StudentDashboardPageComponent implements OnInit {
       next: (snapshot) => {
         this.supportQuery = snapshot.activeQuery;
         this.latestResolvedSupportQuery = snapshot.latestResolvedQuery;
+        this.flushView();
       },
       error: (error) => {
         this.supportQuery = null;
         this.latestResolvedSupportQuery = null;
         this.supportQueryErrorMessage = error?.error?.message || 'Unable to load your query status right now.';
+        this.flushView();
       }
     });
+  }
+
+  private flushView(): void {
+    this.cdr.detectChanges();
   }
 
   private startRatingsRefresh(): void {

@@ -5,7 +5,7 @@ console.log("Starting Backend Server...");
 
 const backend = spawn('node', ['server.js'], {
   cwd: path.join(__dirname, 'backend'),
-  env: { ...process.env, MONGO_URI: 'mongodb://127.0.0.1:27017/campus-event-hub' },
+  env: { ...process.env },
   shell: true,
   detached: true
 });
