@@ -19,6 +19,19 @@ export interface ReviewableUser {
   adminApprovalStatus?: 'pending' | 'approved' | 'rejected';
   adminRejectionReason?: string;
   adminReviewedAt?: string;
+  isBlocked?: boolean;
+  createdAt?: string;
+}
+
+export interface AdminCreatedEvent {
+  id: string;
+  name: string;
+  category?: string;
+  dateTime?: string;
+  location?: string;
+  status?: string;
+  collegeName?: string;
+  organizer?: string;
   createdAt?: string;
 }
 
@@ -130,5 +143,14 @@ export class SuperAdminService {
       headers = headers.set('Authorization', `Bearer ${token}`);
     }
     return this.http.get<StudentRegistrationSummary[]>(`${this.baseUrl}/students/${encodeURIComponent(studentId)}/events`, { headers });
+  }
+
+  getAdminCreatedEvents(adminId: string): Observable<AdminCreatedEvent[]> {
+    const token = localStorage.getItem('token');
+    let headers = new HttpHeaders();
+    if (token) {
+      headers = headers.set('Authorization', `Bearer ${token}`);
+    }
+    return this.http.get<AdminCreatedEvent[]>(`${this.baseUrl}/admins/${encodeURIComponent(adminId)}/events`, { headers });
   }
 }
