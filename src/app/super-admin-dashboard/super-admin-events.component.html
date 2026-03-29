@@ -29,10 +29,64 @@
     </div>
   </header>
 
-  <section class="content-placeholder">
-    <div class="placeholder-card">
-      <h3>Events</h3>
-      <p>Super admin events page placeholder. Content will be added here.</p>
+  <section class="events-wrap">
+    <div class="events-header">
+      <h3>Events Across All Colleges</h3>
+    </div>
+
+    <div class="events-state" *ngIf="isLoadingEvents">
+      Loading events...
+    </div>
+
+    <div class="events-state error" *ngIf="!isLoadingEvents && eventsError">
+      {{ eventsError }}
+    </div>
+
+    <div class="events-state error" *ngIf="!isLoadingEvents && !eventsError && deletingError">
+      {{ deletingError }}
+    </div>
+
+    <div class="events-state" *ngIf="!isLoadingEvents && !eventsError && events.length === 0">
+      No events found.
+    </div>
+
+    <div class="events-list" *ngIf="!isLoadingEvents && !eventsError && events.length > 0">
+      <article class="event-box" *ngFor="let event of events; trackBy: trackEvent">
+        <div class="event-main">
+          <h4>{{ event.name }}</h4>
+          <p>{{ event.collegeName || 'College not provided' }}</p>
+        </div>
+
+        <div class="event-actions">
+          <button type="button" class="event-btn ghost" (click)="openEventDetails(event)">View details</button>
+          <button type="button" class="event-btn danger" (click)="deleteEvent(event)" [disabled]="isDeletingEvent && deletingEventId === event.id">
+            {{ isDeletingEvent && deletingEventId === event.id ? 'Deleting...' : 'Delete' }}
+          </button>
+        </div>
+      </article>
     </div>
   </section>
+
+  <div class="modal-overlay" *ngIf="showDetailsModal" (click)="closeDetailsModal()">
+    <section class="event-modal" (click)="$event.stopPropagation()" aria-label="Event details dialog">
+      <div class="modal-head">
+        <h4>Event Details</h4>
+        <button type="button" class="modal-close" (click)="closeDetailsModal()">X</button>
+      </div>
+
+      <div class="modal-details" *ngIf="selectedEvent as event">
+        <p><strong>Name:</strong> {{ event.name }}</p>
+        <p><strong>Status:</strong> {{ getEventStatusLabel(event) }}</p>
+        <p><strong>College:</strong> {{ event.collegeName || 'Not provided' }}</p>
+        <p><strong>Category:</strong> {{ event.category || 'Not provided' }}</p>
+        <p><strong>Date:</strong> {{ getEventDateLabel(event) }}</p>
+        <p><strong>Location:</strong> {{ event.location || 'Not provided' }}</p>
+        <p><strong>Organizer:</strong> {{ event.organizer || 'Not provided' }}</p>
+        <p><strong>Contact:</strong> {{ event.contact || 'Not provided' }}</p>
+        <p><strong>Registrations:</strong> {{ event.registrations || 0 }}</p>
+        <p><strong>Max Attendees:</strong> {{ event.maxAttendees || event.participants || 0 }}</p>
+        <p><strong>Description:</strong> {{ event.description || 'Not provided' }}</p>
+      </div>
+    </section>
+  </div>
 </div>

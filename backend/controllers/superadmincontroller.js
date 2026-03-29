@@ -27,7 +27,7 @@ exports.getAdminApprovalRequests = async (req, res) => {
       role: { $in: ["college_admin", "admin"] }
     })
       .select(
-        "name userId email college role adminApprovalStatus adminRejectionReason adminReviewedAt createdAt"
+        "name userId email college role adminApprovalStatus adminRejectionReason adminReviewedAt isBlocked createdAt"
       )
       .sort({ createdAt: -1 });
 
@@ -242,5 +242,80 @@ exports.getStudentRegisteredEvents = async (req, res) => {
   } catch (error) {
     console.error('Get student registered events error:', error);
     res.status(500).json({ message: 'Failed to load registered events' });
+  }
+};
+
+// ================= ADMIN CREATED EVENTS =================
+// GET /api/superadmin/admins/:adminId/events
+exports.getAdminCreatedEvents = async (req, res) => {
+  try {
+    const { adminId } = req.params;
+    const normalizedAdminId = String(adminId || '').trim();
+
+    if (!normalizedAdminId) {
+      return res.status(400).json({ message: 'adminId is required' });
+    }
+
+    const admin = await User.findById(normalizedAdminId)
+      .select('name userId email college role');
+
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    const normalize = (value) => String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ');
+
+    const adminKeys = [
+      normalize(admin.name),
+      normalize(admin.userId),
+      normalize(admin.email),
+      normalize(admin.college)
+    ].filter(Boolean);
+
+    if (adminKeys.length === 0) {
+      return res.json([]);
+    }
+
+    const events = await Event.find({})
+      .select('name category dateTime location status collegeName organizer contact createdAt')
+      .sort({ createdAt: -1 });
+
+    const matchedEvents = events.filter((event) => {
+      const organizer = normalize(event.organizer);
+      const contact = normalize(event.contact);
+      const collegeName = normalize(event.collegeName);
+
+      return adminKeys.some((key) => {
+        return (
+          organizer === key ||
+          contact === key ||
+          collegeName === key ||
+          organizer.includes(key) ||
+          key.includes(organizer) ||
+          collegeName.includes(key) ||
+          key.includes(collegeName)
+        );
+      });
+    });
+
+    const payload = matchedEvents.map((event) => ({
+      id: String(event._id),
+      name: event.name,
+      category: event.category,
+      dateTime: event.dateTime,
+      location: event.location,
+      status: event.status,
+      collegeName: event.collegeName,
+      organizer: event.organizer,
+      createdAt: event.createdAt
+    }));
+
+    res.json(payload);
+  } catch (error) {
+    console.error('Get admin created events error:', error);
+    res.status(500).json({ message: 'Failed to load admin events' });
   }
 };
