@@ -44,14 +44,25 @@
             <p class="status-kicker">Your Registration Status</p>
             <h2>{{ currentRegistration.eventName }}</h2>
           </div>
-          <span
-            class="inline-status"
-            [class.pending]="currentRegistration.status === 'PENDING'"
-            [class.approved]="currentRegistration.status === 'APPROVED'"
-            [class.rejected]="currentRegistration.status === 'REJECTED'"
-          >
-            {{ currentRegistration.status }}
-          </span>
+          <div class="status-side-actions">
+            <span
+              class="inline-status"
+              [class.pending]="currentRegistration.status === 'PENDING'"
+              [class.approved]="currentRegistration.status === 'APPROVED'"
+              [class.rejected]="currentRegistration.status === 'REJECTED'"
+            >
+              {{ currentRegistration.status }}
+            </span>
+            <button
+              *ngIf="canDeleteCurrentRegistration()"
+              type="button"
+              class="delete-registration-btn"
+              [disabled]="actionEventId === details.id"
+              (click)="deleteCurrentRegistration()"
+            >
+              {{ actionEventId === details.id ? 'Deleting...' : 'Delete Registration' }}
+            </button>
+          </div>
         </div>
 
         <p *ngIf="currentRegistration.status === 'PENDING'">Your registration is waiting for admin review. Please check back soon.</p>
@@ -66,7 +77,7 @@
 
       <section class="detail-card">
         <h2>Event Details</h2>
-        <p>{{ details.description }}</p>
+        <p>{{ eventDescriptionText }}</p>
         <div class="detail-grid">
           <div><span class="material-icons">apartment</span>{{ details.collegeName || 'Campus Event Hub' }}</div>
           <div><span class="material-icons">person</span>{{ details.organizer || 'Campus Event Hub' }}</div>
@@ -189,11 +200,14 @@
         </section>
 
         <section class="comments-list" *ngIf="publicComments.length > 0">
-          <article class="comment-item" *ngFor="let item of publicComments">
+          <article class="comment-item" [class.admin-comment-item]="isAdminEntry(item)" *ngFor="let item of publicComments">
             <img class="avatar-img" [src]="item.avatarUrl" [alt]="item.name">
             <div class="comment-body">
-              <div class="comment-head">
-                <strong>{{ item.name }}</strong>
+              <div class="comment-head" [class.admin-head]="isAdminEntry(item)">
+                <div class="author-stack">
+                  <strong>{{ getCommentAuthorDisplayName(item) }}</strong>
+                  <span class="admin-author-badge" *ngIf="isAdminEntry(item)">Admin Reply</span>
+                </div>
                 <span>{{ formatTime(item.createdAt) }}</span>
               </div>
               <p *ngIf="!item.isEditing">{{ item.text }}</p>
@@ -242,11 +256,14 @@
 
   <ng-template #replyThread let-replies>
     <div class="reply-list" *ngIf="replies?.length">
-      <article class="reply-item" *ngFor="let reply of replies">
+      <article class="reply-item" [class.admin-comment-item]="isAdminEntry(reply)" *ngFor="let reply of replies">
         <img class="reply-avatar-img" [src]="reply.avatarUrl" [alt]="reply.name">
         <div class="reply-body">
-          <div class="reply-head">
-            <strong>{{ reply.name }}</strong>
+          <div class="reply-head" [class.admin-head]="isAdminEntry(reply)">
+            <div class="author-stack">
+              <strong>{{ getCommentAuthorDisplayName(reply) }}</strong>
+              <span class="admin-author-badge" *ngIf="isAdminEntry(reply)">Admin Reply</span>
+            </div>
             <span>{{ formatTime(reply.createdAt) }}</span>
           </div>
           <p *ngIf="!reply.isEditing">{{ reply.text }}</p>

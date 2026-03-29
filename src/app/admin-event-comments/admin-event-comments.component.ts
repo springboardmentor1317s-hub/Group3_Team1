@@ -42,6 +42,8 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
   userAvatarUrl: string | null = null;
   publicCommentDraft = '';
   publicCommentActionInProgress = false;
+  commentActionError = '';
+  replyActionInProgressById: Record<string, boolean> = {};
 
   private eventId = '';
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -138,6 +140,20 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
     return parsed.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   }
 
+  get eventCreatorName(): string {
+    const createdBy = String(this.event?.createdBy || '').trim();
+    if (createdBy) {
+      return createdBy;
+    }
+
+    const organizer = String(this.event?.organizer || '').trim();
+    if (organizer) {
+      return organizer;
+    }
+
+    return 'Campus Event Hub';
+  }
+
   trackByCommentId(_index: number, item: AdminCommentView): string {
     return item.id;
   }
@@ -159,11 +175,12 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
   postPublicComment(): void {
     const text = this.publicCommentDraft.trim();
     if (!text || !this.eventId) return;
+    this.commentActionError = '';
 
     const optimisticComment: AdminCommentView = {
       id: this.generateTempId(),
       authorId: this.getCurrentUserIdentifier(),
-      name: this.userName,
+      name: this.getAdminDisplayName(),
       avatarUrl: this.getCurrentUserAvatarUrl(),
       text,
       createdAt: new Date().toISOString(),
@@ -188,9 +205,10 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
         const normalized = this.normalizeComments([created])[0];
         this.comments = this.comments.map((item) => item.id === optimisticComment.id ? normalized : item);
       },
-      error: () => {
+      error: (error) => {
         this.comments = this.comments.filter((item) => item.id !== optimisticComment.id);
         this.publicCommentDraft = text;
+        this.commentActionError = error?.error?.message || 'Unable to post comment right now.';
       }
     });
   }
@@ -202,11 +220,16 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
   postReply(target: AdminCommentView): void {
     const text = target.replyDraft.trim();
     if (!text || !this.eventId) return;
+    this.commentActionError = '';
+    if (String(target.id || '').startsWith('temp-')) {
+      this.commentActionError = 'Please wait a moment and try reply again.';
+      return;
+    }
 
     const optimisticReply: AdminCommentView = {
       id: this.generateTempId(),
       authorId: this.getCurrentUserIdentifier(),
-      name: this.userName,
+      name: this.getAdminDisplayName(),
       avatarUrl: this.getCurrentUserAvatarUrl(),
       text,
       createdAt: new Date().toISOString(),
@@ -221,13 +244,32 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
     target.replies = [...target.replies, optimisticReply];
     target.replyDraft = '';
     target.replyOpen = false;
+    this.replyActionInProgressById[target.id] = true;
 
-    this.studentDashboardService.postEventComment(this.eventId, text, target.id).subscribe({
+    this.studentDashboardService.postEventComment(this.eventId, text, target.id).pipe(
+      finalize(() => {
+        delete this.replyActionInProgressById[target.id];
+      })
+    ).subscribe({
       next: () => this.loadComments(),
-      error: () => {
+      error: (error) => {
         target.replies = target.replies.filter((reply) => reply.id !== optimisticReply.id);
+        target.replyOpen = true;
+        target.replyDraft = text;
+        this.commentActionError = error?.error?.message || 'Unable to post reply right now.';
       }
     });
+  }
+
+  isAdminEntry(target: AdminCommentView): boolean {
+    const authorId = String(target.authorId || '').trim().toLowerCase();
+    if (authorId && this.currentUserIdentifiers.has(authorId)) {
+      return true;
+    }
+
+    const normalizedName = String(target.name || '').trim().toLowerCase();
+    const currentAdminName = String(this.userName || '').trim().toLowerCase();
+    return normalizedName.includes('admin') || (!!currentAdminName && normalizedName === currentAdminName);
   }
 
   canManageEntry(target: AdminCommentView): boolean {
@@ -277,7 +319,7 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
     this.router.navigate(['/admin-dashboard']);
   }
 
-  handleTabChange(tab: 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback'): void {
+  handleTabChange(tab: 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries'): void {
     this.router.navigate(['/admin-dashboard'], { queryParams: { tab } });
   }
 
@@ -337,10 +379,27 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
     }
 
     this.refreshTimer = setInterval(() => {
-      if (this.eventId && this.event) {
+      if (this.eventId && this.event && !this.hasActiveDrafts()) {
         this.loadComments();
       }
     }, 6000);
+  }
+
+  private hasActiveDrafts(): boolean {
+    if (this.publicCommentActionInProgress || this.publicCommentDraft.trim().length > 0) {
+      return true;
+    }
+
+    const hasDraftRecursively = (items: AdminCommentView[]): boolean =>
+      items.some((item) =>
+        item.replyOpen
+        || item.isEditing
+        || item.replyDraft.trim().length > 0
+        || item.editDraft.trim().length > 0
+        || hasDraftRecursively(item.replies || [])
+      );
+
+    return hasDraftRecursively(this.comments || []);
   }
 
   private normalizeComments(items: StudentEventComment[]): AdminCommentView[] {
@@ -383,6 +442,13 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
 
   private getCurrentUserAvatarUrl(): string {
     return this.userAvatarUrl || this.getDefaultAvatarUrl(this.userName);
+  }
+
+  private getAdminDisplayName(): string {
+    const baseName = String(this.userName || 'College Admin').trim();
+    return /^admin\b/i.test(baseName) || baseName.toLowerCase().includes('admin')
+      ? baseName
+      : `Admin - ${baseName}`;
   }
 
   private generateTempId(): string {

@@ -181,7 +181,7 @@ export class AdminMyEventsComponent implements OnInit, OnDestroy {
     this.router.navigate(['/admin-dashboard']);
   }
 
-  handleTabChange(tab: 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback'): void {
+  handleTabChange(tab: 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries'): void {
     this.router.navigate(['/admin-dashboard'], { queryParams: { tab } });
   }
 

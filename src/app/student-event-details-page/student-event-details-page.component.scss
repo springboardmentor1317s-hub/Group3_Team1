@@ -337,6 +337,12 @@
   margin-bottom: 0.8rem;
 }
 
+.status-side-actions {
+  display: grid;
+  justify-items: end;
+  gap: 0.5rem;
+}
+
 .status-kicker {
   color: #64748b;
   text-transform: uppercase;
@@ -387,6 +393,31 @@
 
 .retry-btn {
   margin-top: 0.25rem;
+}
+
+.delete-registration-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 0.48rem 0.82rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #ffffff;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 10px 18px rgba(239, 68, 68, 0.22);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.delete-registration-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 20px rgba(239, 68, 68, 0.3);
+}
+
+.delete-registration-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+  transform: none;
+  box-shadow: none;
 }
 
 .feedback-state {
@@ -616,6 +647,13 @@
   border: 1px solid rgba(148, 163, 184, 0.16);
 }
 
+.comment-item.admin-comment-item,
+.reply-item.admin-comment-item {
+  border-left: 4px solid #2563eb;
+  background: linear-gradient(135deg, rgba(239, 246, 255, 0.95), rgba(219, 234, 254, 0.86));
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.12);
+}
+
 .avatar-img,
 .avatar-fallback {
   width: 42px;
@@ -646,6 +684,12 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.author-stack {
+  display: grid;
+  gap: 0.18rem;
 }
 
 .comment-head strong {
@@ -656,6 +700,31 @@
   color: #64748b;
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+.comment-head > span:last-child {
+  margin-left: auto;
+}
+
+.comment-head.admin-head strong,
+.reply-head.admin-head strong {
+  color: #1d4ed8;
+  font-weight: 800;
+}
+
+.admin-author-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.14rem 0.46rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #ffffff;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  box-shadow: 0 8px 14px rgba(37, 99, 235, 0.2);
+  width: fit-content;
 }
 
 .comment-rating {
@@ -775,6 +844,7 @@ app-site-footer {
   display: flex;
   align-items: center;
   gap: 0.45rem;
+  flex-wrap: wrap;
 }
 
 .reply-head strong {
@@ -786,6 +856,10 @@ app-site-footer {
   color: #64748b;
   font-size: 0.74rem;
   font-weight: 600;
+}
+
+.reply-head > span:last-child {
+  margin-left: auto;
 }
 
 .reply-body p {

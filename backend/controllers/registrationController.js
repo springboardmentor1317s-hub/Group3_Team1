@@ -5,8 +5,16 @@ const StudentProfileDetails = require('../models/StudentProfileDetails');
 const { getCollegeScopedEventIds } = require('../utils/adminCollegeScope');
 const { buildMergedStudentProfile } = require('../utils/studentProfile');
 
+function normalizeRegistrationStatus(status) {
+  const normalized = String(status || '').trim().toUpperCase();
+  if (normalized === 'APPROVED') return 'APPROVED';
+  if (normalized === 'REJECTED') return 'REJECTED';
+  return 'PENDING';
+}
+
 function serializeRegistration(registration, event) {
   const eventDate = event?.dateTime ? new Date(event.dateTime) : null;
+  const normalizedStatus = normalizeRegistrationStatus(registration?.status);
 
   return {
     id: registration.id || String(registration._id),
@@ -16,7 +24,7 @@ function serializeRegistration(registration, event) {
     studentName: registration.studentName,
     email: registration.email,
     college: registration.college,
-    status: registration.status,
+    status: normalizedStatus,
     rejectionReason: registration.rejectionReason || '',
     approvedAt: registration.approvedAt || null,
     rejectedAt: registration.rejectedAt || null,
@@ -62,6 +70,7 @@ async function attachReviewProfiles(registrations) {
     return {
       ...registration.toObject(),
       id: String(registration._id),
+      status: normalizeRegistrationStatus(registration.status),
       reviewProfile: student ? buildMergedStudentProfile(student, detail) : null
     };
   });
@@ -85,7 +94,7 @@ async function getScopedRegistrationContext(adminUserId, registrationId) {
 async function syncEventRegistrationCount(eventId) {
   const activeRegistrationCount = await Registration.countDocuments({
     eventId: String(eventId),
-    status: { $ne: 'REJECTED' }
+    status: { $not: /^REJECTED$/i }
   });
 
   await Event.findByIdAndUpdate(eventId, { registrations: activeRegistrationCount });
@@ -117,7 +126,8 @@ exports.createRegistration = async (req, res) => {
     });
 
     if (existingRegistration) {
-      if (existingRegistration.status === 'REJECTED') {
+      const existingStatus = normalizeRegistrationStatus(existingRegistration.status);
+      if (existingStatus === 'REJECTED') {
         existingRegistration.studentName = student.name;
         existingRegistration.email = student.email;
         existingRegistration.college = student.college || 'Not Provided';
@@ -133,7 +143,7 @@ exports.createRegistration = async (req, res) => {
       }
 
       return res.status(400).json({
-        error: existingRegistration.status === 'APPROVED'
+        error: existingStatus === 'APPROVED'
           ? 'You are already approved for this event'
           : 'Your registration is already pending admin review',
         registration: existingRegistration
@@ -142,7 +152,7 @@ exports.createRegistration = async (req, res) => {
 
     const activeRegistrationCount = await Registration.countDocuments({
       eventId,
-      status: { $ne: 'REJECTED' }
+      status: { $not: /^REJECTED$/i }
     });
 
     const maxAttendees = event.maxAttendees ?? null;
@@ -189,7 +199,11 @@ exports.createRegistration = async (req, res) => {
 exports.getAllRegistrations = async (_req, res) => {
   try {
     const registrations = await Registration.find().sort({ createdAt: -1 });
-    res.json(registrations);
+    res.json(registrations.map((registration) => ({
+      ...registration.toObject(),
+      id: String(registration._id),
+      status: normalizeRegistrationStatus(registration.status)
+    })));
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch registrations' });
   }
@@ -336,6 +350,65 @@ exports.cancelRegistration = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       error: 'Could not cancel registration. Please try again.',
+      details: error.message
+    });
+  }
+};
+
+exports.resubmitRegistration = async (req, res) => {
+  try {
+    const studentId = String(req.user?.id || '').trim();
+    const eventId = String(req.params?.eventId || '').trim();
+
+    if (!studentId || !eventId) {
+      return res.status(400).json({ error: 'studentId and eventId are required' });
+    }
+
+    const [registration, student, event] = await Promise.all([
+      Registration.findOne({ studentId, eventId }),
+      User.findById(studentId).select('-password'),
+      Event.findById(eventId)
+    ]);
+
+    if (!registration) {
+      return res.status(404).json({ error: 'Registration not found' });
+    }
+
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    const currentStatus = normalizeRegistrationStatus(registration.status);
+
+    if (currentStatus === 'APPROVED') {
+      return res.status(400).json({ error: 'You are already approved for this event' });
+    }
+
+    if (currentStatus === 'PENDING') {
+      const latestEvent = await Event.findById(eventId);
+      return res.status(200).json(serializeRegistration(registration, latestEvent || event));
+    }
+
+    registration.studentName = student.name;
+    registration.email = student.email;
+    registration.college = student.college || 'Not Provided';
+    registration.status = 'PENDING';
+    registration.rejectionReason = '';
+    registration.rejectedAt = null;
+    registration.approvedAt = null;
+
+    await registration.save();
+    await syncEventRegistrationCount(eventId);
+    const latestEvent = await Event.findById(eventId);
+
+    return res.status(200).json(serializeRegistration(registration, latestEvent || event));
+  } catch (error) {
+    return res.status(500).json({
+      error: 'Could not resubmit registration. Please try again.',
       details: error.message
     });
   }

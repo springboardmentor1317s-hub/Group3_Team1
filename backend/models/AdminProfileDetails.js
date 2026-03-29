@@ -21,7 +21,27 @@ const adminProfileDetailsSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  dateOfBirth: {
+    type: String,
+    default: ""
+  },
+  gender: {
+    type: String,
+    default: ""
+  },
   location: {
+    type: String,
+    default: ""
+  },
+  currentState: {
+    type: String,
+    default: ""
+  },
+  currentDistrict: {
+    type: String,
+    default: ""
+  },
+  currentCity: {
     type: String,
     default: ""
   },

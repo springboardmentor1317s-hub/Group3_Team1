@@ -27,8 +27,12 @@ export class EventCardComponent {
 
   get safeDescription(): string {
     const text = (this.event?.description || '').trim();
-    if (!text) return 'Explore this campus experience and check details.';
-    return text.length > 90 ? `${text.slice(0, 90)}...` : text;
+    if (!text) return 'Explore this campus event details.';
+    const words = text.split(/\s+/).filter(Boolean);
+    if (words.length <= 5) {
+      return words.join(' ');
+    }
+    return `${words.slice(0, 5).join(' ')}...`;
   }
 
   get statusLabel(): string {
@@ -108,7 +112,9 @@ export class EventCardComponent {
 
   openDetails(): void {
     if (!this.event?.id) return;
-    this.router.navigate([this.detailsRouteBase, this.event.id]);
+    this.router.navigate([this.detailsRouteBase, this.event.id], {
+      state: { event: this.event }
+    });
   }
 
   onRegisterClick(): void {

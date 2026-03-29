@@ -4,19 +4,25 @@ const User = require("../models/User");
 const getStudentId = (req) => String(req.user?.id || req.user?._id || req.user?.userId || "");
 
 async function getUserProfile(userId) {
-  const user = await User.findById(userId).select("name userId profileImageUrl");
+  const user = await User.findById(userId).select("name userId profileImageUrl role");
   if (!user) {
     return {
       studentId: userId,
       studentName: "Student",
-      profilePhotoUrl: ""
+      profilePhotoUrl: "",
+      role: "student"
     };
   }
 
+  const role = String(user.role || "student").trim().toLowerCase();
+  const baseName = String(user.name || "Student").trim();
+  const displayName = role.includes("admin") ? `Admin - ${baseName}` : baseName;
+
   return {
     studentId: String(user._id),
-    studentName: String(user.name || "Student"),
-    profilePhotoUrl: String(user.profileImageUrl || "")
+    studentName: displayName,
+    profilePhotoUrl: String(user.profileImageUrl || ""),
+    role
   };
 }
 
