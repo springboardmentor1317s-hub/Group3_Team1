@@ -59,6 +59,10 @@
       {{ studentsError }}
     </div>
 
+    <div class="students-state error" *ngIf="!isLoadingStudents && !studentsError && blockActionError">
+      {{ blockActionError }}
+    </div>
+
     <div class="students-state" *ngIf="!isLoadingStudents && !studentsError && students.length === 0">
       No students found.
     </div>
@@ -77,7 +81,14 @@
         <div class="student-actions">
           <button type="button" class="student-btn ghost" (click)="openStudentDetails(student)">View details</button>
           <button type="button" class="student-btn info" (click)="openStudentEvents(student)">View Events</button>
-          <button type="button" class="student-btn danger">Block</button>
+          <button
+            type="button"
+            [class]="student.isBlocked ? 'student-btn success' : 'student-btn danger'"
+            [disabled]="updatingBlockStudentId === student._id"
+            (click)="toggleStudentBlock(student)"
+          >
+            {{ updatingBlockStudentId === student._id ? 'Updating...' : (student.isBlocked ? 'Unblock' : 'Block') }}
+          </button>
         </div>
       </article>
     </div>

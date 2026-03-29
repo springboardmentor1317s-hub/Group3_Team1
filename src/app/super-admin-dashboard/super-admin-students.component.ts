@@ -16,6 +16,8 @@ export class SuperAdminStudentsComponent implements OnInit {
   students: SuperAdminStudent[] = [];
   isLoadingStudents = false;
   studentsError = '';
+  blockActionError = '';
+  updatingBlockStudentId = '';
   searchTerm = '';
   selectedCollege = 'all';
   showDetailsModal = false;
@@ -39,6 +41,7 @@ export class SuperAdminStudentsComponent implements OnInit {
   loadStudents(): void {
     this.isLoadingStudents = true;
     this.studentsError = '';
+    this.blockActionError = '';
 
     this.superAdminService.getAllStudents().subscribe({
       next: (students) => {
@@ -95,6 +98,39 @@ export class SuperAdminStudentsComponent implements OnInit {
   openStudentDetails(student: SuperAdminStudent): void {
     this.selectedStudent = student;
     this.showDetailsModal = true;
+  }
+
+  toggleStudentBlock(student: SuperAdminStudent): void {
+    if (this.updatingBlockStudentId) {
+      return;
+    }
+
+    const shouldBlock = !Boolean(student.isBlocked);
+    this.updatingBlockStudentId = student._id;
+    this.blockActionError = '';
+
+    this.superAdminService.updateUserBlockStatus(student._id, shouldBlock).subscribe({
+      next: () => {
+        this.students = this.students.map((item) => {
+          if (item._id === student._id) {
+            return { ...item, isBlocked: shouldBlock };
+          }
+          return item;
+        });
+
+        if (this.selectedStudent?._id === student._id) {
+          this.selectedStudent = { ...this.selectedStudent, isBlocked: shouldBlock };
+        }
+
+        this.updatingBlockStudentId = '';
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.updatingBlockStudentId = '';
+        this.blockActionError = 'Failed to update block status. Please try again.';
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   openStudentEvents(student: SuperAdminStudent): void {

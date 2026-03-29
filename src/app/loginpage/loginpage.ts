@@ -164,6 +164,13 @@ localStorage.setItem('role', res.role);
     error: (err) => {
       this.isLoggingIn = false;
       console.log('Login Failed', err);
+      if (err?.status === 403 && err?.error?.accountStatus === 'blocked') {
+        this.router.navigate(['/admin-approval-pending'], {
+          queryParams: { status: 'blocked' }
+        });
+        return;
+      }
+
       if (err?.status === 403 && err?.error?.approvalStatus) {
         const status = err.error.approvalStatus;
         const reason = err.error.rejectionReason || '';

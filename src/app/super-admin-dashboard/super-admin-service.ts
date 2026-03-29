@@ -59,6 +59,23 @@ export interface StudentRegistrationSummary {
   createdAt?: string;
 }
 
+export interface BlockStatusResponseUser {
+  _id: string;
+  name: string;
+  userId: string;
+  email: string;
+  college?: string;
+  role: string;
+  adminApprovalStatus?: 'pending' | 'approved' | 'rejected';
+  isBlocked?: boolean;
+  createdAt?: string;
+}
+
+export interface BlockStatusResponse {
+  message: string;
+  user: BlockStatusResponseUser;
+}
+
 export interface SuperAdminEvent {
   id: string;
   name: string;
@@ -192,5 +209,18 @@ export class SuperAdminService {
       headers = headers.set('Authorization', `Bearer ${token}`);
     }
     return this.http.delete<void>(`/api/events/${encodeURIComponent(eventId)}`, { headers });
+  }
+
+  updateUserBlockStatus(userId: string, blocked: boolean): Observable<BlockStatusResponse> {
+    const token = localStorage.getItem('token');
+    let headers = new HttpHeaders();
+    if (token) {
+      headers = headers.set('Authorization', `Bearer ${token}`);
+    }
+    return this.http.patch<BlockStatusResponse>(
+      `${this.baseUrl}/users/${encodeURIComponent(userId)}/block`,
+      { blocked },
+      { headers }
+    );
   }
 }
