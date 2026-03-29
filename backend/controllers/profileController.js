@@ -41,18 +41,18 @@ exports.updateMyProfile = async (req, res) => {
       email,
       college,
       phone,
-      parentPhone,
       gender,
       dateOfBirth,
+      parentPhone,
       location,
       department,
       departmentOther,
-      currentClass,
-      semester,
-      currentCgpa,
       currentState,
       currentDistrict,
       currentCity,
+      currentClass,
+      semester,
+      currentCgpa,
       currentPincode,
       currentAddressLine,
       permanentState,
@@ -74,9 +74,11 @@ exports.updateMyProfile = async (req, res) => {
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (name !== undefined) user.name = name;
-    if (email !== undefined) user.email = email;
-    if (college !== undefined) user.college = college;
+    if (!isAdminRole(user.role)) {
+      if (name !== undefined) user.name = name;
+      if (email !== undefined) user.email = email;
+      if (college !== undefined) user.college = college;
+    }
     if (profileImageUrl !== undefined) user.profileImageUrl = profileImageUrl;
 
     if (isAdminRole(user.role)) {
@@ -102,7 +104,12 @@ exports.updateMyProfile = async (req, res) => {
       adminDetails.userId = user.userId;
       adminDetails.email = user.email;
       if (phone !== undefined) adminDetails.phone = phone;
+      if (dateOfBirth !== undefined) adminDetails.dateOfBirth = dateOfBirth;
+      if (gender !== undefined) adminDetails.gender = gender;
       if (location !== undefined) adminDetails.location = location;
+      if (currentState !== undefined) adminDetails.currentState = currentState;
+      if (currentDistrict !== undefined) adminDetails.currentDistrict = currentDistrict;
+      if (currentCity !== undefined) adminDetails.currentCity = currentCity;
       if (department !== undefined) adminDetails.department = department;
       if (departmentOther !== undefined) adminDetails.departmentOther = departmentOther;
 

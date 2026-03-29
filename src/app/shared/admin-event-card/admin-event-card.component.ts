@@ -20,7 +20,11 @@ export class AdminEventCardComponent {
   get safeDescription(): string {
     const text = String(this.event?.description || '').trim();
     if (!text) return 'Event details are available in the view page.';
-    return text.length > 110 ? `${text.slice(0, 110)}...` : text;
+    const words = text.split(/\s+/).filter(Boolean);
+    if (words.length <= 5) {
+      return words.join(' ');
+    }
+    return `${words.slice(0, 5).join(' ')}...`;
   }
 
   get statusLabel(): 'Open' | 'Closed' {

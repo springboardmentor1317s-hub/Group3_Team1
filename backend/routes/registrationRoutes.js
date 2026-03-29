@@ -20,6 +20,7 @@ router.get('/student/:studentId', protect, registrationController.getStudentRegi
 
 // Student cancel registration
 router.delete('/student/:studentId/event/:eventId', protect, registrationController.cancelRegistration);
+router.patch('/student/me/event/:eventId/resubmit', protect, registrationController.resubmitRegistration);
 
 
 // Admin approve

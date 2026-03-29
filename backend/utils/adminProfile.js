@@ -40,7 +40,12 @@ async function ensureAdminProfileDetails(user) {
     userId: user.userId,
     email: user.email,
     phone: pickAdminField(details, legacyStudentDetails, user, "phone"),
+    dateOfBirth: pickAdminField(details, legacyStudentDetails, user, "dateOfBirth"),
+    gender: pickAdminField(details, legacyStudentDetails, user, "gender"),
     location: pickAdminField(details, legacyStudentDetails, user, "location"),
+    currentState: pickAdminField(details, legacyStudentDetails, user, "currentState"),
+    currentDistrict: pickAdminField(details, legacyStudentDetails, user, "currentDistrict"),
+    currentCity: pickAdminField(details, legacyStudentDetails, user, "currentCity"),
     department: pickAdminField(details, legacyStudentDetails, user, "department"),
     departmentOther: pickAdminField(details, legacyStudentDetails, user, "departmentOther")
   };
@@ -49,7 +54,7 @@ async function ensureAdminProfileDetails(user) {
     !details ||
     details.userId !== nextDoc.userId ||
     details.email !== nextDoc.email ||
-    ["phone", "location", "department", "departmentOther"].some((field) => {
+    ["phone", "dateOfBirth", "gender", "location", "currentState", "currentDistrict", "currentCity", "department", "departmentOther"].some((field) => {
       const currentValue = String(details?.[field] || "");
       const nextValue = String(nextDoc[field] || "");
       return currentValue !== nextValue;
@@ -72,7 +77,7 @@ async function ensureAdminProfileDetails(user) {
 }
 
 function buildMergedAdminProfile(user, details, legacyDetails) {
-  return {
+  const merged = {
     id: String(user._id),
     name: user.name,
     userId: user.userId,
@@ -80,16 +85,49 @@ function buildMergedAdminProfile(user, details, legacyDetails) {
     role: formatRoleLabel(user.role),
     college: user.college || "",
     phone: pickAdminField(details, legacyDetails, user, "phone"),
+    dateOfBirth: pickAdminField(details, legacyDetails, user, "dateOfBirth"),
+    gender: pickAdminField(details, legacyDetails, user, "gender"),
     location: pickAdminField(details, legacyDetails, user, "location"),
+    currentState: pickAdminField(details, legacyDetails, user, "currentState"),
+    currentDistrict: pickAdminField(details, legacyDetails, user, "currentDistrict"),
+    currentCity: pickAdminField(details, legacyDetails, user, "currentCity"),
     department: pickAdminField(details, legacyDetails, user, "department"),
     departmentOther: pickAdminField(details, legacyDetails, user, "departmentOther"),
     profileImageUrl: user.profileImageUrl || "",
     createdAt: user.createdAt,
     updatedAt: details?.updatedAt || user.updatedAt
   };
+
+  return {
+    ...merged,
+    profileCompleted: isAdminProfileComplete(merged)
+  };
+}
+
+function isAdminProfileComplete(profile) {
+  const requiredFields = [
+    profile?.name,
+    profile?.email,
+    profile?.college,
+    profile?.phone,
+    profile?.location,
+    profile?.department,
+    profile?.dateOfBirth,
+    profile?.gender,
+    profile?.currentState,
+    profile?.currentDistrict,
+    profile?.currentCity
+  ];
+
+  if (String(profile?.department || "").trim() === "Other") {
+    requiredFields.push(profile?.departmentOther);
+  }
+
+  return requiredFields.every((value) => String(value || "").trim().length > 0);
 }
 
 module.exports = {
   buildMergedAdminProfile,
-  ensureAdminProfileDetails
+  ensureAdminProfileDetails,
+  isAdminProfileComplete
 };

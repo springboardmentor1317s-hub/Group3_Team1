@@ -102,14 +102,12 @@
         <div class="info-grid">
           <div class="info-item">
             <label>Admin Name</label>
-            <p *ngIf="!isEditing">{{ userName }}</p>
-            <input *ngIf="isEditing" type="text" [(ngModel)]="editForm.userName" />
+            <p>{{ userName }}</p>
           </div>
 
           <div class="info-item">
             <label>Email</label>
-            <p *ngIf="!isEditing">{{ email }}</p>
-            <input *ngIf="isEditing" type="email" [(ngModel)]="editForm.email" />
+            <p>{{ email }}</p>
           </div>
 
           <div class="info-item">
@@ -141,6 +139,41 @@
               <option value="" disabled>Select Department</option>
               <option *ngFor="let option of departmentOptions" [value]="option">{{ option }}</option>
             </select>
+          </div>
+
+          <div class="info-item">
+            <label>Date Of Birth</label>
+            <p *ngIf="!isEditing">{{ dateOfBirth || 'Not added yet' }}</p>
+            <input *ngIf="isEditing" type="date" [(ngModel)]="editForm.dateOfBirth" />
+          </div>
+
+          <div class="info-item">
+            <label>Gender</label>
+            <p *ngIf="!isEditing">{{ gender || 'Not added yet' }}</p>
+            <select *ngIf="isEditing" [(ngModel)]="editForm.gender">
+              <option value="" disabled>Select Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="info-item">
+            <label>Current State</label>
+            <p *ngIf="!isEditing">{{ currentState || 'Not added yet' }}</p>
+            <input *ngIf="isEditing" type="text" [(ngModel)]="editForm.currentState" placeholder="Enter current state" />
+          </div>
+
+          <div class="info-item">
+            <label>Current District</label>
+            <p *ngIf="!isEditing">{{ currentDistrict || 'Not added yet' }}</p>
+            <input *ngIf="isEditing" type="text" [(ngModel)]="editForm.currentDistrict" placeholder="Enter current district" />
+          </div>
+
+          <div class="info-item">
+            <label>Current City</label>
+            <p *ngIf="!isEditing">{{ currentCity || 'Not added yet' }}</p>
+            <input *ngIf="isEditing" type="text" [(ngModel)]="editForm.currentCity" placeholder="Enter current city" />
           </div>
 
           <div class="info-item" *ngIf="isEditing && editForm.department === 'Other'">

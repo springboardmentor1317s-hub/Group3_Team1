@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { Subscription, catchError, forkJoin, of, switchMap, throwError, timeout } from 'rxjs';
+import { Subscription, catchError, finalize, forkJoin, map, of, switchMap, throwError, timeout } from 'rxjs';
 import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
 import {
@@ -26,7 +26,7 @@ import {
   templateUrl: './student-event-registration-page.component.html',
   styleUrls: ['./student-event-registration-page.component.scss']
 })
-export class StudentEventRegistrationPageComponent implements OnInit {
+export class StudentEventRegistrationPageComponent implements OnInit, OnDestroy {
   loading = true;
   saving = false;
   errorMessage = '';
@@ -77,7 +77,8 @@ export class StudentEventRegistrationPageComponent implements OnInit {
   constructor(
     private readonly route: ActivatedRoute,
     private readonly router: Router,
-    private readonly studentDashboardService: StudentDashboardService
+    private readonly studentDashboardService: StudentDashboardService,
+    private readonly cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -115,6 +116,10 @@ export class StudentEventRegistrationPageComponent implements OnInit {
 
       this.loadPage();
     });
+  }
+
+  ngOnDestroy(): void {
+    this.submitRequestSubscription?.unsubscribe();
   }
 
   get studentName(): string {
@@ -164,11 +169,7 @@ export class StudentEventRegistrationPageComponent implements OnInit {
       return false;
     }
 
-    return this.studentDashboardService.isProfileComplete({
-      ...this.profile,
-      ...this.form,
-      location: `${this.form.currentCity}, ${this.form.currentDistrict}, ${this.form.currentState}`
-    });
+    return true;
   }
 
   goBack(): void {
@@ -215,6 +216,10 @@ export class StudentEventRegistrationPageComponent implements OnInit {
   }
 
   submitRegistration(): void {
+    if (this.saving) {
+      return;
+    }
+
     if (!this.canSubmit || !this.event) {
       this.errorMessage = 'Please review and complete all required profile details before submitting.';
       return;
@@ -224,7 +229,7 @@ export class StudentEventRegistrationPageComponent implements OnInit {
     const previousRegistration = this.registration ? { ...this.registration } : null;
     const optimisticProfile = this.buildOptimisticProfile();
     const optimisticRegistration = this.buildOptimisticPendingRegistration();
-    this.saving = true;
+    this.setSaving(true);
     this.errorMessage = '';
     this.successMessage = '';
     this.successPopupOpen = false;
@@ -243,23 +248,31 @@ export class StudentEventRegistrationPageComponent implements OnInit {
       error: () => void 0
     });
 
-    if (this.event) {
-      this.studentDashboardService.applyRegistrationUpdate(optimisticRegistration, this.event);
-    }
-
-    this.completeSubmissionUI(optimisticRegistration, wasRejected);
+    const submitRequest$ = wasRejected
+      ? this.studentDashboardService.resubmitRegistration(this.event.id).pipe(
+          timeout(10000),
+          catchError((error) => {
+            const message = String(error?.error?.error || error?.error?.message || '').toLowerCase();
+            if (message.includes('already approved')) return throwError(() => error);
+            // Fallback for stale data / older backend where resubmit route is unavailable.
+            return this.studentDashboardService.registerForEvent(this.event!.id);
+          })
+        )
+      : this.studentDashboardService.registerForEvent(this.event.id);
 
     this.submitRequestSubscription?.unsubscribe();
-    this.submitRequestSubscription = this.studentDashboardService.registerForEvent(this.event!.id).pipe(
-      timeout(5000),
-      catchError((error) => this.resolveRegistrationAfterSubmitError(error))
+    this.submitRequestSubscription = submitRequest$.pipe(
+      timeout(12000),
+      catchError((error) => this.resolveSubmissionFromLatestState(error)),
+      finalize(() => {
+        this.setSaving(false);
+      })
     ).subscribe({
       next: (registration) => {
-        this.saving = false;
-        this.completeSubmissionUI(registration, wasRejected);
+        const nextRegistration = (registration as StudentRegistrationRecord | null) || optimisticRegistration;
+        this.completeSubmissionUI(nextRegistration, wasRejected);
       },
       error: (error) => {
-        this.saving = false;
         this.successPopupOpen = false;
         this.successMessage = '';
         this.registration = previousRegistration;
@@ -273,6 +286,34 @@ export class StudentEventRegistrationPageComponent implements OnInit {
         this.errorMessage = error?.error?.error || error?.error?.message || 'Unable to submit registration right now.';
       }
     });
+  }
+
+  private resolveSubmissionFromLatestState(error: any) {
+    const backendMessage = String(error?.error?.error || error?.error?.message || '').toLowerCase();
+    const shouldTreatAsPending = backendMessage.includes('already pending')
+      || backendMessage.includes('already approved')
+      || backendMessage.includes('duplicate');
+
+    if (shouldTreatAsPending) {
+      return of(this.buildOptimisticPendingRegistration());
+    }
+
+    return this.studentDashboardService.fetchLatestRegistrations().pipe(
+      timeout(7000),
+      map((registrations) => (registrations || []).find((item) => item.eventId === this.eventId) || null),
+      switchMap((latestRegistration) => {
+        if (latestRegistration && (latestRegistration.status === 'PENDING' || latestRegistration.status === 'APPROVED')) {
+          return of(latestRegistration);
+        }
+        return throwError(() => error);
+      }),
+      catchError(() => throwError(() => error))
+    );
+  }
+
+  private setSaving(value: boolean): void {
+    this.saving = value;
+    this.cdr.markForCheck();
   }
 
   private completeSubmissionUI(registration: StudentRegistrationRecord, wasRejected: boolean): void {
@@ -374,38 +415,6 @@ export class StudentEventRegistrationPageComponent implements OnInit {
       createdAt: String(existing?.createdAt || now),
       updatedAt: now
     };
-  }
-
-  private resolveRegistrationAfterSubmitError(error: any) {
-    const fallbackRegistration = error?.error?.registration
-      ? {
-          ...error.error.registration,
-          status: String(error.error.registration.status || 'PENDING').toUpperCase()
-        } as StudentRegistrationRecord
-      : null;
-
-    return this.studentDashboardService.fetchLatestRegistrations().pipe(
-      timeout(5000),
-      switchMap((registrations) => {
-        const latest = (registrations || []).find((item) => item.eventId === this.eventId) || fallbackRegistration;
-        if (latest && (latest.status === 'PENDING' || latest.status === 'APPROVED')) {
-          return of(latest);
-        }
-
-        if (fallbackRegistration && fallbackRegistration.status === 'PENDING') {
-          return of(fallbackRegistration);
-        }
-
-        return throwError(() => error);
-      }),
-      catchError(() => {
-        if (fallbackRegistration && fallbackRegistration.status === 'PENDING') {
-          return of(fallbackRegistration);
-        }
-
-        return throwError(() => error);
-      })
-    );
   }
 
   private loadPage(): void {

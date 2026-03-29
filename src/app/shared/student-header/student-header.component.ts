@@ -3,7 +3,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { Router } from '@angular/router';
 import { Auth } from '../../auth/auth';
 
-export type StudentHeaderTab = 'dashboard' | 'events' | 'registrations' | 'feedback' | 'profile';
+export type StudentHeaderTab = 'dashboard' | 'events' | 'registrations' | 'feedback' | 'query' | 'profile';
 export type StudentHeaderNotificationMode = 'route' | 'dropdown';
 
 export interface StudentHeaderNotification {
@@ -65,7 +65,7 @@ export class StudentHeaderComponent {
     return this.notifications.slice(1);
   }
 
-  navigate(tab: 'dashboard' | 'events' | 'registrations' | 'feedback'): void {
+  navigate(tab: 'dashboard' | 'events' | 'registrations' | 'feedback' | 'query'): void {
     if (tab === 'dashboard') {
       if (this.activeTab === 'dashboard') {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -85,7 +85,12 @@ export class StudentHeaderComponent {
       return;
     }
 
-    this.router.navigate(['/student-feedback']);
+    if (tab === 'feedback') {
+      this.router.navigate(['/student-feedback']);
+      return;
+    }
+
+    this.router.navigate(['/new-student-dashboard'], { fragment: 'query-section' });
   }
 
   openProfile(): void {

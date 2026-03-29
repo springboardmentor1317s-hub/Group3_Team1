@@ -197,7 +197,7 @@ export class AdminRegistrationDetailsComponent implements OnInit {
     this.router.navigate(['/admin-my-events']);
   }
 
-  handleTabChange(tab: 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback'): void {
+  handleTabChange(tab: 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries'): void {
     this.router.navigate(['/admin-dashboard'], { queryParams: { tab } });
   }
 

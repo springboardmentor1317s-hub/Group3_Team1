@@ -45,6 +45,7 @@ interface PublicCommentView {
   styleUrls: ['./student-event-details-page.component.scss']
 })
 export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
+  private static readonly FALLBACK_DESCRIPTION = 'Explore this campus experience and secure your seat before registrations close.';
   event: StudentEventCard | null = null;
   currentRegistration: StudentRegistrationRecord | null = null;
   loading = true;
@@ -88,6 +89,7 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
         return;
       }
 
+      this.applyEventFromNavigationState(this.eventId);
       this.loadEvent(this.eventId);
       this.loadMyFeedback(this.eventId);
       this.loadPublicComments(this.eventId);
@@ -175,6 +177,14 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     return parsed.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   }
 
+  get eventDescriptionText(): string {
+    const text = String(this.event?.description || '').trim();
+    if (text) {
+      return text;
+    }
+    return 'Event description is not available right now.';
+  }
+
   get registerDisabled(): boolean {
     if (!this.event) return true;
     if (this.registrationStateLoading) return true;
@@ -238,12 +248,68 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     return 'Register Now';
   }
 
+  canDeleteCurrentRegistration(): boolean {
+    if (this.registrationStateLoading || !this.currentRegistration) {
+      return false;
+    }
+    return this.currentRegistration.status === 'PENDING' || this.currentRegistration.status === 'REJECTED';
+  }
+
   registerForEvent(): void {
     if (!this.event || this.registerDisabled) return;
     this.router.navigate(['/student-event-registration', this.event.id], {
       state: {
         event: this.event,
         registration: this.currentRegistration
+      }
+    });
+  }
+
+  deleteCurrentRegistration(): void {
+    const registration = this.currentRegistration;
+    const eventId = this.event?.id || '';
+    if (!registration || !eventId || !this.canDeleteCurrentRegistration() || this.actionEventId === eventId) {
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      registration.status === 'REJECTED'
+        ? 'Are you sure you want to delete this rejected registration?'
+        : 'Are you sure you want to delete this pending registration?'
+    );
+    if (!shouldDelete) {
+      return;
+    }
+
+    this.actionEventId = eventId;
+    this.errorMessage = '';
+    this.studentDashboardService.applyOptimisticCancellation(registration);
+
+    this.studentDashboardService.cancelRegistration(eventId).pipe(
+      finalize(() => {
+        this.actionEventId = '';
+      })
+    ).subscribe({
+      next: () => {
+        this.currentRegistration = null;
+        this.registrationStateLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        this.errorMessage = error?.error?.error || error?.error?.message || 'Unable to delete registration right now.';
+        this.studentDashboardService.fetchLatestRegistrations().pipe(
+          timeout(12000)
+        ).subscribe({
+          next: (registrations) => {
+            this.currentRegistration = registrations.find((item) => item.eventId === eventId) || null;
+            this.registrationStateLoading = false;
+            this.cdr.detectChanges();
+          },
+          error: () => {
+            this.registrationStateLoading = false;
+            this.cdr.detectChanges();
+          }
+        });
       }
     });
   }
@@ -414,6 +480,35 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     return target.authorId === this.getCurrentUserIdentifier();
   }
 
+  isAdminEntry(target: PublicCommentView | ReplyThreadNode): boolean {
+    const name = String(target.name || '').trim().toLowerCase();
+    if (!name) return false;
+    return name.startsWith('admin') || name.includes('admin -') || name.includes('admin');
+  }
+
+  getCommentAuthorDisplayName(target: PublicCommentView | ReplyThreadNode): string {
+    const rawName = String(target.name || '').trim();
+    if (!rawName) {
+      return 'Student';
+    }
+
+    if (!this.isAdminEntry(target)) {
+      return rawName;
+    }
+
+    const normalized = rawName
+      .replace(/^college\s+admin\s*\((.*)\)$/i, '$1')
+      .replace(/^admin\s*[-:]\s*/i, '')
+      .replace(/^admin\s+/i, '')
+      .trim();
+
+    if (!normalized) {
+      return 'Admin';
+    }
+
+    return normalized;
+  }
+
   startEditEntry(target: PublicCommentView | ReplyThreadNode): void {
     if (!this.canManageEntry(target)) return;
     target.isEditing = true;
@@ -495,7 +590,8 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       timeout(9000)
     ).subscribe({
       next: (events) => {
-        this.event = events.find((item) => item.id === eventId) || null;
+        const fetchedEvent = events.find((item) => item.id === eventId) || null;
+        this.event = this.mergePreferredEventData(this.event, fetchedEvent);
         this.loading = false;
         this.loadPublicComments(eventId, true);
         if (!this.event) {
@@ -518,7 +614,7 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
         const directEvent = (events || [])
           .map((item) => this.eventService.convertToFrontendEvent(item) as StudentEventCard)
           .find((item) => String(item.id) === eventId) || null;
-        this.event = directEvent || this.event;
+        this.event = this.mergePreferredEventData(this.event, directEvent);
         this.loading = false;
         this.loadPublicComments(eventId, true);
         if (!this.event) {
@@ -737,6 +833,45 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       || currentUser.name
       || 'student'
     ).toLowerCase();
+  }
+
+  private applyEventFromNavigationState(eventId: string): void {
+    const navState = history.state as { event?: StudentEventCard } | null;
+    const stateEvent = navState?.event;
+    if (!stateEvent) {
+      return;
+    }
+    if (String(stateEvent.id) !== String(eventId)) {
+      return;
+    }
+    this.event = stateEvent;
+    this.loading = false;
+  }
+
+  private mergePreferredEventData(current: StudentEventCard | null, incoming: StudentEventCard | null): StudentEventCard | null {
+    if (!incoming && !current) {
+      return null;
+    }
+    if (!incoming) {
+      return current;
+    }
+    if (!current) {
+      return incoming;
+    }
+
+    const incomingDescription = String(incoming.description || '').trim();
+    const currentDescription = String(current.description || '').trim();
+    const shouldKeepCurrentDescription =
+      (!incomingDescription || this.isFallbackDescription(incomingDescription)) && !!currentDescription;
+
+    return {
+      ...incoming,
+      description: shouldKeepCurrentDescription ? currentDescription : incomingDescription
+    };
+  }
+
+  private isFallbackDescription(text: string): boolean {
+    return text.trim().toLowerCase() === StudentEventDetailsPageComponent.FALLBACK_DESCRIPTION.toLowerCase();
   }
 
 }

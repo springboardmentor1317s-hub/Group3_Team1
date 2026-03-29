@@ -196,6 +196,7 @@ export class StudentDashboardService {
   };
   private cachedNotifications: StudentNotificationItem[] = [];
   private cachedSnapshot: StudentDashboardSnapshot | null = null;
+  private readonly maxStoredImageLength = 512;
 
   constructor(
     private http: HttpClient,
@@ -263,6 +264,17 @@ export class StudentDashboardService {
   registerForEvent(eventId: string): Observable<StudentRegistrationRecord> {
     const headers = this.authService.getAuthHeaders();
     return this.http.post<StudentRegistrationRecord>(`${this.apiUrl}/registrations`, { eventId }, { headers }).pipe(
+      tap(() => this.invalidateDashboardCache())
+    );
+  }
+
+  resubmitRegistration(eventId: string): Observable<StudentRegistrationRecord> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.patch<StudentRegistrationRecord>(
+      `${this.apiUrl}/registrations/student/me/event/${encodeURIComponent(eventId)}/resubmit`,
+      {},
+      { headers }
+    ).pipe(
       tap(() => this.invalidateDashboardCache())
     );
   }
@@ -582,7 +594,7 @@ export class StudentDashboardService {
         ...this.cachedSnapshot,
         profile
       };
-      localStorage.setItem(this.snapshotStorageKey, JSON.stringify(this.cachedSnapshot));
+      this.persistSnapshotToStorage(this.cachedSnapshot);
     }
 
     try {
@@ -723,11 +735,14 @@ export class StudentDashboardService {
       const nextRegistrations = normalizedRegistration.status === 'REJECTED'
         ? Math.max(0, item.registrations - (previousRegistration && previousRegistration.status !== 'REJECTED' ? 1 : 0))
         : Math.max(item.registrations + activeRegistrationDelta, 0);
+      const nextStatus: StudentEventCard['status'] = normalizedRegistration.status === 'REJECTED'
+        ? (item.status === 'Closed' ? 'Closed' : 'Open')
+        : 'Registered';
 
       return {
         ...item,
         registrations: nextRegistrations,
-        status: 'Registered'
+        status: nextStatus
       };
     });
 
@@ -764,8 +779,8 @@ export class StudentDashboardService {
       return;
     }
 
-    localStorage.setItem(this.snapshotStorageKey, JSON.stringify({
-      profile: this.cachedProfile,
+    this.persistSnapshotToStorage({
+      profile: this.cachedProfile as StudentProfile,
       events: this.cachedEvents,
       registrations: this.cachedRegistrations,
       stats: {
@@ -774,7 +789,7 @@ export class StudentDashboardService {
         approvedEntries: this.cachedRegistrations.filter((item) => item.status === 'APPROVED').length
       },
       notifications: this.cachedNotifications
-    }));
+    });
   }
 
   applyOptimisticRegistration(event: StudentEventCard, profile: StudentProfile | null): void {
@@ -871,7 +886,59 @@ export class StudentDashboardService {
     this.cachedRegistrations = normalizedSnapshot.registrations || [];
     this.cachedStats = normalizedSnapshot.stats || this.cachedStats;
     this.cachedNotifications = normalizedSnapshot.notifications || [];
-    localStorage.setItem(this.snapshotStorageKey, JSON.stringify(normalizedSnapshot));
+    this.persistSnapshotToStorage(normalizedSnapshot);
+  }
+
+  private persistSnapshotToStorage(snapshot: StudentDashboardSnapshot): void {
+    const compactSnapshot = this.compactSnapshotForStorage(snapshot);
+    try {
+      localStorage.setItem(this.snapshotStorageKey, JSON.stringify(compactSnapshot));
+      return;
+    } catch {
+      // Retry with a more compact fallback snapshot.
+    }
+
+    const minimalSnapshot = {
+      ...compactSnapshot,
+      notifications: [],
+      events: compactSnapshot.events.map((event) => ({
+        ...event,
+        imageUrl: null
+      }))
+    } as StudentDashboardSnapshot;
+
+    try {
+      localStorage.setItem(this.snapshotStorageKey, JSON.stringify(minimalSnapshot));
+    } catch {
+      try {
+        localStorage.removeItem(this.snapshotStorageKey);
+      } catch {
+        // Ignore storage failures and keep memory cache only.
+      }
+    }
+  }
+
+  private compactSnapshotForStorage(snapshot: StudentDashboardSnapshot): StudentDashboardSnapshot {
+    const compactEvents = (snapshot.events || []).map((event) => ({
+      ...event,
+      description: String(event.description || '').slice(0, 400),
+      imageUrl: this.compactImageValue(event.imageUrl)
+    }));
+
+    return {
+      ...snapshot,
+      events: compactEvents,
+      notifications: (snapshot.notifications || []).slice(0, 8)
+    };
+  }
+
+  private compactImageValue(value: string | null | undefined): string | null {
+    const normalized = String(value || '').trim();
+    if (!normalized) return null;
+    if (normalized.length > this.maxStoredImageLength) {
+      return null;
+    }
+    return normalized;
   }
 
   private normalizeEventCard(event: StudentEventCard): StudentEventCard {

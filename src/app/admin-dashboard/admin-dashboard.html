@@ -1,6 +1,6 @@
 ﻿<div class="app student-shell admin-shell" [class.dark]="isDarkMode">
   <app-admin-common-header
-    [activeTab]="activeTab === 'events' ? 'events' : activeTab === 'registrations' ? 'registrations' : 'overview'"
+    [activeTab]="activeTab === 'events' ? 'events' : activeTab === 'registrations' || activeTab === 'queries' ? 'registrations' : 'overview'"
     [userName]="userName"
     [userAvatarUrl]="userAvatarUrl"
     [(searchQuery)]="dashboardSearchQuery"
@@ -177,6 +177,21 @@
       (searchQueryChange)="registrationSearchQuery = $event; applyRegistrationFilter()"
       (back)="setTab('overview')"
       (review)="reviewRegistration($event)"
+    />
+
+    <app-admin-student-status-panel
+      *ngIf="activeTab === 'approvedStudents'"
+      [registrations]="registrations"
+    />
+
+    <app-admin-query-panel
+      *ngIf="activeTab === 'queries'"
+      [queries]="studentQueries"
+      [collegeName]="adminCollegeName"
+      [loading]="queryLoading"
+      [savingQueryId]="querySavingId"
+      [errorMessage]="queryErrorMessage"
+      (submitReply)="onSubmitQueryReply($event)"
     />
 
     <section class="panel registrations-panel" *ngIf="activeTab === 'analytics'">

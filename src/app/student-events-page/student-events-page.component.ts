@@ -12,7 +12,8 @@ import {
   StudentDashboardService,
   StudentEventCard,
   StudentNotificationItem,
-  StudentEventReview
+  StudentEventReview,
+  StudentRegistrationRecord
 } from '../services/student-dashboard.service';
 
 
@@ -26,6 +27,7 @@ import {
 export class StudentEventsPageComponent implements OnInit, OnDestroy {
   events: StudentEventCard[] = [];
   filteredEvents: StudentEventCard[] = [];
+  registrations: StudentRegistrationRecord[] = [];
   notifications: StudentNotificationItem[] = [];
   categories: string[] = ['All'];
   colleges: string[] = ['All'];
@@ -36,7 +38,6 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
   loading = true;
   notificationsLoading = true;
   notificationsDropdownOpen = false;
-  actionEventId = '';
   errorMessage = '';
   eventRatingSummaryByEventId: Record<string, { average: number; count: number }> = {};
   expandedEventIds = new Set<string>();
@@ -63,6 +64,7 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
 
     this.prefillFromCache();
     this.loadEvents();
+    this.loadRegistrationStatuses();
     this.loadNotifications();
     this.startNotificationsRefresh();
     this.startRatingsRefresh();
@@ -153,20 +155,17 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
   }
 
   registerForEvent(event: StudentEventCard): void {
-    if (event.status !== 'Open' || this.isEventExpired(event)) {
+    if (this.isRegisterDisabled(event)) {
       return;
     }
 
-    this.actionEventId = event.id;
-    this.studentDashboardService.registerForEvent(event.id).subscribe({
-      next: () => {
-        this.actionEventId = '';
-        this.loading = true;
-        this.loadEvents();
-      },
-      error: (error) => {
-        this.actionEventId = '';
-        this.errorMessage = error?.error?.error || error?.error?.message || 'Registration failed. Please try again.';
+    const registration = this.studentDashboardService
+      .getCachedRegistrations()
+      .find((item) => item.eventId === event.id) || null;
+    this.router.navigate(['/student-event-registration', event.id], {
+      state: {
+        event,
+        registration
       }
     });
   }
@@ -202,14 +201,21 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
 
   getRegisterLabel(event: StudentEventCard): string {
     const normalizedStatus = String(event.status || '').toLowerCase();
+    const registration = this.getRegistrationForEvent(event.id);
+    if (registration?.status === 'APPROVED') {
+      return 'Approved';
+    }
+    if (registration?.status === 'PENDING') {
+      return 'Under Review';
+    }
+    if (this.hasRejectedRegistration(event.id)) {
+      return 'Update & Resubmit';
+    }
     if (this.isEventExpired(event)) {
       return 'Event Closed';
     }
     if (normalizedStatus === 'registered') {
       return 'Registered';
-    }
-    if (this.actionEventId === event.id) {
-      return 'Joining...';
     }
     if (normalizedStatus === 'full') {
       return 'Full';
@@ -218,6 +224,28 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
       return 'Closed';
     }
     return 'Register Now';
+  }
+
+  hasRejectedRegistration(eventId: string): boolean {
+    return this.getRegistrationForEvent(eventId)?.status === 'REJECTED';
+  }
+
+  isRegisterDisabled(event: StudentEventCard): boolean {
+    if (this.isEventExpired(event)) {
+      return true;
+    }
+
+    const normalizedStatus = String(event.status || '').toLowerCase();
+    if (normalizedStatus === 'closed' || normalizedStatus === 'full') {
+      return true;
+    }
+
+    const registration = this.getRegistrationForEvent(event.id);
+    if (registration && registration.status !== 'REJECTED') {
+      return true;
+    }
+
+    return false;
   }
 
   isEventCompleted(event: StudentEventCard): boolean {
@@ -262,11 +290,16 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
 
   private prefillFromCache(): void {
     const cachedEvents = this.studentDashboardService.getCachedEvents();
+    const cachedRegistrations = this.studentDashboardService.getCachedRegistrations();
     const cachedNotifications = this.studentDashboardService.getCachedNotifications();
 
     if (cachedEvents.length) {
       this.setEvents(cachedEvents);
       this.loading = false;
+    }
+
+    if (cachedRegistrations.length) {
+      this.registrations = cachedRegistrations;
     }
 
     if (cachedNotifications.length) {
@@ -392,6 +425,26 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
         this.flushView();
       }
     });
+  }
+
+  private loadRegistrationStatuses(): void {
+    this.studentDashboardService.fetchLatestRegistrations().pipe(
+      timeout(9000)
+    ).subscribe({
+      next: (registrations) => {
+        this.registrations = registrations || [];
+      },
+      error: () => {
+        this.registrations = this.studentDashboardService.getCachedRegistrations();
+      }
+    });
+  }
+
+  private getRegistrationForEvent(eventId: string): StudentRegistrationRecord | null {
+    const source = this.registrations.length
+      ? this.registrations
+      : this.studentDashboardService.getCachedRegistrations();
+    return source.find((item) => item.eventId === eventId) || null;
   }
 
   private startNotificationsRefresh(): void {
