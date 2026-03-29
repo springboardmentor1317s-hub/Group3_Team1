@@ -1,0 +1,26 @@
+.content-placeholder {
+  width: min(1380px, calc(100% - (1.1rem * 2)));
+  max-width: 1380px;
+  margin: 0 auto;
+  padding: 1rem 0 1.2rem;
+}
+
+.placeholder-card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 22px;
+  padding: 1.5rem;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.13);
+  color: #0f172a;
+}
+
+.placeholder-card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.placeholder-card p {
+  margin: 0;
+  color: #475569;
+}

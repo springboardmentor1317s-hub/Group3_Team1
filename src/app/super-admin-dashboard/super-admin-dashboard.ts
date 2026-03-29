@@ -1,7 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Auth } from '../auth/auth';
 import { HttpClientModule } from '@angular/common/http';
 import { SuperAdminService, DashboardStats, ReviewableUser } from './super-admin-service';
@@ -33,7 +33,7 @@ interface AdminActivityItem {
 @Component({
   selector: 'app-super-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, HttpClientModule, FormsModule],
+  imports: [CommonModule, HttpClientModule, FormsModule, RouterLink, RouterLinkActive],
   templateUrl: './super-admin-dashboard.html',
   styleUrls: ['./super-admin-dashboard.css']
 })

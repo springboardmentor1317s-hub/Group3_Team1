@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const Event = require("../models/Event");
+const Registration = require("../models/Registration");
 
 // ================= SUPER ADMIN DASHBOARD =================
 exports.getDashboardStats = async (req, res) => {
@@ -194,5 +195,52 @@ exports.getAdminActivityReport = async (req, res) => {
   } catch (error) {
     console.error("Admin activity report error:", error);
     res.status(500).json({ message: "Failed to load admin activity report" });
+  }
+};
+
+// ================= STUDENTS LIST (ALL COLLEGES) =================
+// GET /api/superadmin/students
+exports.getAllStudents = async (req, res) => {
+  try {
+    const students = await User.find({
+      role: { $regex: /^student$/i }
+    })
+      .select("name userId email college role department phone currentAddressLine permanentAddressLine profileImageUrl isBlocked createdAt")
+      .sort({ name: 1, createdAt: -1 });
+
+    res.json(students);
+  } catch (error) {
+    console.error("Get all students error:", error);
+    res.status(500).json({ message: "Failed to load students" });
+  }
+};
+
+// ================= STUDENT REGISTERED EVENTS =================
+// GET /api/superadmin/students/:studentId/events
+exports.getStudentRegisteredEvents = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const normalizedStudentId = String(studentId || '').trim();
+
+    if (!normalizedStudentId) {
+      return res.status(400).json({ message: 'studentId is required' });
+    }
+
+    const registrations = await Registration.find({ studentId: normalizedStudentId })
+      .select('eventId eventName status createdAt')
+      .sort({ createdAt: -1 });
+
+    const payload = registrations.map((item) => ({
+      id: String(item._id),
+      eventId: item.eventId,
+      eventName: item.eventName,
+      status: item.status,
+      createdAt: item.createdAt
+    }));
+
+    res.json(payload);
+  } catch (error) {
+    console.error('Get student registered events error:', error);
+    res.status(500).json({ message: 'Failed to load registered events' });
   }
 };

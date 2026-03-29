@@ -68,6 +68,24 @@ export const routes: Routes = [
   },
 
   {
+    path: 'super-admin/students',
+    loadComponent: () => import('./super-admin-dashboard/super-admin-students.component').then(m => m.SuperAdminStudentsComponent),
+    canActivate: [roleGuard('super_admin')]
+  },
+
+  {
+    path: 'super-admin/admins',
+    loadComponent: () => import('./super-admin-dashboard/super-admin-admins.component').then(m => m.SuperAdminAdminsComponent),
+    canActivate: [roleGuard('super_admin')]
+  },
+
+  {
+    path: 'super-admin/events',
+    loadComponent: () => import('./super-admin-dashboard/super-admin-events.component').then(m => m.SuperAdminEventsComponent),
+    canActivate: [roleGuard('super_admin')]
+  },
+
+  {
     path: 'new-student-dashboard',
     loadComponent: () => import('./student-dashboard-page/student-dashboard-page.component').then(m => m.StudentDashboardPageComponent),
     canActivate: [roleGuard('student')]
