@@ -17,7 +17,7 @@ const attendanceRoutes = require('./routes/attendanceRoutes');
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '20mb' }));
 
 app.use('/api', authRoutes);
 app.use('/api', debugRoutes);

@@ -35,6 +35,8 @@ export interface AdminAttendanceRosterStudent {
   status: 'PENDING' | 'PRESENT';
   markedAt: string | null;
   admitCardGenerated: boolean;
+  certificateGenerated: boolean;
+  certificateIssuedAt: string | null;
   cardCode?: string;
 }
 
@@ -47,7 +49,21 @@ export interface AdminAttendanceRosterResponse {
   };
   presentCount: number;
   totalApproved: number;
+  certificateTemplate?: {
+    hasSignature: boolean;
+    organizationName: string;
+    signerName: string;
+    signerTitle: string;
+  };
   students: AdminAttendanceRosterStudent[];
+}
+
+export interface CertificateStatusResponse {
+  canDownload: boolean;
+  attended: boolean;
+  issued: boolean;
+  generatedAt: string | null;
+  message?: string;
 }
 
 @Injectable({
@@ -93,6 +109,19 @@ export class AttendanceService {
     });
   }
 
+  getMyCertificateStatus(eventId: string): Observable<CertificateStatusResponse> {
+    return this.http.get<CertificateStatusResponse>(`${this.apiBase}/certificate-status/${encodeURIComponent(eventId)}`, {
+      headers: this.authService.getAuthHeaders()
+    });
+  }
+
+  downloadCertificate(eventId: string): Observable<Blob> {
+    return this.http.get(`${this.apiBase}/certificate/${encodeURIComponent(eventId)}`, {
+      headers: this.getBinaryAuthHeaders(),
+      responseType: 'blob'
+    });
+  }
+
   previewAdmitCard(eventId: string, studentId?: string): Observable<Blob> {
     const studentQuery = studentId ? `&studentId=${encodeURIComponent(studentId)}` : '';
     return this.http.get(`${this.apiBase}/admit-card/${encodeURIComponent(eventId)}?adminPreview=true${studentQuery}`, {
@@ -124,6 +153,57 @@ export class AttendanceService {
       failed?: number;
       details?: string;
     }>(`${this.apiBase}/events/${encodeURIComponent(eventId)}/generate-admit-cards`, {}, {
+      headers: this.authService.getAuthHeaders()
+    });
+  }
+
+  saveCertificateTemplate(eventId: string, payload: {
+    signatureDataUrl: string;
+    organizationName: string;
+    signerName: string;
+    signerTitle: string;
+  }): Observable<{
+    message: string;
+    template: {
+      eventId: string;
+      organizationName: string;
+      signerName: string;
+      signerTitle: string;
+      hasSignature: boolean;
+      uploadedAt?: string;
+    };
+  }> {
+    return this.http.post<{
+      message: string;
+      template: {
+        eventId: string;
+        organizationName: string;
+        signerName: string;
+        signerTitle: string;
+        hasSignature: boolean;
+        uploadedAt?: string;
+      };
+    }>(`${this.apiBase}/events/${encodeURIComponent(eventId)}/certificate-template`, payload, {
+      headers: this.authService.getAuthHeaders()
+    });
+  }
+
+  generateCertificates(eventId: string): Observable<{
+    message: string;
+    totalAttended: number;
+    created: number;
+    refreshed: number;
+    failed?: number;
+    details?: string;
+  }> {
+    return this.http.post<{
+      message: string;
+      totalAttended: number;
+      created: number;
+      refreshed: number;
+      failed?: number;
+      details?: string;
+    }>(`${this.apiBase}/events/${encodeURIComponent(eventId)}/generate-certificates`, {}, {
       headers: this.authService.getAuthHeaders()
     });
   }

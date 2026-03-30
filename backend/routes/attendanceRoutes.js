@@ -7,10 +7,14 @@ const router = express.Router();
 router.get("/qr-details", attendanceController.getQrDetailsFromToken);
 router.get("/my-approved-events", protect, attendanceController.getMyApprovedEvents);
 router.get("/admit-card/:eventId", protect, attendanceController.downloadMyAdmitCard);
+router.get("/certificate-status/:eventId", protect, attendanceController.getMyCertificateStatus);
+router.get("/certificate/:eventId", protect, attendanceController.downloadMyCertificate);
 router.get("/events/:eventId/admit-card-preview", protect, attendanceController.previewAdmitCardForEvent);
 router.get("/events/:eventId/students/:studentId/admit-card-preview", protect, attendanceController.previewAdmitCardForStudent);
 
 router.post("/events/:eventId/generate-admit-cards", protect, attendanceController.generateAdmitCardsForEvent);
+router.post("/events/:eventId/certificate-template", protect, attendanceController.saveCertificateTemplateForEvent);
+router.post("/events/:eventId/generate-certificates", protect, attendanceController.generateCertificatesForEvent);
 router.post("/events/:eventId/distribute-admit-cards", protect, attendanceController.distributeAdmitCardsForEvent);
 router.get("/events/today", protect, attendanceController.getTodayEventsForAttendance);
 router.get("/events/:eventId/roster", protect, attendanceController.getEventAttendanceRoster);

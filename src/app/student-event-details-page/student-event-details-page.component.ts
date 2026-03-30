@@ -8,7 +8,7 @@ import { StudentHeaderComponent } from '../shared/student-header/student-header.
 import { StudentDashboardService, StudentEventCard, StudentEventComment, StudentRegistrationRecord } from '../services/student-dashboard.service';
 import { EventService } from '../services/event.service';
 import { PaymentService, PaymentStatus } from '../services/payment.service';
-import { AttendanceService } from '../services/attendance.service';
+import { AttendanceService, CertificateStatusResponse } from '../services/attendance.service';
 
 interface ReplyThreadNode {
   id: string;
@@ -61,6 +61,10 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
   receiptDownloading = false;
   admitCardActionInProgress = false;
   admitCardError = '';
+  certificateStatus: CertificateStatusResponse | null = null;
+  certificateStatusLoading = false;
+  certificateActionInProgress = false;
+  certificateError = '';
 
   feedbackDraftText = '';
   feedbackDraftRating = 0;
@@ -277,6 +281,13 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     return this.currentRegistration.status === 'APPROVED';
   }
 
+  canDownloadCertificate(): boolean {
+    if (this.registrationStateLoading || !this.currentRegistration || !this.event) {
+      return false;
+    }
+    return this.currentRegistration.status === 'APPROVED' && Boolean(this.certificateStatus?.canDownload);
+  }
+
   downloadAdmitCard(): void {
     const eventId = this.event?.id || '';
     if (!eventId || !this.canDownloadAdmitCard() || this.admitCardActionInProgress) {
@@ -304,6 +315,37 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         this.admitCardError = error?.error?.message || 'Admit card is not generated yet by admin.';
+      }
+    });
+  }
+
+  downloadCertificate(): void {
+    const eventId = this.event?.id || '';
+    if (!eventId || !this.canDownloadCertificate() || this.certificateActionInProgress) {
+      return;
+    }
+
+    this.certificateActionInProgress = true;
+    this.certificateError = '';
+
+    this.attendanceService.downloadCertificate(eventId).pipe(
+      finalize(() => {
+        this.certificateActionInProgress = false;
+      })
+    ).subscribe({
+      next: (blob) => {
+        const safeName = String(this.event?.title || 'event').replace(/[^a-z0-9]+/gi, '_');
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `certificate_${safeName}.pdf`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(url);
+      },
+      error: (error) => {
+        this.certificateError = error?.error?.message || 'Certificate is available only for students marked present.';
       }
     });
   }
@@ -665,12 +707,14 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
         this.currentRegistration = registrations.find((item) => item.eventId === eventId) || null;
         this.registrationStateLoading = false;
         this.loadPaymentStatus(eventId);
+        this.loadCertificateStatus(eventId);
         this.cdr.detectChanges();
       },
       error: () => {
         this.currentRegistration = this.studentDashboardService.getCachedRegistrations().find((item) => item.eventId === eventId) || null;
         this.registrationStateLoading = false;
         this.loadPaymentStatus(eventId);
+        this.loadCertificateStatus(eventId);
         this.cdr.detectChanges();
       }
     });
@@ -741,6 +785,29 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.paymentStatus = null;
+      }
+    });
+  }
+
+  private loadCertificateStatus(eventId: string): void {
+    const registration = this.currentRegistration;
+    if (!registration || registration.status !== 'APPROVED') {
+      this.certificateStatus = null;
+      this.certificateStatusLoading = false;
+      return;
+    }
+
+    this.certificateStatusLoading = true;
+    this.attendanceService.getMyCertificateStatus(eventId).pipe(
+      finalize(() => {
+        this.certificateStatusLoading = false;
+      })
+    ).subscribe({
+      next: (status) => {
+        this.certificateStatus = status;
+      },
+      error: () => {
+        this.certificateStatus = null;
       }
     });
   }

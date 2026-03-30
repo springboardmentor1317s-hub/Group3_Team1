@@ -69,15 +69,35 @@
         <p *ngIf="currentRegistration.status === 'PENDING'">Your registration is waiting for admin review. Please check back soon.</p>
         <div class="approved-registration-block" *ngIf="currentRegistration.status === 'APPROVED'">
           <p>Your registration has been approved. You are all set for this event.</p>
-          <button
-            type="button"
-            class="download-admit-btn"
-            [disabled]="!canDownloadAdmitCard() || admitCardActionInProgress"
-            (click)="downloadAdmitCard()"
-          >
-            {{ admitCardActionInProgress ? 'Downloading...' : 'Download Admit Card' }}
-          </button>
+          <div class="approved-registration-actions">
+            <button
+              type="button"
+              class="download-admit-btn"
+              [disabled]="!canDownloadAdmitCard() || admitCardActionInProgress"
+              (click)="downloadAdmitCard()"
+            >
+              {{ admitCardActionInProgress ? 'Downloading...' : 'Download Admit Card' }}
+            </button>
+            <button
+              type="button"
+              class="download-admit-btn certificate-download-btn"
+              [disabled]="!canDownloadCertificate() || certificateActionInProgress || certificateStatusLoading"
+              (click)="downloadCertificate()"
+            >
+              {{
+                certificateActionInProgress
+                  ? 'Downloading Certificate...'
+                  : certificateStatusLoading
+                    ? 'Checking Certificate...'
+                    : 'Download Certificate'
+              }}
+            </button>
+          </div>
           <p class="admit-error" *ngIf="admitCardError">{{ admitCardError }}</p>
+          <p class="admit-error" *ngIf="certificateError">{{ certificateError }}</p>
+          <p class="certificate-hint" *ngIf="!certificateStatusLoading && !canDownloadCertificate()">
+            Certificate will be available only after your attendance is marked present and admin generates it for this event.
+          </p>
         </div>
 
         <div class="rejection-reason-card" *ngIf="currentRegistration.status === 'REJECTED'">

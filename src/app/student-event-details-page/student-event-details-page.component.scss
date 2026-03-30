@@ -401,6 +401,12 @@
   gap: 0.55rem;
 }
 
+.approved-registration-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
 .download-admit-btn {
   width: fit-content;
   border: none;
@@ -431,6 +437,18 @@
   color: #b91c1c;
   font-size: 0.82rem;
   font-weight: 700;
+}
+
+.certificate-download-btn {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5 55%, #2563eb);
+  box-shadow: 0 12px 20px rgba(99, 102, 241, 0.24);
+}
+
+.certificate-hint {
+  margin: 0;
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .delete-registration-btn {
