@@ -32,6 +32,14 @@ const admitCardSchema = new mongoose.Schema(
       type: Date,
       default: Date.now
     },
+    distributedBy: {
+      type: String,
+      default: ""
+    },
+    distributedAt: {
+      type: Date,
+      default: null
+    },
     lastDownloadedAt: {
       type: Date,
       default: null
