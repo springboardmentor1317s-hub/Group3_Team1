@@ -8,6 +8,7 @@ import { StudentHeaderComponent } from '../shared/student-header/student-header.
 import { StudentDashboardService, StudentEventCard, StudentEventComment, StudentRegistrationRecord } from '../services/student-dashboard.service';
 import { EventService } from '../services/event.service';
 import { PaymentService, PaymentStatus } from '../services/payment.service';
+import { AttendanceService } from '../services/attendance.service';
 
 interface ReplyThreadNode {
   id: string;
@@ -58,6 +59,8 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
   paymentStatus: PaymentStatus | null = null;
   paymentStatusLoading = false;
   receiptDownloading = false;
+  admitCardActionInProgress = false;
+  admitCardError = '';
 
   feedbackDraftText = '';
   feedbackDraftRating = 0;
@@ -81,7 +84,8 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     private studentDashboardService: StudentDashboardService,
     private cdr: ChangeDetectorRef,
     private eventService: EventService,
-    private paymentService: PaymentService
+    private paymentService: PaymentService,
+    private attendanceService: AttendanceService
   ) {}
 
   ngOnInit(): void {
@@ -264,6 +268,44 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       return false;
     }
     return this.currentRegistration.status === 'PENDING' || this.currentRegistration.status === 'REJECTED';
+  }
+
+  canDownloadAdmitCard(): boolean {
+    if (this.registrationStateLoading || !this.currentRegistration || !this.event) {
+      return false;
+    }
+    return this.currentRegistration.status === 'APPROVED';
+  }
+
+  downloadAdmitCard(): void {
+    const eventId = this.event?.id || '';
+    if (!eventId || !this.canDownloadAdmitCard() || this.admitCardActionInProgress) {
+      return;
+    }
+
+    this.admitCardActionInProgress = true;
+    this.admitCardError = '';
+
+    this.attendanceService.downloadAdmitCard(eventId).pipe(
+      finalize(() => {
+        this.admitCardActionInProgress = false;
+      })
+    ).subscribe({
+      next: (blob) => {
+        const safeName = String(this.event?.title || 'event').replace(/[^a-z0-9]+/gi, '_');
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `admit_card_${safeName}.pdf`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(url);
+      },
+      error: (error) => {
+        this.admitCardError = error?.error?.message || 'Admit card is not generated yet by admin.';
+      }
+    });
   }
 
   registerForEvent(): void {

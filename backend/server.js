@@ -13,6 +13,7 @@ const eventReviewRoutes = require('./routes/eventReviewRoutes');
 const eventCommentRoutes = require('./routes/eventCommentRoutes');
 const studentQueryRoutes = require('./routes/studentQueryRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const attendanceRoutes = require('./routes/attendanceRoutes');
 const app = express();
 
 app.use(cors());
@@ -28,6 +29,7 @@ app.use('/api/event-reviews', eventReviewRoutes);
 app.use('/api/event-comments', eventCommentRoutes);
 app.use('/api/student-queries', studentQueryRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/attendance', attendanceRoutes);
 
 app.get('/', (req, res) => {
   res.send('Backend Running Successfully');

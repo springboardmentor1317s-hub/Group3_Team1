@@ -67,7 +67,18 @@
         </div>
 
         <p *ngIf="currentRegistration.status === 'PENDING'">Your registration is waiting for admin review. Please check back soon.</p>
-        <p *ngIf="currentRegistration.status === 'APPROVED'">Your registration has been approved. You are all set for this event.</p>
+        <div class="approved-registration-block" *ngIf="currentRegistration.status === 'APPROVED'">
+          <p>Your registration has been approved. You are all set for this event.</p>
+          <button
+            type="button"
+            class="download-admit-btn"
+            [disabled]="!canDownloadAdmitCard() || admitCardActionInProgress"
+            (click)="downloadAdmitCard()"
+          >
+            {{ admitCardActionInProgress ? 'Downloading...' : 'Download Admit Card' }}
+          </button>
+          <p class="admit-error" *ngIf="admitCardError">{{ admitCardError }}</p>
+        </div>
 
         <div class="rejection-reason-card" *ngIf="currentRegistration.status === 'REJECTED'">
           <strong>Reason For Rejection</strong>

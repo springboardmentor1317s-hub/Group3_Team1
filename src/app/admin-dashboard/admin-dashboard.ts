@@ -18,8 +18,9 @@ import { AdminCommonHeaderComponent } from '../shared/admin-common-header/admin-
 import { AdminStudentStatusPanelComponent } from '../admin-student-status-panel/admin-student-status-panel.component';
 import { AdminQueryPanelComponent, AdminStudentQuery } from '../admin-query-panel/admin-query-panel.component';
 import { AdminPaymentDetailsComponent } from '../admin-payment-details/admin-payment-details.component';
+import { AdminAttendanceManagementComponent } from '../admin-attendance-management/admin-attendance-management.component';
 
-type DashboardTab = 'overview' | 'events' | 'payments' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries';
+type DashboardTab = 'overview' | 'events' | 'payments' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries' | 'attendance';
 
 interface OrganizerEvent {
   id: string;
@@ -89,7 +90,7 @@ interface RegistrationGroup {
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminFeedbackPanelComponent, AdminEventCardComponent, AdminDashboardSidebarComponent, AdminRegistrationsPanelComponent, AdminCommonHeaderComponent, AdminStudentStatusPanelComponent, AdminQueryPanelComponent, AdminPaymentDetailsComponent],
+  imports: [CommonModule, FormsModule, AdminFeedbackPanelComponent, AdminEventCardComponent, AdminDashboardSidebarComponent, AdminRegistrationsPanelComponent, AdminCommonHeaderComponent, AdminStudentStatusPanelComponent, AdminQueryPanelComponent, AdminPaymentDetailsComponent, AdminAttendanceManagementComponent],
   templateUrl: './admin-dashboard.html',
   styleUrls: ['./admin-dashboard.css']
 })
@@ -210,7 +211,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
 
     this.route.queryParamMap.subscribe((params) => {
       const tab = params.get('tab') as DashboardTab | null;
-      if (tab && ['overview', 'events', 'payments', 'analytics', 'registrations', 'feedback', 'approvedStudents', 'queries'].includes(tab)) {
+      if (tab && ['overview', 'events', 'payments', 'analytics', 'registrations', 'feedback', 'approvedStudents', 'queries', 'attendance'].includes(tab)) {
         this.activeTab = tab;
       }
       if (params.get('create') === 'true') {

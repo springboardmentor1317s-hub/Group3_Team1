@@ -60,6 +60,11 @@ export const routes: Routes = [
     loadComponent: () => import('./create-event/admin-create-event-page.component').then(m => m.AdminCreateEventPageComponent),
     canActivate: [roleGuard('college_admin')]
   },
+  {
+    path: 'admin-attendance-screen',
+    loadComponent: () => import('./admin-attendance-workspace/admin-attendance-workspace.component').then(m => m.AdminAttendanceWorkspaceComponent),
+    canActivate: [roleGuard('college_admin')]
+  },
 
   {
     path: 'super-admin-dashboard',
