@@ -319,7 +319,7 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
     this.router.navigate(['/admin-dashboard']);
   }
 
-  handleTabChange(tab: 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries'): void {
+  handleTabChange(tab: 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries' | 'attendance'): void {
     this.router.navigate(['/admin-dashboard'], { queryParams: { tab } });
   }
 
@@ -501,3 +501,4 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2563eb&color=fff&bold=true`;
   }
 }
+
