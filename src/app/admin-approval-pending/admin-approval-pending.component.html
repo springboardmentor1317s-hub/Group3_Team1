@@ -4,23 +4,28 @@
   <div class="bg-grid" aria-hidden="true"></div>
 
   <section class="pending-card" role="status" aria-live="polite">
-    <div class="status-pill" [class.is-rejected]="status === 'rejected'">
-      {{ status === 'pending' ? 'Verification In Progress' : 'Request Rejected' }}
+    <div class="status-pill" [class.is-critical]="status === 'rejected' || status === 'blocked'">
+      {{ status === 'pending' ? 'Verification In Progress' : (status === 'blocked' ? 'Account Blocked' : 'Request Rejected') }}
     </div>
 
-    <div class="icon-wrap" [class.is-rejected]="status === 'rejected'">
+    <div class="icon-wrap" [class.is-critical]="status === 'rejected' || status === 'blocked'">
       <span *ngIf="status === 'pending'">!</span>
       <span *ngIf="status === 'rejected'">x</span>
+      <span *ngIf="status === 'blocked'">x</span>
     </div>
 
     <h1 *ngIf="status === 'pending'">Account Under Verification</h1>
     <h1 *ngIf="status === 'rejected'">Admin Request Rejected</h1>
+    <h1 *ngIf="status === 'blocked'">Your Account is Blocked</h1>
 
     <p class="lead" *ngIf="status === 'pending'">
       Your college admin account is currently under review by the Super Admin. You will be able to sign in once it is approved.
     </p>
     <p class="lead" *ngIf="status === 'rejected'">
       Your request for a college admin account has been rejected by the Super Admin.
+    </p>
+    <p class="lead" *ngIf="status === 'blocked'">
+      Your account has been blocked by the Super Admin. Please contact support or the Super Admin team for assistance.
     </p>
 
     <div class="reason-box" *ngIf="status === 'rejected'">

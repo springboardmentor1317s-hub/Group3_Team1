@@ -11,7 +11,7 @@ import { CommonModule } from '@angular/common';
   styleUrls: ['./admin-approval-pending.component.css']
 })
 export class AdminApprovalPendingComponent {
-  status: 'pending' | 'rejected' = 'pending';
+  status: 'pending' | 'rejected' | 'blocked' = 'pending';
   reason = '';
 
   constructor(private router: Router, private route: ActivatedRoute) {
@@ -20,6 +20,8 @@ export class AdminApprovalPendingComponent {
 
     if (status === 'rejected') {
       this.status = 'rejected';
+    } else if (status === 'blocked') {
+      this.status = 'blocked';
     } else {
       this.status = 'pending';
     }

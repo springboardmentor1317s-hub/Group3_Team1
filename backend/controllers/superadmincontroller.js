@@ -319,3 +319,51 @@ exports.getAdminCreatedEvents = async (req, res) => {
     res.status(500).json({ message: 'Failed to load admin events' });
   }
 };
+
+// ================= BLOCK / UNBLOCK USER =================
+// PATCH /api/superadmin/users/:id/block
+exports.updateUserBlockStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const blocked = req.body?.blocked;
+
+    if (typeof blocked !== 'boolean') {
+      return res.status(400).json({ message: 'blocked must be boolean' });
+    }
+
+    const user = await User.findById(id)
+      .select('name userId email college role isBlocked adminApprovalStatus createdAt');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const normalizedRole = String(user.role || '').toLowerCase();
+    const canToggle = normalizedRole === 'student' || normalizedRole === 'admin' || normalizedRole === 'college_admin';
+
+    if (!canToggle) {
+      return res.status(400).json({ message: 'Only student/admin users can be blocked or unblocked' });
+    }
+
+    user.isBlocked = blocked;
+    await user.save();
+
+    res.json({
+      message: blocked ? 'User blocked successfully' : 'User unblocked successfully',
+      user: {
+        _id: String(user._id),
+        name: user.name,
+        userId: user.userId,
+        email: user.email,
+        college: user.college,
+        role: user.role,
+        adminApprovalStatus: user.adminApprovalStatus,
+        isBlocked: user.isBlocked,
+        createdAt: user.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Update user block status error:', error);
+    res.status(500).json({ message: 'Failed to update user block status' });
+  }
+};
