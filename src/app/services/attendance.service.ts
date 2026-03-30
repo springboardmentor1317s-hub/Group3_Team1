@@ -13,6 +13,7 @@ export interface StudentApprovedEventItem {
   college: string;
   admitCardGenerated: boolean;
   admitCardGeneratedAt: string | null;
+  admitCardDistributedAt?: string | null;
   canDownloadAdmitCard: boolean;
 }
 
@@ -124,6 +125,20 @@ export class AttendanceService {
       failed?: number;
       details?: string;
     }>(`${this.apiBase}/events/${encodeURIComponent(eventId)}/generate-admit-cards`, {}, {
+      headers: this.authService.getAuthHeaders()
+    });
+  }
+
+  distributeAdmitCards(eventId: string): Observable<{
+    message: string;
+    distributed: number;
+    total: number;
+  }> {
+    return this.http.post<{
+      message: string;
+      distributed: number;
+      total: number;
+    }>(`${this.apiBase}/events/${encodeURIComponent(eventId)}/distribute-admit-cards`, {}, {
       headers: this.authService.getAuthHeaders()
     });
   }

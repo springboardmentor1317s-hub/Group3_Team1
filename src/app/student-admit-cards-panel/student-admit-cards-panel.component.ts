@@ -34,6 +34,18 @@ export class StudentAdmitCardsPanelComponent implements OnInit {
     return this.approvedEvents.length - this.readyCount;
   }
 
+  getStatusLabel(item: StudentApprovedEventItem): string {
+    if (item.canDownloadAdmitCard) {
+      return 'Admit Ready';
+    }
+
+    if (item.admitCardGenerated) {
+      return 'Waiting for Distribution';
+    }
+
+    return 'Pending Admin Generation';
+  }
+
   downloadAdmitCard(item: StudentApprovedEventItem): void {
     if (!item.canDownloadAdmitCard || this.downloadingEventId) {
       return;

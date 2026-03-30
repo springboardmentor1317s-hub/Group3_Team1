@@ -107,6 +107,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
   private queryBootstrapDone = false;
   private notificationStorageKey = 'admin-dashboard-last-seen-registration-at';
   private myEventsCacheStorageKey = 'admin-my-events-cache';
+  private queryCacheStorageKey = 'admin-query-cache';
   private currentCollege = '';
   adminCollegeName = '';
 
@@ -192,8 +193,10 @@ export class AdminDashboard implements OnInit, OnDestroy {
     const userId = user.id || user._id || this.userName || 'admin';
     this.notificationStorageKey = `admin-dashboard-last-seen-registration-at-${userId}`;
     this.myEventsCacheStorageKey = this.buildMyEventsCacheStorageKey(user);
+    this.queryCacheStorageKey = this.buildQueryCacheStorageKey(user);
     this.currentCollege = String(user.college || '').trim().toLowerCase();
     this.adminCollegeName = String(user.college || '').trim();
+    this.restoreQueryCache();
 
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark' || (savedTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -234,8 +237,8 @@ export class AdminDashboard implements OnInit, OnDestroy {
         
         this.feedbacks = (feedbacks || []).filter((feedback) => eventIds.has(String(feedback.eventId)));
         
-        this.initializeNotifications(registrations, []);
-        this.fetchCollegeQueries();
+        this.initializeNotifications(registrations, this.studentQueries);
+        this.fetchCollegeQueries(this.queryBootstrapDone);
         this.startNotificationPolling();
         this.isLoading = false;
         this.cdr.detectChanges();
@@ -295,7 +298,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
 
   setTab(tab: DashboardTab): void {
     this.activeTab = tab;
-    if (tab === 'queries') {
+    if (tab === 'queries' && !this.queryBootstrapDone && !this.queryLoading) {
       this.fetchCollegeQueries();
     }
   }
@@ -392,6 +395,46 @@ export class AdminDashboard implements OnInit, OnDestroy {
     }
   }
 
+  private buildQueryCacheStorageKey(user: Record<string, unknown>): string {
+    const cacheUserId = String(
+      user?.['userId'] ||
+      user?.['id'] ||
+      user?.['_id'] ||
+      user?.['email'] ||
+      'default'
+    ).trim();
+
+    return `admin-query-cache:${cacheUserId}`;
+  }
+
+  private restoreQueryCache(): void {
+    try {
+      const raw = sessionStorage.getItem(this.queryCacheStorageKey);
+      if (!raw) {
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as AdminStudentQuery[];
+      if (!Array.isArray(parsed) || !parsed.length) {
+        return;
+      }
+
+      this.studentQueries = parsed.map((query) => this.normalizeAdminQuery(query));
+      this.queryBootstrapDone = true;
+      this.queryLoading = false;
+    } catch {
+      return;
+    }
+  }
+
+  private persistQueryCache(queries: AdminStudentQuery[]): void {
+    try {
+      sessionStorage.setItem(this.queryCacheStorageKey, JSON.stringify(queries || []));
+    } catch {
+      return;
+    }
+  }
+
   onManageClick(event: OrganizerEvent, targetTab: DashboardTab): void {
     this.manageHiddenEventIds.add(event.id);
     this.setTab(targetTab);
@@ -440,6 +483,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
           this.handleQueryUpdates(normalized);
         }
 
+        this.persistQueryCache(this.studentQueries);
         this.queryLoading = false;
       },
       error: (error) => {
@@ -558,6 +602,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
     }
 
     this.studentQueries = normalizedQueries;
+    this.persistQueryCache(this.studentQueries);
     this.knownQueryIds = new Set(normalizedQueries.map((query) => query.id));
     this.knownQueryUpdateAt = new Map(normalizedQueries.map((query) => [query.id, String(query.updatedAt || query.createdAt || '')]));
   }
@@ -714,6 +759,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
           ...query,
           ...updatedQuery
         } : query);
+        this.persistQueryCache(this.studentQueries);
         this.showSuccessToast('Query reply sent successfully.');
       },
       error: (error) => {

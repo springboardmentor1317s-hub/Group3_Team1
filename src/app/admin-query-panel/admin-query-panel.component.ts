@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 export interface AdminStudentQuery {
@@ -28,7 +28,7 @@ export interface AdminStudentQuery {
   templateUrl: './admin-query-panel.component.html',
   styleUrls: ['./admin-query-panel.component.css']
 })
-export class AdminQueryPanelComponent {
+export class AdminQueryPanelComponent implements OnChanges {
   @Input() queries: AdminStudentQuery[] = [];
   @Input() collegeName = '';
   @Input() loading = false;
@@ -47,8 +47,6 @@ export class AdminQueryPanelComponent {
   searchTerm = '';
   statusFilter: 'ALL' | 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' = 'ALL';
   escalationFilter: 'ALL' | 'ESCALATED' | 'NORMAL' = 'ALL';
-  rowsPerPage = 8;
-  currentPage = 1;
   selectedQueryId = '';
 
   get hasQueries(): boolean {
@@ -114,14 +112,8 @@ export class AdminQueryPanelComponent {
     });
   }
 
-  get totalPages(): number {
-    return Math.max(1, Math.ceil(this.filteredQueries.length / this.rowsPerPage));
-  }
-
   get pagedQueries(): AdminStudentQuery[] {
-    const safePage = Math.min(this.currentPage, this.totalPages);
-    const start = (safePage - 1) * this.rowsPerPage;
-    return this.filteredQueries.slice(start, start + this.rowsPerPage);
+    return this.filteredQueries;
   }
 
   get selectedQuery(): AdminStudentQuery | null {
@@ -131,17 +123,18 @@ export class AdminQueryPanelComponent {
     return this.filteredQueries.find((item) => item.id === this.selectedQueryId) || null;
   }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['queries'] || changes['loading']) {
+      this.resetSelectionIfMissing();
+    }
+  }
+
   onFilterChange(): void {
-    this.currentPage = 1;
+    this.resetSelectionIfMissing();
   }
 
   selectQuery(query: AdminStudentQuery): void {
     this.selectedQueryId = query.id;
-  }
-
-  goToPage(page: number): void {
-    const nextPage = Math.max(1, Math.min(this.totalPages, page));
-    this.currentPage = nextPage;
   }
 
   isSelected(queryId: string): boolean {
@@ -170,17 +163,19 @@ export class AdminQueryPanelComponent {
       return;
     }
 
+    draft.status = 'RESOLVED';
+
     this.submitReply.emit({
       queryId: query.id,
       adminResponse: String(draft.adminResponse || '').trim(),
-      status: draft.status,
+      status: 'RESOLVED',
       progressNote: String(draft.progressNote || '').trim()
     });
   }
 
   formatStatus(status: AdminStudentQuery['status']): string {
     if (status === 'IN_PROGRESS') return 'In Progress';
-    if (status === 'RESOLVED') return 'Resolved';
+    if (status === 'RESOLVED') return 'Solved';
     return 'Open';
   }
 
@@ -206,5 +201,22 @@ export class AdminQueryPanelComponent {
 
   trackByQueryId(_index: number, query: AdminStudentQuery): string {
     return query.id;
+  }
+
+  private resetSelectionIfMissing(): void {
+    if (this.loading) {
+      return;
+    }
+
+    const availableQueries = this.filteredQueries;
+    if (!availableQueries.length) {
+      this.selectedQueryId = '';
+      return;
+    }
+
+    const currentSelectionStillVisible = availableQueries.some((item) => item.id === this.selectedQueryId);
+    if (!currentSelectionStillVisible) {
+      this.selectedQueryId = '';
+    }
   }
 }
