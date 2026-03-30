@@ -1,0 +1,51 @@
+<div class="student-shell admin-events-shell">
+  <app-admin-common-header
+    [activeTab]="'none'"
+    [userName]="userName"
+    [userAvatarUrl]="userAvatarUrl"
+    [showSearch]="false"
+    [showNotifications]="true"
+    [showExport]="false"
+    (brandClick)="goToDashboard()"
+    (activeTabChange)="handleTabChange($event)"
+    (notificationsTriggered)="handleTabChange('registrations')"
+    (logoutTriggered)="logout()"
+  ></app-admin-common-header>
+
+  <div class="dashboard-layout" [class.sidebar-collapsed]="sidebarCollapsed">
+    <app-admin-dashboard-sidebar
+      [activeTab]="'events'"
+      [collapsed]="sidebarCollapsed"
+      (tabChange)="handleTabChange($event)"
+      (collapsedChange)="setSidebarCollapsed($event)"
+      (createEvent)="openCreateEvent()"
+      (myEvents)="goToMyEvents()"
+    ></app-admin-dashboard-sidebar>
+
+    <main class="page-main">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">Closed Events</p>
+          <h1>{{ userName }}'s Old Events</h1>
+          <p class="muted">Only events that have already closed are shown here.</p>
+        </div>
+      </header>
+
+      <p *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</p>
+      <section *ngIf="loading" class="state-card">Loading old events...</section>
+
+      <section class="events-grid" *ngIf="!loading && eventCards.length > 0">
+        <div class="event-card-stack" *ngFor="let event of eventCards; trackBy: trackByEventId">
+          <app-admin-event-card
+            [event]="event"
+            [detailsRouteBase]="'/admin-my-events'"
+          ></app-admin-event-card>
+        </div>
+      </section>
+
+      <section class="state-card" *ngIf="!loading && eventCards.length === 0">
+        No closed events are available right now.
+      </section>
+    </main>
+  </div>
+</div>

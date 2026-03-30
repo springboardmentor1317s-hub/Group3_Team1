@@ -1,6 +1,7 @@
 const Event = require("../models/Event");
 const Registration = require("../models/Registration");
 const EventReview = require("../models/EventReview");
+const { getCollegeScopedEventIds } = require("../utils/adminCollegeScope");
 
 async function assertStudentCanReview(studentId, eventId) {
   try {
@@ -44,6 +45,85 @@ exports.getMyReviews = async (req, res) => {
     );
   } catch (error) {
     res.status(500).json({ message: "Failed to load reviews" });
+  }
+};
+
+exports.getEventReviewsByEventId = async (req, res) => {
+  try {
+    const eventId = String(req.params?.eventId || "").trim();
+    if (!eventId) {
+      return res.status(400).json({ message: "eventId is required." });
+    }
+
+    const reviews = await EventReview.find({ eventId }).sort({ updatedAt: -1 });
+    res.json(
+      reviews.map((review) => ({
+        eventId: String(review.eventId),
+        rating: review.rating,
+        feedback: review.feedback || "",
+        createdAt: review.createdAt,
+        updatedAt: review.updatedAt
+      }))
+    );
+  } catch (error) {
+    res.status(500).json({ message: "Failed to load event reviews" });
+  }
+};
+
+exports.getEventRatingSummaries = async (req, res) => {
+  try {
+    const raw = String(req.query.eventIds || '').trim();
+    const eventIds = raw
+      ? raw.split(',').map((id) => String(id).trim()).filter(Boolean)
+      : [];
+
+    if (!eventIds.length) {
+      return res.json([]);
+    }
+
+    const summaries = await EventReview.aggregate([
+      { $match: { eventId: { $in: eventIds } } },
+      {
+        $group: {
+          _id: '$eventId',
+          average: { $avg: '$rating' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    res.json(
+      summaries.map((item) => ({
+        eventId: String(item._id),
+        average: Number(item.average || 0),
+        count: Number(item.count || 0)
+      }))
+    );
+  } catch (error) {
+    res.status(500).json({ message: "Failed to load rating summaries" });
+  }
+};
+
+exports.getCollegeReviews = async (req, res) => {
+  try {
+    const eventIds = await getCollegeScopedEventIds(req.user?.id);
+    if (!eventIds.length) {
+      return res.json([]);
+    }
+
+    const reviews = await EventReview.find({ eventId: { $in: eventIds } }).sort({ updatedAt: -1 });
+    res.json(
+      reviews.map((review) => ({
+        id: review._id.toString(),
+        eventId: String(review.eventId),
+        rating: review.rating,
+        feedback: review.feedback || "",
+        createdAt: review.createdAt,
+        updatedAt: review.updatedAt
+      }))
+    );
+  } catch (error) {
+    res.status(500).json({ message: "Failed to load college reviews" });
   }
 };
 
@@ -121,3 +201,23 @@ exports.upsertFeedback = async (req, res) => {
     res.status(statusCode).json({ message: error.message || "Failed to save feedback" });
   }
 };
+
+  exports.getAllReviews = async (req, res) => {
+  try {
+    const reviews = await EventReview.find();
+    res.json(
+      reviews.map(r => ({
+        id: r._id.toString(),
+        eventId: r.eventId.toString(),
+        rating: r.rating,
+        feedback: r.feedback || "",
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt
+      }))
+    );
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+

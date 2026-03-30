@@ -1,0 +1,67 @@
+<div class="student-shell admin-events-shell">
+  <app-admin-common-header
+    [activeTab]="'none'"
+    [userName]="userName"
+    [userAvatarUrl]="userAvatarUrl"
+    [(searchQuery)]="dashboardSearchQuery"
+    [unreadNotificationCount]="0"
+    (brandClick)="goToDashboard()"
+    (activeTabChange)="handleTabChange($event)"
+    (searchTriggered)="onDashboardSearchClick()"
+    (notificationsTriggered)="handleTabChange('registrations')"
+    (exportTriggered)="exportEvents()"
+    (logoutTriggered)="logout()"
+  ></app-admin-common-header>
+
+  <div class="dashboard-layout" [class.sidebar-collapsed]="sidebarCollapsed">
+    <app-admin-dashboard-sidebar
+      [activeTab]="'myEvents'"
+      [collapsed]="sidebarCollapsed"
+      (tabChange)="handleTabChange($event)"
+      (collapsedChange)="setSidebarCollapsed($event)"
+      (createEvent)="openCreateEvent()"
+      (myEvents)="goToMyEvents()"
+    ></app-admin-dashboard-sidebar>
+
+    <main class="page-main">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">{{ pageEyebrow }}</p>
+          <h1>{{ pageTitle }}</h1>
+          <p class="muted">{{ pageDescription }}</p>
+        </div>
+
+        <div class="view-toggle" aria-label="Event history toggle">
+          <button
+            type="button"
+            class="view-toggle-btn"
+            [class.active]="activeView === 'current'"
+            (click)="setActiveView('current')"
+          >
+            Current Events
+          </button>
+          <button
+            type="button"
+            class="view-toggle-btn"
+            [class.active]="activeView === 'old'"
+            (click)="setActiveView('old')"
+          >
+            Old Events
+          </button>
+        </div>
+      </header>
+
+      <p *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</p>
+
+      <section class="events-grid" *ngIf="visibleEventCards.length > 0">
+        <div class="event-card-stack" *ngFor="let event of visibleEventCards; trackBy: trackByEventId">
+          <app-admin-event-card
+            [event]="event"
+            [detailsRouteBase]="'/admin-my-events'"
+          ></app-admin-event-card>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>

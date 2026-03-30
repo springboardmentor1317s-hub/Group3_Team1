@@ -10,7 +10,7 @@ function normalizeRole(role: string | null): string {
 }
 
 export const roleGuard = (allowedRole: string): CanActivateFn => {
-  return () => {
+  return (_route, state) => {
     const auth = inject(Auth);
     const router = inject(Router);
 
@@ -22,6 +22,34 @@ export const roleGuard = (allowedRole: string): CanActivateFn => {
     const requiredRole = normalizeRole(allowedRole);
 
     if (effectiveRole && effectiveRole === requiredRole) {
+      if (requiredRole === 'student') {
+        const profileCompleted = currentUser?.profileCompleted !== false;
+        const isProfileRoute = state.url.startsWith('/student-profile');
+
+        if (!profileCompleted && !isProfileRoute) {
+          return router.createUrlTree(['/student-profile'], {
+            queryParams: {
+              requireProfileUpdate: '1',
+              redirectTo: state.url
+            }
+          });
+        }
+      }
+
+      if (requiredRole === 'college_admin') {
+        const profileCompleted = currentUser?.profileCompleted !== false;
+        const isProfileRoute = state.url.startsWith('/admin-profile');
+
+        if (!profileCompleted && !isProfileRoute) {
+          return router.createUrlTree(['/admin-profile'], {
+            queryParams: {
+              requireProfileUpdate: '1',
+              redirectTo: state.url
+            }
+          });
+        }
+      }
+
       if (!roleFromStorage && effectiveRoleRaw) {
         localStorage.setItem('role', effectiveRoleRaw);
       }

@@ -1,0 +1,246 @@
+<div class="admin-profile-shell">
+  <app-admin-common-header
+    [activeTab]="'none'"
+    [userName]="userName"
+    [userAvatarUrl]="profileImageUrl"
+    [showSearch]="false"
+    [showNotifications]="true"
+    [showExport]="false"
+    (brandClick)="goToDashboard()"
+    (activeTabChange)="handleTabChange($event)"
+    (notificationsTriggered)="handleTabChange('registrations')"
+    (logoutTriggered)="logout()"
+  ></app-admin-common-header>
+
+  <main class="profile-main">
+    <section class="hero-card">
+      <div class="hero-copy">
+        <p class="eyebrow">Account Settings</p>
+        <h1>{{ userName }}</h1>
+        <p class="hero-subtitle">Manage the contact details and account information used for your college admin profile.</p>
+        <div class="hero-tags">
+          <span class="hero-tag">{{ profileStatusLabel }}</span>
+          <span class="hero-tag hero-tag-alt">{{ role }}</span>
+          <span *ngIf="hasRealtimeUpdatedOn" class="hero-tag">Updated {{ lastUpdatedOn }}</span>
+        </div>
+      </div>
+
+    </section>
+
+    <p *ngIf="saveError" class="message-banner error">{{ saveError }}</p>
+    <p *ngIf="saveSuccess" class="message-banner success">{{ saveSuccess }}</p>
+
+    <section class="stats-grid">
+      <article class="stat-card">
+        <span class="material-icons">event</span>
+        <div>
+          <strong>{{ isStatsLoading ? '...' : totalEvents }}</strong>
+          <span>Total Events</span>
+        </div>
+      </article>
+      <article class="stat-card">
+        <span class="material-icons">verified</span>
+        <div>
+          <strong>{{ isStatsLoading ? '...' : activeEvents }}</strong>
+          <span>Active Events</span>
+        </div>
+      </article>
+      <article class="stat-card">
+        <span class="material-icons">groups</span>
+        <div>
+          <strong>{{ isStatsLoading ? '...' : totalRegistrations }}</strong>
+          <span>Total Registrations</span>
+        </div>
+      </article>
+      <article class="stat-card">
+        <span class="material-icons">all_inclusive</span>
+        <div>
+          <strong>{{ isStatsLoading ? '...' : unlimitedEvents }}</strong>
+          <span>Unlimited Events</span>
+        </div>
+      </article>
+    </section>
+
+    <section class="content-grid">
+      <article class="panel-card profile-panel">
+        <div class="panel-head">
+          <div>
+            <h2>Admin Identity</h2>
+            <span class="panel-note">Your college is assigned to this account and cannot be changed here.</span>
+          </div>
+          <div class="panel-actions">
+            <button type="button" class="ghost-btn" *ngIf="!isEditing" (click)="startEdit()">Edit Profile</button>
+            <button type="button" class="ghost-btn" *ngIf="isEditing" (click)="cancelEdit()">Cancel</button>
+            <button type="button" class="primary-btn" [disabled]="isSaving" (click)="saveProfile()">
+              {{ isSaving ? 'Saving...' : 'Save Changes' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="avatar-section">
+          <div class="avatar-frame">
+            <img *ngIf="profileImageUrl" [src]="profileImageUrl" alt="Admin profile photo" />
+            <span *ngIf="!profileImageUrl">{{ userName.charAt(0) || 'A' }}</span>
+          </div>
+
+          <div class="avatar-meta">
+            <h3>{{ userName }}</h3>
+            <p>{{ email }}</p>
+            <div class="meta-pills">
+              <span>{{ college }}</span>
+              <span>{{ role }}</span>
+            </div>
+          </div>
+
+          <label class="upload-btn" *ngIf="isEditing">
+            <input type="file" accept="image/*" (change)="onPhotoSelected($event)" />
+            <span class="material-icons">upload</span>
+            <span>Update Photo</span>
+          </label>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-item">
+            <label>Admin Name</label>
+            <p>{{ userName }}</p>
+          </div>
+
+          <div class="info-item">
+            <label>Email</label>
+            <p>{{ email }}</p>
+          </div>
+
+          <div class="info-item">
+            <label>Phone</label>
+            <p *ngIf="!isEditing">{{ phone || 'Not added yet' }}</p>
+            <input *ngIf="isEditing" type="tel" [(ngModel)]="editForm.phone" placeholder="Add your contact number" />
+          </div>
+
+          <div class="info-item">
+            <label>Location</label>
+            <p *ngIf="!isEditing">{{ location || 'Not added yet' }}</p>
+            <input *ngIf="isEditing" type="text" [(ngModel)]="editForm.location" placeholder="Add your office or campus location" />
+          </div>
+
+          <div class="info-item">
+            <label>Assigned College</label>
+            <p>{{ college }}</p>
+          </div>
+
+          <div class="info-item">
+            <label>User ID</label>
+            <p>{{ userId || 'Not available' }}</p>
+          </div>
+
+          <div class="info-item">
+            <label>Department</label>
+            <p *ngIf="!isEditing">{{ displayDepartment }}</p>
+            <select *ngIf="isEditing" [(ngModel)]="editForm.department">
+              <option value="" disabled>Select Department</option>
+              <option *ngFor="let option of departmentOptions" [value]="option">{{ option }}</option>
+            </select>
+          </div>
+
+          <div class="info-item">
+            <label>Date Of Birth</label>
+            <p *ngIf="!isEditing">{{ dateOfBirth || 'Not added yet' }}</p>
+            <input *ngIf="isEditing" type="date" [(ngModel)]="editForm.dateOfBirth" />
+          </div>
+
+          <div class="info-item">
+            <label>Gender</label>
+            <p *ngIf="!isEditing">{{ gender || 'Not added yet' }}</p>
+            <select *ngIf="isEditing" [(ngModel)]="editForm.gender">
+              <option value="" disabled>Select Gender</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="info-item">
+            <label>Current State</label>
+            <p *ngIf="!isEditing">{{ currentState || 'Not added yet' }}</p>
+            <input *ngIf="isEditing" type="text" [(ngModel)]="editForm.currentState" placeholder="Enter current state" />
+          </div>
+
+          <div class="info-item">
+            <label>Current District</label>
+            <p *ngIf="!isEditing">{{ currentDistrict || 'Not added yet' }}</p>
+            <input *ngIf="isEditing" type="text" [(ngModel)]="editForm.currentDistrict" placeholder="Enter current district" />
+          </div>
+
+          <div class="info-item">
+            <label>Current City</label>
+            <p *ngIf="!isEditing">{{ currentCity || 'Not added yet' }}</p>
+            <input *ngIf="isEditing" type="text" [(ngModel)]="editForm.currentCity" placeholder="Enter current city" />
+          </div>
+
+          <div class="info-item" *ngIf="isEditing && editForm.department === 'Other'">
+            <label>Other Department</label>
+            <input type="text" [(ngModel)]="editForm.departmentOther" placeholder="Enter your department name" />
+          </div>
+
+          <div class="info-item">
+            <label>Joined</label>
+            <p>{{ joinedOn }}</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel-card security-panel">
+        <div class="panel-head">
+          <h2>Password & Access</h2>
+          <span class="panel-note">Use this section to change your account password.</span>
+        </div>
+
+        <div class="password-actions">
+          <button type="button" class="primary-btn" (click)="togglePasswordPanel()">
+            {{ passwordPanelOpen ? 'Close Password Panel' : 'Change Password' }}
+          </button>
+        </div>
+
+        <div class="password-panel" *ngIf="passwordPanelOpen">
+          <p *ngIf="passwordError" class="message-banner error compact">{{ passwordError }}</p>
+          <p *ngIf="passwordSuccess" class="message-banner success compact">{{ passwordSuccess }}</p>
+
+          <div class="password-grid">
+            <div class="info-item">
+              <label>Current Password</label>
+              <input type="password" [(ngModel)]="passwordForm.currentPassword" placeholder="Enter current password" />
+            </div>
+
+            <div class="info-item">
+              <label>New Password</label>
+              <input type="password" [(ngModel)]="passwordForm.newPassword" placeholder="Enter new password" />
+            </div>
+
+            <div class="info-item">
+              <label>Confirm Password</label>
+              <input type="password" [(ngModel)]="passwordForm.confirmPassword" placeholder="Confirm new password" />
+            </div>
+          </div>
+
+          <button type="button" class="primary-btn full-width" [disabled]="isChangingPassword" (click)="changePassword()">
+            {{ isChangingPassword ? 'Updating Password...' : 'Update Password' }}
+          </button>
+        </div>
+
+        <div class="account-summary">
+          <div class="summary-row">
+            <span>Role</span>
+            <strong>{{ role }}</strong>
+          </div>
+          <div class="summary-row">
+            <span>College Access</span>
+            <strong>{{ college }}</strong>
+          </div>
+          <div class="summary-row">
+            <span>Profile Photo</span>
+            <strong>{{ profileImageUrl ? 'Added' : 'Not Added' }}</strong>
+          </div>
+        </div>
+      </article>
+    </section>
+  </main>
+</div>

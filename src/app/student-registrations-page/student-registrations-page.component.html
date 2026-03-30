@@ -1,83 +1,14 @@
 <div class="registrations-shell">
-  <header class="luxury-header">
-    <div class="header-inner">
-      <button class="brand-block" type="button" (click)="navigate('dashboard')">
-        <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub">
-        <div class="brand-copy">
-          <span class="brand-name">Campus Event Hub</span>
-          <span class="eyebrow">Student Lounge</span>
-        </div>
-      </button>
-
-      <nav class="header-nav">
-        <button type="button" class="nav-link" (click)="navigate('dashboard')">Dashboard</button>
-        <button type="button" class="nav-link" (click)="navigate('events')">Events</button>
-        <button type="button" class="nav-link active">My Registrations</button>
-        <button type="button" class="nav-link" (click)="navigate('feedback')">Feedback</button>
-      </nav>
-
-      <div class="header-actions">
-        <button type="button" class="profile-chip" (click)="navigate('profile')">
-          <span class="material-icons">account_circle</span>
-          <span class="profile-chip-name">{{ studentName }}</span>
-        </button>
-        <div class="notification-wrapper" (click)="$event.stopPropagation()">
-          <button type="button" class="notification-btn" (click)="openNotifications($event)" aria-label="Notifications">
-            <span class="material-icons">notifications</span>
-            <span class="notification-badge">{{ notifications.length }}</span>
-          </button>
-
-          <div class="notification-dropdown" *ngIf="notificationsDropdownOpen">
-            <div class="notification-dropdown-head">
-              <div>
-                <p>Notifications</p>
-                <h3>Campus pulse</h3>
-              </div>
-              <span class="notification-count">{{ notifications.length }}</span>
-            </div>
-
-            <div *ngIf="notificationsLoading" class="notification-dropdown-state">Loading notifications...</div>
-
-            <div class="notification-dropdown-list" *ngIf="!notificationsLoading && notifications.length > 0">
-              <article class="notification-dropdown-card featured" *ngIf="featuredNotification as featured">
-                <span class="notification-icon material-icons">{{ featured.icon }}</span>
-                <div class="notification-copy">
-                  <div class="notification-chip-row">
-                    <span class="notification-category">{{ featured.category }}</span>
-                    <span class="notification-time">{{ formatNotificationTime(featured.createdAt) }}</span>
-                  </div>
-                  <h4>{{ featured.title }}</h4>
-                  <p>{{ featured.message }}</p>
-                </div>
-              </article>
-
-              <article class="notification-dropdown-card" *ngFor="let item of remainingNotifications; trackBy: trackNotification">
-                <span class="notification-tone" [attr.data-tone]="item.tone"></span>
-                <span class="notification-icon material-icons">{{ item.icon }}</span>
-                <div class="notification-copy">
-                  <div class="notification-chip-row">
-                    <span class="notification-category">{{ item.category }}</span>
-                    <span class="notification-time">{{ formatNotificationTime(item.createdAt) }}</span>
-                  </div>
-                  <h4>{{ item.title }}</h4>
-                  <p>{{ item.message }}</p>
-                </div>
-              </article>
-            </div>
-
-            <div class="notification-dropdown-state" *ngIf="!notificationsLoading && notifications.length === 0">
-              No notifications right now.
-            </div>
-          </div>
-        </div>
-
-        <button type="button" class="logout-btn" (click)="logout()">
-          <span class="material-icons">logout</span>
-          <span>Logout</span>
-        </button>
-      </div>
-    </div>
-  </header>
+  <app-student-header
+    activeTab="registrations"
+    [studentName]="studentName"
+    [studentPhotoUrl]="profilePhotoUrl"
+    notificationMode="dropdown"
+    [notifications]="notifications"
+    [notificationsLoading]="notificationsLoading"
+    [notificationsOpen]="notificationsDropdownOpen"
+    (notificationToggle)="openNotifications($event)"
+  />
 
   <main class="registrations-main">
     <section class="hero-card">
@@ -133,122 +64,25 @@
       </div>
     </section>
 
-    <section *ngIf="loading" class="state-card">Loading your registrations...</section>
+    <section *ngIf="loading && !hasVisibleRegistrationsData" class="state-card">Loading your registrations...</section>
 
-    <section class="registration-grid" *ngIf="!loading && filteredRegistrations.length > 0">
+    <section class="registration-grid" *ngIf="filteredRegistrations.length > 0">
       <article class="registration-card" *ngFor="let registration of filteredRegistrations; trackBy: trackById">
-        <div class="card-top">
-          <div class="card-title-wrap">
-            <div class="poster-fallback" *ngIf="!registration.event?.posterDataUrl">{{ registration.eventName.charAt(0) }}</div>
-            <img
-              *ngIf="registration.event?.posterDataUrl"
-              [src]="registration.event?.posterDataUrl || ''"
-              [alt]="registration.eventName"
-              class="event-poster"
-            >
-            <div>
-              <h3>{{ registration.eventName }}</h3>
-              <p>{{ registration.event?.location || 'Location TBA' }}</p>
-            </div>
-          </div>
+        <div class="registration-card-wrap">
           <span class="status-pill" [attr.data-tone]="getRegistrationTone(registration.status)">
             {{ getRegistrationStatusLabel(registration.status) }}
           </span>
-        </div>
 
-        <div class="detail-grid">
-          <span><span class="material-icons">calendar_today</span>{{ registration.event?.dateLabel || (registration.createdAt | date: 'mediumDate') }}</span>
-          <span><span class="material-icons">apartment</span>{{ registration.college || 'College not available' }}</span>
-          <span><span class="material-icons">mail</span>{{ registration.email }}</span>
-          <span><span class="material-icons">flag</span>{{ registration.status }}</span>
-        </div>
-
-        <p class="reason" *ngIf="registration.rejectionReason">
-          <strong>Update:</strong> {{ registration.rejectionReason }}
-        </p>
-
-        <div class="card-actions" *ngIf="!shouldShowRating(registration)">
-          <button type="button" class="ghost-btn" (click)="navigate('events')">
-            Explore Events
-          </button>
-          <button
-            type="button"
-            class="cancel-btn"
-            [disabled]="actionEventId === registration.eventId"
-            (click)="cancelRegistration(registration)"
-          >
-            {{ actionEventId === registration.eventId ? 'Cancelling...' : 'Cancel Registration' }}
-          </button>
-        </div>
-
-        <div class="card-actions rating-actions" *ngIf="shouldShowRating(registration)">
-          <div class="rating-wrap" *ngIf="!getSavedRating(registration.eventId); else ratedState">
-            <div class="rating-head">
-              <span class="material-icons">star_rate</span>
-              <strong>Rate this event</strong>
-              <span class="rating-sub">after attending</span>
-            </div>
-
-            <div class="star-row" role="group" [attr.aria-label]="'Rate ' + registration.eventName">
-              <button
-                *ngFor="let value of ratingChoices"
-                type="button"
-                class="star-btn"
-                [class.active]="value <= getDraftRating(registration.eventId)"
-                (click)="setDraftRating(registration.eventId, value)"
-                [attr.aria-label]="'Rate ' + value + ' out of 5'"
-              >
-                <span class="material-icons">{{ value <= getDraftRating(registration.eventId) ? 'star' : 'star_border' }}</span>
-              </button>
-            </div>
-
-            <button
-              type="button"
-              class="submit-rating-btn"
-              [disabled]="getDraftRating(registration.eventId) < 1 || reviewActionEventId === registration.eventId"
-              (click)="submitRating(registration)"
-            >
-              {{ reviewActionEventId === registration.eventId ? 'Submitting...' : 'Submit Rating' }}
-            </button>
-          </div>
-
-          <ng-template #ratedState>
-            <div class="rated-wrap">
-              <div class="rated-chip">
-                <span class="material-icons">verified</span>
-                Rated {{ getSavedRating(registration.eventId) }}/5
-              </div>
-              <button type="button" class="feedback-btn" (click)="toggleFeedback(registration.eventId)">
-                {{ feedbackOpenEventIds.has(registration.eventId) ? 'Close' : (savedFeedbackByEventId[registration.eventId] ? 'Edit Feedback' : 'Add Feedback') }}
-              </button>
-            </div>
-
-            <div class="feedback-wrap" *ngIf="feedbackOpenEventIds.has(registration.eventId)">
-              <textarea
-                class="feedback-textarea"
-                rows="3"
-                placeholder="Write your feedback..."
-                [(ngModel)]="feedbackDraftByEventId[registration.eventId]"
-              ></textarea>
-              <button
-                type="button"
-                class="submit-feedback-btn"
-                [disabled]="(feedbackDraftByEventId[registration.eventId] || '').trim().length < 3 || reviewActionEventId === registration.eventId"
-                (click)="submitFeedback(registration)"
-              >
-                {{
-                  reviewActionEventId === registration.eventId
-                    ? 'Saving...'
-                    : (feedbackSavedEventIds.has(registration.eventId) ? 'Saved' : 'Save Feedback')
-                }}
-              </button>
-            </div>
-          </ng-template>
+          <app-event-card
+            [event]="getRegistrationEventCard(registration)"
+            [showRegisterButton]="false"
+            [showRatingSummary]="false"
+          ></app-event-card>
         </div>
       </article>
     </section>
 
-    <section *ngIf="!loading && filteredRegistrations.length === 0" class="state-card empty-card">
+    <section *ngIf="!loading && !hasVisibleRegistrationsData && filteredRegistrations.length === 0" class="state-card empty-card">
       <span class="material-icons">inventory_2</span>
       <h3>No registrations matched your filters</h3>
       <p>Try switching status or date filters, or register for a new event.</p>

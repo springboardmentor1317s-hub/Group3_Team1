@@ -1,81 +1,14 @@
 <div class="student-shell">
-  <header class="luxury-header">
-    <div class="header-inner">
-      <button class="brand-block" type="button" (click)="navigateTab('dashboard')">
-        <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub">
-        <div class="brand-copy">
-          <span class="brand-name">Campus Event Hub</span>
-          <span class="eyebrow">Student Lounge</span>
-        </div>
-      </button>
-
-      <nav class="header-nav">
-        <button type="button" class="nav-link active" (click)="navigateTab('dashboard')">Dashboard</button>
-        <button type="button" class="nav-link" (click)="navigateTab('events')">Events</button>
-        <button type="button" class="nav-link" (click)="navigateTab('registrations')">My Registrations</button>
-        <button type="button" class="nav-link" (click)="navigateTab('feedback')">Feedback</button>
-      </nav>
-
-      <div class="header-actions">
-        <button type="button" class="profile-chip" (click)="openProfile()">
-          <span class="material-icons">account_circle</span>
-          <span class="profile-chip-name">{{ studentName }}</span>
-        </button>
-        <div class="notification-wrapper" (click)="$event.stopPropagation()">
-        <button type="button" class="notification-btn" (click)="openNotifications($event)" aria-label="Notifications">
-          <span class="material-icons">notifications</span>
-          <span class="notification-badge">{{ notifications.length }}</span>
-        </button>
-        <div class="notification-dropdown" *ngIf="notificationsDropdownOpen">
-          <div class="notification-dropdown-head">
-            <div>
-              <p>Notifications</p>
-              <h3>Campus pulse</h3>
-            </div>
-            <span class="notification-count">{{ notifications.length }}</span>
-          </div>
-
-          <div *ngIf="notificationsLoading" class="notification-dropdown-state">Loading notifications...</div>
-
-          <div class="notification-dropdown-list" *ngIf="!notificationsLoading && notifications.length > 0">
-            <article class="notification-dropdown-card featured" *ngIf="featuredNotification as featured">
-              <span class="notification-icon material-icons">{{ featured.icon }}</span>
-              <div class="notification-copy">
-                <div class="notification-chip-row">
-                  <span class="notification-category">{{ featured.category }}</span>
-                  <span class="notification-time">{{ formatNotificationTime(featured.createdAt) }}</span>
-                </div>
-                <h4>{{ featured.title }}</h4>
-                <p>{{ featured.message }}</p>
-              </div>
-            </article>
-
-            <article class="notification-dropdown-card" *ngFor="let item of remainingNotifications; trackBy: trackNotification">
-              <span class="notification-tone" [attr.data-tone]="item.tone"></span>
-              <span class="notification-icon material-icons">{{ item.icon }}</span>
-              <div class="notification-copy">
-                <div class="notification-chip-row">
-                  <span class="notification-category">{{ item.category }}</span>
-                  <span class="notification-time">{{ formatNotificationTime(item.createdAt) }}</span>
-                </div>
-                <h4>{{ item.title }}</h4>
-                <p>{{ item.message }}</p>
-              </div>
-            </article>
-          </div>
-
-          <div class="notification-dropdown-state" *ngIf="!notificationsLoading && notifications.length === 0">
-            No notifications right now.
-          </div>
-        </div>
-        </div>
-        <button type="button" class="logout-btn" (click)="logout()">
-          <span class="material-icons">logout</span>
-          <span>Logout</span>
-        </button>
-      </div>
-    </div>
-  </header>
+  <app-student-header
+    [activeTab]="activeHeaderTab"
+    [studentName]="studentName"
+    [studentPhotoUrl]="profilePhotoUrl"
+    notificationMode="dropdown"
+    [notifications]="notifications"
+    [notificationsLoading]="notificationsLoading"
+    [notificationsOpen]="notificationsDropdownOpen"
+    (notificationToggle)="openNotifications($event)"
+  />
 
   <main class="dashboard-main">
     <section class="hero-panel">
@@ -154,126 +87,27 @@
         </div>
       </div>
 
-      <div *ngIf="loading" class="loading-card">Loading events and registrations...</div>
+      <div *ngIf="loading && !hasVisibleEventsData" class="loading-card">Loading events and registrations...</div>
 
-      <div class="event-grid" *ngIf="!loading && displayedEvents.length > 0">
-        <article class="event-card" *ngFor="let event of displayedEvents; trackBy: trackById">
-          <div
-            class="event-poster"
-            [style.background-image]="event.imageUrl ? 'linear-gradient(180deg, rgba(9, 17, 40, 0.1), rgba(9, 17, 40, 0.7)), url(' + event.imageUrl + ')' : null"
-          ></div>
+      <div class="event-grid" *ngIf="displayedEvents.length > 0">
+        <div class="event-card-stack" *ngFor="let event of displayedEvents; trackBy: trackById">
+          <app-event-card
+            [event]="event"
+            [registerLabel]="getRegisterLabel(event)"
+            [registerDisabled]="isRegisterDisabled(event)"
+            [showRegisterButton]="!shouldShowRating(event)"
+            [showRatingSummary]="isEventCompleted(event)"
+            [ratingAverage]="getEventRatingAverage(event.id)"
+            [ratingCount]="getEventRatingCount(event.id)"
+            [ratingSummaryLoading]="isRatingSummaryLoading(event.id)"
+            (registerClicked)="registerForEvent(event)"
+          ></app-event-card>
 
-          <div class="event-body">
-            <div class="event-topline">
-              <span class="event-seat-pill">{{ event.registrations }}/{{ event.maxAttendees }} seats</span>
-              <span class="event-contact-pill"><span class="material-icons">call</span>{{ event.contact }}</span>
-            </div>
 
-            <h3>{{ event.title }}</h3>
-            <p class="event-description" [class.expanded]="isEventDescriptionExpanded(event.id)">
-              {{ event.description }}
-            </p>
-            <button
-              *ngIf="event.description.length > 120"
-              type="button"
-              class="description-toggle"
-              (click)="toggleEventDescription(event.id)"
-            >
-              {{ isEventDescriptionExpanded(event.id) ? 'View less' : 'View more' }}
-            </button>
-
-            <div class="event-highlights">
-              <span class="event-badge subtle">{{ event.category }}</span>
-              <span><span class="material-icons">calendar_today</span>{{ event.dateLabel }}</span>
-              <span><span class="material-icons">schedule</span>{{ event.timeLabel }}</span>
-              <span><span class="material-icons">location_on</span>{{ event.location }}</span>
-              <span><span class="material-icons">apartment</span>{{ event.collegeName }}</span>
-              <span><span class="material-icons">shield</span>{{ event.organizer || 'Campus Event Hub' }}</span>
-            </div>
-
-            <div class="event-actions" [class.rating-mode]="shouldShowRating(event)">
-              <button type="button" class="ghost-btn" (click)="viewEvent(event)">View</button>
-
-              <ng-container *ngIf="shouldShowRating(event); else registerCta">
-                <div class="rating-wrap" *ngIf="!getSavedRating(event.id); else ratedState">
-                  <div class="rating-head">
-                    <span class="material-icons">star_rate</span>
-                    <strong>Rate this event</strong>
-                  </div>
-
-                  <div class="star-row" role="group" [attr.aria-label]="'Rate ' + event.title">
-                    <button
-                      *ngFor="let value of ratingChoices"
-                      type="button"
-                      class="star-btn"
-                      [class.active]="value <= getDraftRating(event.id)"
-                      (click)="setDraftRating(event.id, value)"
-                      [attr.aria-label]="'Rate ' + value + ' out of 5'"
-                    >
-                      <span class="material-icons">{{ value <= getDraftRating(event.id) ? 'star' : 'star_border' }}</span>
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    class="submit-rating-btn"
-                    [disabled]="getDraftRating(event.id) < 1 || reviewActionEventId === event.id"
-                    (click)="submitRating(event)"
-                  >
-                    {{ reviewActionEventId === event.id ? 'Submitting...' : 'Submit Rating' }}
-                  </button>
-                </div>
-
-                <ng-template #ratedState>
-                  <div class="rated-wrap">
-                    <div class="rated-chip">
-                      <span class="material-icons">verified</span>
-                      Rated {{ getSavedRating(event.id) }}/5
-                    </div>
-                    <button type="button" class="feedback-btn" (click)="toggleFeedback(event.id)">
-                      {{ feedbackOpenEventIds.has(event.id) ? 'Close' : (savedFeedbackByEventId[event.id] ? 'Edit Feedback' : 'Add Feedback') }}
-                    </button>
-                  </div>
-
-                  <div class="feedback-wrap" *ngIf="feedbackOpenEventIds.has(event.id)">
-                    <textarea
-                      class="feedback-textarea"
-                      rows="3"
-                      placeholder="Write your feedback..."
-                      [(ngModel)]="feedbackDraftByEventId[event.id]"
-                    ></textarea>
-                    <button
-                      type="button"
-                      class="submit-feedback-btn"
-                      [disabled]="(feedbackDraftByEventId[event.id] || '').trim().length < 3 || reviewActionEventId === event.id"
-                      (click)="submitFeedback(event)"
-                    >
-                      {{
-                        reviewActionEventId === event.id
-                          ? 'Saving...'
-                          : (feedbackSavedEventIds.has(event.id) ? 'Saved' : 'Save Feedback')
-                      }}
-                    </button>
-                  </div>
-                </ng-template>
-              </ng-container>
-
-              <ng-template #registerCta>
-                <button
-                  type="button"
-                  class="solid-btn"
-                  [disabled]="event.status !== 'Open' || actionEventId === event.id"
-                  (click)="registerForEvent(event)"
-                >
-                  {{ getRegisterLabel(event) }}
-                </button>
-              </ng-template>
-            </div>
-          </div>
-        </article>
+        </div>
       </div>
 
-      <div *ngIf="!loading && filteredEvents.length === 0" class="empty-state">
+      <div *ngIf="!loading && !hasVisibleEventsData && filteredEvents.length === 0" class="empty-state">
         <span class="material-icons">event_busy</span>
         <h3>No events found</h3>
         <p>Try changing your search, category, or date filters.</p>
@@ -288,9 +122,9 @@
         <button type="button" class="view-all-btn" (click)="openRegistrationsPage()">Open Full Page</button>
       </div>
 
-      <div *ngIf="registrationsLoading" class="loading-card">Loading your registrations summary...</div>
+      <div *ngIf="registrationsLoading && !hasVisibleRegistrationsData" class="loading-card">Loading your registrations summary...</div>
 
-      <div class="registrations-spotlight" *ngIf="!registrationsLoading">
+      <div class="registrations-spotlight" *ngIf="!registrationsLoading || hasVisibleRegistrationsData">
         <article class="registration-summary-card">
           <span class="summary-icon material-icons">inventory_2</span>
           <div>
@@ -316,7 +150,7 @@
         </article>
       </div>
 
-      <div class="registrations-cta" *ngIf="!registrationsLoading">
+      <div class="registrations-cta" *ngIf="!registrationsLoading || hasVisibleRegistrationsData">
         <div>
           <p class="section-kicker">Dedicated Registrations Hub</p>
           <h3>Use the new page for filters, status tracking, and full registration history.</h3>
@@ -326,21 +160,130 @@
       </div>
     </section>
 
-    <section class="panel feedback-panel" id="feedback-section">
+    <app-student-admit-cards-panel></app-student-admit-cards-panel>
+
+    <section class="panel feedback-panel" id="query-section">
       <div class="panel-head">
         <div>
-          <p class="section-kicker">We Value Your Input</p>
-          <h2>Feedback</h2>
+          <p class="section-kicker">Student Support Desk</p>
+          <h2>Student Query Section</h2>
         </div>
       </div>
 
-      <div class="feedback-card">
-        <div>
-          <h3>Share your event experience</h3>
-          <p>For event suggestions, issue reporting, or platform feedback, contact the campus team directly from your registered email.</p>
+      <div class="query-layout">
+        <div class="feedback-card query-compose-card">
+          <div>
+            <h3>Raise a query</h3>
+            <p>Submit one active query at a time. You can delete it before resolution or request escalation if it stays unresolved for many days.</p>
+          </div>
+
+          <div class="query-form" *ngIf="!supportQueryLoading">
+            <p class="query-error" *ngIf="supportQueryErrorMessage">{{ supportQueryErrorMessage }}</p>
+
+            <label class="query-field">
+              <span>Query Subject</span>
+              <input
+                type="text"
+                [(ngModel)]="supportQuerySubject"
+                [disabled]="hasOpenSupportQuery || supportQuerySubmitting"
+                placeholder="Example: Registration issue, dashboard bug, event access problem"
+              >
+            </label>
+
+            <label class="query-field">
+              <span>Your Query</span>
+              <textarea
+                rows="5"
+                [(ngModel)]="supportQueryMessage"
+                [disabled]="hasOpenSupportQuery || supportQuerySubmitting"
+                placeholder="Describe your issue or query clearly so it can be tracked from the database."
+              ></textarea>
+            </label>
+
+            <div class="query-form-actions">
+              <button
+                type="button"
+                class="submit-feedback-btn"
+                [disabled]="!canSubmitSupportQuery"
+                (click)="submitSupportQuery()"
+              >
+                Send Query
+              </button>
+              <p class="query-hint" *ngIf="hasOpenSupportQuery">You already have one active query. Resolve or delete it before sending another.</p>
+            </div>
+          </div>
+
+          <div class="loading-card" *ngIf="supportQueryLoading">Loading your current query status...</div>
         </div>
 
-        <a class="feedback-link" href="mailto:support@campuseventhub.com?subject=Student%20Feedback">Send Feedback</a>
+        <div class="feedback-card query-status-card" *ngIf="!supportQueryLoading">
+          <div class="query-status-head">
+            <div>
+              <h3>Current Query Status</h3>
+              <p *ngIf="supportQuery">Live database-backed status for your latest active query.</p>
+              <p *ngIf="!supportQuery && latestResolvedSupportQuery">No active query right now. Your last resolved query is shown below.</p>
+              <p *ngIf="!supportQuery && !latestResolvedSupportQuery">No query submitted yet. Your first query will appear here after you send it.</p>
+            </div>
+            <span class="status-pill-table" *ngIf="supportQuery" [attr.data-tone]="supportQuery.status === 'RESOLVED' ? 'approved' : supportQuery.status === 'IN_PROGRESS' ? 'pending' : 'pending'">
+              {{ getSupportQueryStatusLabel(supportQuery.status) }}
+            </span>
+          </div>
+
+          <div class="query-thread" *ngIf="supportQuery as currentQuery; else resolvedQueryPreview">
+            <article class="query-bubble student">
+              <span class="query-bubble-label">Your Query</span>
+              <strong>{{ currentQuery.subject }}</strong>
+              <p>{{ currentQuery.message }}</p>
+              <small>Submitted {{ currentQuery.createdAt | date:'medium' }}</small>
+            </article>
+
+            <article class="query-bubble system">
+              <span class="query-bubble-label">System Status</span>
+              <strong>{{ getSupportQueryStatusLabel(currentQuery.status) }}</strong>
+              <p>{{ currentQuery.progressNote || 'Your query is still in queue.' }}</p>
+              <small>{{ currentQuery.ageInDays }} day(s) old</small>
+            </article>
+
+            <article class="query-bubble admin" *ngIf="currentQuery.adminResponse">
+              <span class="query-bubble-label">Admin Message</span>
+              <p>{{ currentQuery.adminResponse }}</p>
+            </article>
+
+            <div class="query-status-actions">
+              <button
+                type="button"
+                class="ghost-btn"
+                [disabled]="!currentQuery.canDelete || supportQueryActionInProgress"
+                (click)="deleteSupportQuery()"
+              >
+                Delete Query
+              </button>
+              <button
+                type="button"
+                class="solid-btn"
+                [disabled]="!currentQuery.canEscalate || supportQueryActionInProgress"
+                (click)="escalateSupportQuery()"
+              >
+                {{ currentQuery.escalationRequested ? 'Escalation Requested' : 'Request Escalation' }}
+              </button>
+            </div>
+          </div>
+
+          <ng-template #resolvedQueryPreview>
+            <div class="query-thread" *ngIf="latestResolvedSupportQuery as resolvedQuery">
+              <article class="query-bubble student">
+                <span class="query-bubble-label">Last Resolved Query</span>
+                <strong>{{ resolvedQuery.subject }}</strong>
+                <p>{{ resolvedQuery.message }}</p>
+              </article>
+              <article class="query-bubble admin">
+                <span class="query-bubble-label">Resolution</span>
+                <p>{{ resolvedQuery.adminResponse || resolvedQuery.progressNote || 'Marked as resolved.' }}</p>
+                <small>Updated {{ resolvedQuery.updatedAt | date:'medium' }}</small>
+              </article>
+            </div>
+          </ng-template>
+        </div>
       </div>
     </section>
   </main>

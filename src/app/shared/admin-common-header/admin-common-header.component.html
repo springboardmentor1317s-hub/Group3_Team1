@@ -1,0 +1,86 @@
+<header class="luxury-header">
+  <div class="header-inner">
+    <button class="brand-block" type="button" (click)="brandClick.emit()">
+      <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub" />
+      <div class="brand-copy">
+        <span class="brand-name">
+          <span class="brand-campus">Campus</span>
+          <span class="brand-eventhub">Event Hub</span>
+        </span>
+        <span class="brand-role">College Admin Dashboard</span>
+      </div>
+    </button>
+
+    <nav class="header-nav">
+      <button class="nav-link" [class.active]="activeTab === 'overview'" (click)="setTab('overview')">Dashboard</button>
+      <button class="nav-link" [class.active]="activeTab === 'events'" (click)="setTab('events')">Manage Events</button>
+      <button class="nav-link" [class.active]="activeTab === 'registrations'" (click)="setTab('registrations')">Registrations</button>
+    </nav>
+
+    <div class="header-actions">
+      <input
+        *ngIf="showSearch"
+        #headerSearchInput
+        class="top-search"
+        type="text"
+        [ngModel]="searchQuery"
+        (ngModelChange)="onSearchQueryChange($event)"
+        [placeholder]="searchPlaceholder"
+      />
+      <button *ngIf="showSearch" type="button" class="icon-btn" aria-label="Search" title="Search" (click)="triggerSearch()">
+        <span class="material-icons">search</span>
+      </button>
+
+      <div class="notification-wrapper" *ngIf="showNotifications" (click)="$event.stopPropagation()">
+        <button class="notification-btn" aria-label="Notifications" title="Notifications" (click)="notificationsTriggered.emit()">
+          <span class="material-icons">notifications</span>
+          <span class="notification-badge" *ngIf="unreadNotificationCount > 0">
+            {{ unreadNotificationCount > 99 ? '99+' : unreadNotificationCount }}
+          </span>
+        </button>
+        <div class="notification-panel" *ngIf="notificationsOpen">
+          <div class="notification-header">
+            <div class="notification-title-wrap">
+              <span class="notification-title">New Registrations</span>
+              <span class="notification-count-chip">{{ notifications.length }}</span>
+            </div>
+            <button type="button" class="notification-clear-btn" *ngIf="notifications.length > 0" (click)="clearNotifications.emit()">
+              Clear All
+            </button>
+          </div>
+          <div class="notification-list" *ngIf="notifications.length > 0; else noNotifications">
+            <div class="notification-item" *ngFor="let notification of notifications | slice:0:10">
+              <div class="notification-item-icon">
+                <span class="material-icons">notifications_active</span>
+              </div>
+              <div class="notification-item-copy">
+                <p>{{ notification.message }}</p>
+                <span>{{ notification.timeLabel }}</span>
+              </div>
+            </div>
+          </div>
+          <ng-template #noNotifications>
+            <div class="notification-empty">No new student registrations.</div>
+          </ng-template>
+        </div>
+      </div>
+
+      <button *ngIf="showExport" class="icon-btn" aria-label="Export" title="Export" (click)="exportTriggered.emit()">
+        <span class="material-icons">download</span>
+      </button>
+
+      <a *ngIf="showProfileLink" class="profile-chip profile-chip-link" routerLink="/admin-profile">
+        <div class="profile-chip-avatar-wrap">
+          <img *ngIf="userAvatarUrl" [src]="userAvatarUrl" alt="Profile photo" />
+          <span *ngIf="!userAvatarUrl" class="profile-chip-fallback">{{ avatarText }}</span>
+        </div>
+        <span class="profile-chip-name">{{ userName }}</span>
+      </a>
+
+      <button *ngIf="showLogout" type="button" class="logout-btn" (click)="logoutTriggered.emit()">
+        <span class="material-icons">logout</span>
+        <span>Logout</span>
+      </button>
+    </div>
+  </div>
+</header>

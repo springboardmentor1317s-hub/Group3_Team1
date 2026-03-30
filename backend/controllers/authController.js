@@ -1,11 +1,29 @@
 const User = require("../models/User");
+const StudentProfileDetails = require("../models/StudentProfileDetails");
+const AdminProfileDetails = require("../models/AdminProfileDetails");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const Event = require("../models/Event");
 const Registration = require("../models/Registration");
+const StudentQuery = require("../models/StudentQuery");
+const { buildMergedStudentProfile } = require("../utils/studentProfile");
+const { buildMergedAdminProfile, ensureAdminProfileDetails } = require("../utils/adminProfile");
 
 function normalizeText(value) {
   return String(value || "").trim().toLowerCase();
+}
+
+function isAdminRole(role) {
+  const normalized = normalizeText(role);
+  return normalized === "college_admin" || normalized === "admin";
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
+}
+
+function isValidUserId(value) {
+  return /^(?=.{3,40}$)[a-zA-Z0-9](?:[a-zA-Z0-9._-]*[a-zA-Z0-9])?$/.test(String(value || "").trim());
 }
 
 function toNotificationDate(value) {
@@ -33,28 +51,20 @@ function buildNotification(id, title, message, tone, createdAt, icon, category) 
   };
 }
 
-function formatProfile(user) {
-  return {
-    id: String(user._id),
-    name: user.name,
-    userId: user.userId,
-    email: user.email,
-    role: user.role,
-    college: user.college || "",
-    adminApprovalStatus: user.adminApprovalStatus || "approved",
-    adminRejectionReason: user.adminRejectionReason || "",
-    createdAt: user.createdAt,
-    updatedAt: user.updatedAt
-  };
+function normalizeRegistrationStatus(status) {
+  const normalized = String(status || "").trim().toUpperCase();
+  if (normalized === "APPROVED") return "APPROVED";
+  if (normalized === "REJECTED") return "REJECTED";
+  return "PENDING";
 }
 
 function determineEventStatus(event, isRegistered) {
-  const maxAttendees = event.maxAttendees || event.participants || 100;
+  const maxAttendees = event.maxAttendees ?? null;
   const registrations = event.registrations || 0;
 
   if (event.status === "Past") return "Closed";
   if (isRegistered) return "Registered";
-  if (registrations >= maxAttendees) return "Full";
+  if (typeof maxAttendees === "number" && maxAttendees > 0 && registrations >= maxAttendees) return "Full";
   return "Open";
 }
 
@@ -80,13 +90,14 @@ function mapDashboardEvent(event, registeredSet) {
     contact: event.contact || "Contact admin",
     status: determineEventStatus(event, isRegistered),
     registrations: event.registrations || 0,
-    maxAttendees: event.maxAttendees || event.participants || 100,
+    maxAttendees: event.maxAttendees ?? null,
     collegeName: event.collegeName || "Campus Event Hub"
   };
 }
 
 function mapRegistration(registration, event) {
   const eventDate = event?.dateTime ? new Date(event.dateTime) : null;
+  const normalizedStatus = normalizeRegistrationStatus(registration.status);
 
   return {
     id: String(registration._id),
@@ -96,7 +107,7 @@ function mapRegistration(registration, event) {
     studentName: registration.studentName,
     email: registration.email,
     college: registration.college,
-    status: registration.status,
+    status: normalizedStatus,
     rejectionReason: registration.rejectionReason || "",
     approvedAt: registration.approvedAt || null,
     rejectedAt: registration.rejectedAt || null,
@@ -114,7 +125,7 @@ function mapRegistration(registration, event) {
       posterDataUrl: event.posterDataUrl || null,
       status: event.status,
       registrations: event.registrations || 0,
-      maxAttendees: event.maxAttendees || event.participants || 100,
+      maxAttendees: event.maxAttendees ?? null,
       dateLabel: eventDate && !Number.isNaN(eventDate.getTime())
         ? eventDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
         : event?.dateTime || ""
@@ -122,7 +133,7 @@ function mapRegistration(registration, event) {
   };
 }
 
-function buildStudentNotifications(user, registrations, events, eventMap, approvedCount, pendingCount) {
+function buildStudentNotifications(user, registrations, events, eventMap, approvedCount, pendingCount, supportQueries = []) {
   const notifications = [];
   const userCollege = normalizeText(user.college);
   const now = Date.now();
@@ -140,10 +151,11 @@ function buildStudentNotifications(user, registrations, events, eventMap, approv
   );
 
   registrations.forEach((registration) => {
+    const normalizedStatus = normalizeRegistrationStatus(registration.status);
     const event = eventMap.get(String(registration.eventId));
     const eventName = registration.eventName || event?.name || "your event";
 
-    if (registration.status === "APPROVED") {
+    if (normalizedStatus === "APPROVED") {
       notifications.push(
         buildNotification(
           `registration-approved-${registration._id}`,
@@ -158,7 +170,7 @@ function buildStudentNotifications(user, registrations, events, eventMap, approv
       return;
     }
 
-    if (registration.status === "REJECTED") {
+    if (normalizedStatus === "REJECTED") {
       notifications.push(
         buildNotification(
           `registration-rejected-${registration._id}`,
@@ -216,16 +228,54 @@ function buildStudentNotifications(user, registrations, events, eventMap, approv
       );
     });
 
+  (supportQueries || [])
+    .filter((query) => !query.deletedAt)
+    .forEach((query) => {
+      if (query.adminResponse && query.adminResponseUpdatedAt) {
+        notifications.push(
+          buildNotification(
+            `query-reply-${query._id}`,
+            "Reply on your query",
+            query.subject
+              ? `Admin replied to your query: ${query.subject}`
+              : "Admin replied to your support query.",
+            "info",
+            query.adminResponseUpdatedAt,
+            "support_agent",
+            "approval"
+          )
+        );
+      }
+
+      if (query.status === "RESOLVED") {
+        notifications.push(
+          buildNotification(
+            `query-resolved-${query._id}`,
+            "Query resolved",
+            query.subject
+              ? `Your query has been marked resolved: ${query.subject}`
+              : "Your support query has been marked resolved.",
+            "success",
+            query.updatedAt || query.adminResponseUpdatedAt || query.createdAt,
+            "task_alt",
+            "approval"
+          )
+        );
+      }
+    });
+
   return notifications
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 12);
 }
 
 async function buildStudentDashboardPayload(userId) {
-  const [user, events, registrations] = await Promise.all([
+  const [user, details, events, registrations, supportQueries] = await Promise.all([
     User.findById(userId).select("-password"),
+    StudentProfileDetails.findOne({ user: userId }).lean(),
     Event.find().sort({ createdAt: -1 }),
-    Registration.find({ studentId: String(userId) }).sort({ createdAt: -1 })
+    Registration.find({ studentId: String(userId) }).sort({ createdAt: -1 }),
+    StudentQuery.find({ student: userId, deletedAt: null }).sort({ updatedAt: -1 }).limit(10).lean()
   ]);
 
   if (!user) {
@@ -255,17 +305,29 @@ async function buildStudentDashboardPayload(userId) {
   });
 
   const eventMap = new Map(enrichedEvents.map((event) => [String(event._id), event]));
-  const registeredSet = new Set(registrations.filter((item) => item.status !== "REJECTED").map((item) => String(item.eventId)));
+  const registeredSet = new Set(
+    registrations
+      .filter((item) => normalizeRegistrationStatus(item.status) !== "REJECTED")
+      .map((item) => String(item.eventId))
+  );
 
   const dashboardEvents = enrichedEvents.map((event) => mapDashboardEvent(event, registeredSet));
   const dashboardRegistrations = registrations.map((registration) => mapRegistration(registration, eventMap.get(String(registration.eventId))));
-  const approvedCount = registrations.filter((item) => item.status === "APPROVED").length;
-  const pendingCount = registrations.filter((item) => item.status === "PENDING").length;
+  const approvedCount = registrations.filter((item) => normalizeRegistrationStatus(item.status) === "APPROVED").length;
+  const pendingCount = registrations.filter((item) => normalizeRegistrationStatus(item.status) === "PENDING").length;
 
-  const notifications = buildStudentNotifications(user, registrations, enrichedEvents, eventMap, approvedCount, pendingCount);
+  const notifications = buildStudentNotifications(
+    user,
+    registrations,
+    enrichedEvents,
+    eventMap,
+    approvedCount,
+    pendingCount,
+    supportQueries
+  );
 
   return {
-    profile: formatProfile(user),
+    profile: buildMergedStudentProfile(user, details),
     events: dashboardEvents,
     registrations: dashboardRegistrations,
     stats: {
@@ -319,12 +381,27 @@ exports.toggleRegistration = async (req, res) => {
 // ================= SIGNUP =================
 exports.signup = async (req, res) => {
   try {
-    const { name, userId, email, password, role, college } = req.body;
+    const { name, password, role, college } = req.body;
+    const email = normalizeText(req.body.email);
+    const normalizedRole = normalizeText(role || "student");
+    const normalizedUserId = email;
 
-    console.log("Signup request:", { name, userId, email, role, college });
+    console.log("Signup request:", { name, userId: normalizedUserId, email, role: normalizedRole, college });
+
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ message: "Name is required" });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ message: "Please provide a valid email address" });
+    }
+
+    if (!password || String(password).length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters long" });
+    }
 
     // Check if userId already exists
-    const existingUserId = await User.findOne({ userId });
+    const existingUserId = await User.findOne({ userId: normalizedUserId });
     if (existingUserId) {
       return res.status(400).json({ message: "UserId already taken" });
     }
@@ -336,20 +413,33 @@ exports.signup = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const normalizedRole = (role || "").toLowerCase();
     const isCollegeAdmin = normalizedRole === "college_admin" || normalizedRole === "admin";
 
     const user = await User.create({
-      name,
-      userId,
+      name: String(name).trim(),
+      userId: normalizedUserId,
       email,
       college,
       password: hashedPassword,
-      role,
+      role: normalizedRole,
       adminApprovalStatus: isCollegeAdmin ? "pending" : "approved",
       adminRejectionReason: "",
       adminReviewedAt: null
     });
+
+    if (normalizedRole === "student") {
+      await StudentProfileDetails.create({
+        user: user._id,
+        userId: user.userId,
+        email: user.email
+      });
+    } else if (isAdminRole(normalizedRole)) {
+      await AdminProfileDetails.create({
+        user: user._id,
+        userId: user.userId,
+        email: user.email
+      });
+    }
 
     res.status(201).json({ message: "User registered successfully" });
 
@@ -362,12 +452,23 @@ exports.signup = async (req, res) => {
 // ================= LOGIN =================
 exports.login = async (req, res) => {
   try {
-    const { identifier, password } = req.body;
+    const { password } = req.body;
+    const identifier = String(req.body.identifier || "").trim();
+    const normalizedIdentifier = normalizeText(identifier);
 
-    // identifier can be email OR userId
-    const user = await User.findOne({
-      $or: [{ email: identifier }, { userId: identifier }]
-    });
+    if (!identifier) {
+      return res.status(400).json({ message: "Email or user ID is required" });
+    }
+
+    if (!isValidEmail(identifier)) {
+      return res.status(400).json({ message: "Please provide a valid email address" });
+    }
+
+    if (!password) {
+      return res.status(400).json({ message: "Password is required" });
+    }
+
+    const user = await User.findOne({ email: normalizedIdentifier });
 
     if (!user) {
       return res.status(400).json({ message: "User not found" });
@@ -379,9 +480,24 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
+    if (user.isBlocked) {
+      return res.status(403).json({
+        message: "Your Account is Blocked",
+        accountStatus: "blocked"
+      });
+    }
+
     const normalizedRole = (user.role || "").toLowerCase();
-    const isCollegeAdmin = normalizedRole === "college_admin" || normalizedRole === "admin";
+    const isCollegeAdmin = isAdminRole(normalizedRole);
     const approvalStatus = user.adminApprovalStatus || "pending";
+    const details = normalizedRole === "student"
+      ? await StudentProfileDetails.findOne({ user: user._id }).lean()
+      : isCollegeAdmin
+        ? await ensureAdminProfileDetails(user)
+        : null;
+    const mergedProfile = normalizedRole === "student"
+      ? buildMergedStudentProfile(user, details)
+      : buildMergedAdminProfile(user, details);
 
     if (isCollegeAdmin && approvalStatus === "pending") {
       return res.status(403).json({
@@ -411,6 +527,8 @@ exports.login = async (req, res) => {
       userId: user.userId,
       email: user.email,
       college: user.college,
+      profileImageUrl: user.profileImageUrl || "",
+      profileCompleted: Boolean(mergedProfile?.profileCompleted),
       adminApprovalStatus: user.adminApprovalStatus || "approved",
       adminRejectionReason: user.adminRejectionReason || ""
     });
@@ -428,7 +546,13 @@ exports.getMe = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json(formatProfile(user));
+    if (isAdminRole(user.role)) {
+      const details = await ensureAdminProfileDetails(user);
+      return res.json(buildMergedAdminProfile(user, details));
+    }
+
+    const details = await StudentProfileDetails.findOne({ user: req.user.id }).lean();
+    res.json(buildMergedStudentProfile(user, details));
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch profile" });
   }

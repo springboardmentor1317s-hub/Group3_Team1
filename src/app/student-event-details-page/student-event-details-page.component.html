@@ -1,0 +1,318 @@
+<div class="event-details-shell">
+  <app-student-header
+    activeTab="events"
+    [studentName]="studentName"
+    [studentPhotoUrl]="profilePhotoUrl"
+  />
+
+  <main class="event-details-main">
+    <p *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</p>
+    <section *ngIf="loading" class="state-card">Loading event details...</section>
+
+    <ng-container *ngIf="!loading && event as details">
+      <section class="hero-card" [style.background-image]="cardBackground">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+          <span
+            class="status-pill"
+            [class.registered]="statusLabel === 'Registered' || statusLabel === 'Approved'"
+            [class.pending-review]="statusLabel === 'Pending Review'"
+            [class.rejected]="statusLabel === 'Rejected'"
+            [class.closed]="statusLabel === 'Closed' || statusLabel === 'Full'"
+          >
+            {{ statusLabel }}
+          </span>
+          <h1>{{ details.title }}</h1>
+          <p>{{ details.category || 'General' }}</p>
+
+          <div class="hero-meta">
+            <span><span class="material-icons">calendar_today</span>{{ details.dateLabel }}</span>
+            <span><span class="material-icons">event_available</span>Last Registration: {{ registrationDeadlineText }}</span>
+            <span><span class="material-icons">schedule</span>{{ details.timeLabel }}</span>
+            <span><span class="material-icons">location_on</span>{{ details.location }}</span>
+          </div>
+
+          <button type="button" class="register-btn" [disabled]="registerDisabled" (click)="registerForEvent()">
+            {{ getRegisterLabel() }}
+          </button>
+        </div>
+      </section>
+
+      <section class="registration-status-card" *ngIf="currentRegistration">
+        <div class="registration-status-head">
+          <div>
+            <p class="status-kicker">Your Registration Status</p>
+            <h2>{{ currentRegistration.eventName }}</h2>
+          </div>
+          <div class="status-side-actions">
+            <span
+              class="inline-status"
+              [class.pending]="currentRegistration.status === 'PENDING'"
+              [class.approved]="currentRegistration.status === 'APPROVED'"
+              [class.rejected]="currentRegistration.status === 'REJECTED'"
+            >
+              {{ currentRegistration.status }}
+            </span>
+            <button
+              *ngIf="canDeleteCurrentRegistration()"
+              type="button"
+              class="delete-registration-btn"
+              [disabled]="actionEventId === details.id"
+              (click)="deleteCurrentRegistration()"
+            >
+              {{ actionEventId === details.id ? 'Deleting...' : 'Delete Registration' }}
+            </button>
+          </div>
+        </div>
+
+        <p *ngIf="currentRegistration.status === 'PENDING'">Your registration is waiting for admin review. Please check back soon.</p>
+        <div class="approved-registration-block" *ngIf="currentRegistration.status === 'APPROVED'">
+          <p>Your registration has been approved. You are all set for this event.</p>
+          <button
+            type="button"
+            class="download-admit-btn"
+            [disabled]="!canDownloadAdmitCard() || admitCardActionInProgress"
+            (click)="downloadAdmitCard()"
+          >
+            {{ admitCardActionInProgress ? 'Downloading...' : 'Download Admit Card' }}
+          </button>
+          <p class="admit-error" *ngIf="admitCardError">{{ admitCardError }}</p>
+        </div>
+
+        <div class="rejection-reason-card" *ngIf="currentRegistration.status === 'REJECTED'">
+          <strong>Reason For Rejection</strong>
+          <span>{{ currentRegistration.rejectionReason || 'Please update your profile details and submit again.' }}</span>
+          <button type="button" class="register-btn retry-btn" (click)="registerForEvent()">Update Details And Resubmit</button>
+        </div>
+      </section>
+
+      <section class="detail-card">
+        <h2>Event Details</h2>
+        <p>{{ eventDescriptionText }}</p>
+        <div class="detail-grid">
+          <div><span class="material-icons">apartment</span>{{ details.collegeName || 'Campus Event Hub' }}</div>
+          <div><span class="material-icons">person</span>{{ details.organizer || 'Campus Event Hub' }}</div>
+          <div><span class="material-icons">call</span>{{ details.contact }}</div>
+          <div><span class="material-icons">groups</span>{{ details.registrations }}/{{ details.maxAttendees && details.maxAttendees > 0 ? details.maxAttendees : 'Unlimited' }} seats filled</div>
+        </div>
+      </section>
+
+      <section class="feedback-card">
+        <h2>Rating & Feedback</h2>
+        <p class="feedback-subtitle">This feedback goes to admin and opens only after event completion.</p>
+
+        <section *ngIf="!canShowFeedbackPanel" class="feedback-state">
+          Feedback form will be available after this event is completed.
+        </section>
+
+        <ng-container *ngIf="canShowFeedbackPanel">
+          <p *ngIf="submitError" class="submit-error">{{ submitError }}</p>
+
+          <div class="feedback-summary" *ngIf="myFeedbackSubmitted && !feedbackEditMode">
+            <div class="summary-rating">
+              <span class="material-icons" *ngFor="let star of [1, 2, 3, 4, 5]">
+                {{ star <= feedbackDraftRating ? 'star' : 'star_border' }}
+              </span>
+            </div>
+            <p>{{ feedbackDraftText || 'No written feedback added.' }}</p>
+            <div class="summary-actions">
+              <span *ngIf="myFeedbackUpdatedAt">Updated {{ formatTime(myFeedbackUpdatedAt) }}</span>
+              <button type="button" class="secondary-btn" (click)="startFeedbackEdit()">Update</button>
+              <button
+                type="button"
+                class="secondary-btn delete-btn"
+                [disabled]="feedbackActionInProgress"
+                (click)="deleteMyFeedback()"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+
+          <div class="feedback-editor" *ngIf="!myFeedbackSubmitted || feedbackEditMode">
+            <div class="rating-row">
+              <button
+                *ngFor="let star of [1, 2, 3, 4, 5]"
+                type="button"
+                class="star-btn"
+                [class.active]="star <= feedbackDraftRating"
+                (click)="feedbackDraftRating = star"
+                [attr.aria-label]="'Rate ' + star + ' stars'"
+              >
+                <span class="material-icons">star</span>
+              </button>
+            </div>
+
+            <textarea
+              [(ngModel)]="feedbackDraftText"
+              rows="4"
+              placeholder="Write your feedback for admin..."
+            ></textarea>
+
+            <div class="feedback-actions">
+              <button
+                type="button"
+                class="comment-btn"
+                [disabled]="!canSubmitFeedback"
+                (click)="submitMyFeedback()"
+              >
+                {{ feedbackActionInProgress ? 'Saving...' : (myFeedbackSubmitted ? 'Save Update' : 'Submit Feedback') }}
+              </button>
+              <button
+                *ngIf="myFeedbackSubmitted"
+                type="button"
+                class="secondary-btn"
+                [disabled]="feedbackActionInProgress"
+                (click)="cancelFeedbackEdit()"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="secondary-btn delete-btn"
+                [disabled]="feedbackActionInProgress || (!feedbackDraftText.trim() && feedbackDraftRating === 0)"
+                (click)="deleteMyFeedback()"
+              >
+                Delete
+              </button>
+            </div>
+
+            <div class="summary-actions" *ngIf="myFeedbackSubmitted && myFeedbackUpdatedAt && feedbackEditMode">
+              <span>Updated {{ formatTime(myFeedbackUpdatedAt) }}</span>
+            </div>
+          </div>
+        </ng-container>
+      </section>
+
+      <section class="comments-card">
+        <h2>Public Comments</h2>
+        <p class="comments-subtitle">Comments are always open. Anyone can join the discussion.</p>
+
+        <div class="composer">
+          <textarea
+            [(ngModel)]="publicCommentDraft"
+            rows="3"
+            placeholder="Write a public comment..."
+          ></textarea>
+
+          <button
+            type="button"
+            class="comment-btn"
+            [disabled]="publicCommentActionInProgress || !publicCommentDraft.trim()"
+            (click)="postPublicComment()"
+          >
+            {{ publicCommentActionInProgress ? 'Posting...' : 'Post Comment' }}
+          </button>
+        </div>
+
+        <section *ngIf="commentsLoading" class="comments-state">Loading comments...</section>
+        <section *ngIf="!commentsLoading && publicComments.length === 0" class="comments-state">
+          No comments yet. Be the first one to comment.
+        </section>
+
+        <section class="comments-list" *ngIf="publicComments.length > 0">
+          <article class="comment-item" [class.admin-comment-item]="isAdminEntry(item)" *ngFor="let item of publicComments">
+            <img class="avatar-img" [src]="item.avatarUrl" [alt]="item.name">
+            <div class="comment-body">
+              <div class="comment-head" [class.admin-head]="isAdminEntry(item)">
+                <div class="author-stack">
+                  <strong>{{ getCommentAuthorDisplayName(item) }}</strong>
+                  <span class="admin-author-badge" *ngIf="isAdminEntry(item)">Admin Reply</span>
+                </div>
+                <span>{{ formatTime(item.createdAt) }}</span>
+              </div>
+              <p *ngIf="!item.isEditing">{{ item.text }}</p>
+              <div class="reply-box" *ngIf="item.isEditing">
+                <textarea [(ngModel)]="item.editDraft" rows="2" placeholder="Edit comment..."></textarea>
+                <div class="comment-actions compact">
+                  <button type="button" class="reply-submit-btn" (click)="saveEditEntry(item)">Save</button>
+                  <button type="button" class="action-btn" (click)="cancelEditEntry(item)">Cancel</button>
+                </div>
+              </div>
+
+              <div class="comment-actions">
+                <button type="button" class="action-btn" [class.active]="isLikedByMe(item)" (click)="toggleLike(item)">
+                  <span class="material-icons">{{ isLikedByMe(item) ? 'thumb_up' : 'thumb_up_off_alt' }}</span>
+                  <span>Like</span>
+                  <span *ngIf="item.likes.length > 0">({{ item.likes.length }})</span>
+                </button>
+                <button type="button" class="action-btn" (click)="toggleReplyBox(item)">
+                  <span class="material-icons">reply</span>
+                  <span>Reply</span>
+                </button>
+                <button *ngIf="canManageEntry(item)" type="button" class="action-btn" (click)="startEditEntry(item)">
+                  <span class="material-icons">edit</span>
+                  <span>Edit</span>
+                </button>
+                <button *ngIf="canManageEntry(item)" type="button" class="action-btn" (click)="deletePublicComment(item)">
+                  <span class="material-icons">delete</span>
+                  <span>Delete</span>
+                </button>
+              </div>
+
+              <div class="reply-box" *ngIf="item.replyOpen">
+                <textarea [(ngModel)]="item.replyDraft" rows="2" placeholder="Write a reply..."></textarea>
+                <button type="button" class="reply-submit-btn" (click)="postReply(item)">Post Reply</button>
+              </div>
+
+              <ng-container
+                *ngTemplateOutlet="replyThread; context: { $implicit: item.replies }"
+              ></ng-container>
+            </div>
+          </article>
+        </section>
+      </section>
+    </ng-container>
+  </main>
+
+  <ng-template #replyThread let-replies>
+    <div class="reply-list" *ngIf="replies?.length">
+      <article class="reply-item" [class.admin-comment-item]="isAdminEntry(reply)" *ngFor="let reply of replies">
+        <img class="reply-avatar-img" [src]="reply.avatarUrl" [alt]="reply.name">
+        <div class="reply-body">
+          <div class="reply-head" [class.admin-head]="isAdminEntry(reply)">
+            <div class="author-stack">
+              <strong>{{ getCommentAuthorDisplayName(reply) }}</strong>
+              <span class="admin-author-badge" *ngIf="isAdminEntry(reply)">Admin Reply</span>
+            </div>
+            <span>{{ formatTime(reply.createdAt) }}</span>
+          </div>
+          <p *ngIf="!reply.isEditing">{{ reply.text }}</p>
+          <div class="reply-box" *ngIf="reply.isEditing">
+            <textarea [(ngModel)]="reply.editDraft" rows="2" placeholder="Edit reply..."></textarea>
+            <div class="comment-actions compact">
+              <button type="button" class="reply-submit-btn" (click)="saveEditEntry(reply)">Save</button>
+              <button type="button" class="action-btn" (click)="cancelEditEntry(reply)">Cancel</button>
+            </div>
+          </div>
+
+          <div class="comment-actions compact">
+            <button type="button" class="action-btn" (click)="toggleReplyBox(reply)">
+              <span class="material-icons">reply</span>
+              <span>Reply</span>
+            </button>
+            <button *ngIf="canManageEntry(reply)" type="button" class="action-btn" (click)="startEditEntry(reply)">
+              <span class="material-icons">edit</span>
+              <span>Edit</span>
+            </button>
+            <button *ngIf="canManageEntry(reply)" type="button" class="action-btn" (click)="deleteReply(reply.id)">
+              <span class="material-icons">delete</span>
+              <span>Delete</span>
+            </button>
+          </div>
+
+          <div class="reply-box" *ngIf="reply.replyOpen">
+            <textarea [(ngModel)]="reply.replyDraft" rows="2" placeholder="Write a reply..."></textarea>
+            <button type="button" class="reply-submit-btn" (click)="postReply(reply)">Post Reply</button>
+          </div>
+
+          <ng-container
+            *ngTemplateOutlet="replyThread; context: { $implicit: reply.replies }"
+          ></ng-container>
+        </div>
+      </article>
+    </div>
+  </ng-template>
+
+  <app-site-footer></app-site-footer>
+</div>

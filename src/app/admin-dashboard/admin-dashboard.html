@@ -1,559 +1,237 @@
-﻿<div class="app" [class.dark]="isDarkMode">
-  <div class="bg-orb orb-1"></div>
-  <div class="bg-orb orb-2"></div>
-  <div class="bg-orb orb-3"></div>
+﻿<div class="app student-shell admin-shell" [class.dark]="isDarkMode">
+  <app-admin-common-header
+    [activeTab]="activeTab === 'events' ? 'events' : activeTab === 'registrations' || activeTab === 'queries' || activeTab === 'attendance' ? 'registrations' : 'overview'"
+    [userName]="userName"
+    [userAvatarUrl]="userAvatarUrl"
+    [(searchQuery)]="dashboardSearchQuery"
+    [unreadNotificationCount]="unreadNotificationCount"
+    [notificationsOpen]="showNotifications"
+    [notifications]="notifications"
+    (brandClick)="setTab('overview')"
+    (activeTabChange)="setTab($event)"
+    (searchTriggered)="onDashboardSearchClick()"
+    (notificationsTriggered)="toggleNotifications()"
+    (clearNotifications)="clearAllNotifications()"
+    (exportTriggered)="exportEvents()"
+    (logoutTriggered)="logout()"
+  ></app-admin-common-header>
 
-  <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark brand-mark--image">
-        <img src="/icon2.png" alt="CampusEventHub logo" />
-      </span>
-      <div>
-        <div class="brand-title">Campus<span class="event">Event</span>Hub</div>
-        <div class="brand-sub">Admin Dashboard</div>
-      </div>
-    </div>
-    <nav class="topnav">
-      <button class="nav-link" [class.active]="activeTab === 'overview'" (click)="setTab('overview')">Dashboard</button>
-      <button class="nav-link" (click)="openCreateModal()">Create Event</button>
-      <button class="nav-link" [class.active]="activeTab === 'events'" (click)="setTab('events')">Manage Events</button>
-      <button class="nav-link" (click)="setTab('overview')">Feedback</button>
-    </nav>
-    <div class="top-actions">
-      <input
-        #dashboardSearchInput
-        class="top-search"
-        type="text"
-        placeholder="Search..."
-        [(ngModel)]="dashboardSearchQuery"
-        (input)="applyDashboardSearch()"
-      />
-      <button
-        type="button"
-        class="icon-btn"
-        aria-label="Search"
-        title="Search"
-        (click)="onDashboardSearchClick()"
-      >
-        &#128269;
-      </button>
-      <div class="notification-wrapper" (click)="$event.stopPropagation()">
-        <button class="icon-btn notification-btn" aria-label="Notifications" title="Notifications" (click)="toggleNotifications()">
-          &#128276;
-          <span class="notification-badge" *ngIf="unreadNotificationCount > 0">
-            {{ unreadNotificationCount > 99 ? '99+' : unreadNotificationCount }}
-          </span>
-        </button>
-        <div class="notification-panel" *ngIf="showNotifications">
-          <div class="notification-header">
-            <span>New Registrations</span>
-            <button
-              type="button"
-              class="notification-clear-btn"
-              *ngIf="notifications.length > 0"
-              (click)="clearAllNotifications()"
-            >
-              Clear All
-            </button>
-          </div>
-          <div class="notification-list" *ngIf="notifications.length > 0; else noNotifications">
-            <div class="notification-item" *ngFor="let notification of notifications | slice:0:10">
-              <p>{{ notification.message }}</p>
-              <span>{{ notification.timeLabel }}</span>
+  <div class="layout dashboard-layout" [class.sidebar-collapsed]="sidebarCollapsed">
+    <app-admin-dashboard-sidebar
+      [activeTab]="activeTab"
+      [collapsed]="sidebarCollapsed"
+      (tabChange)="setTab($event)"
+      (collapsedChange)="setSidebarCollapsed($event)"
+      (createEvent)="openCreateModal()"
+      (myEvents)="goToMyEvents()"
+    />
+
+    <main class="content dashboard-main">
+    <section class="hero-panel admin-hero-panel" *ngIf="activeTab === 'overview'">
+      <div class="hero-copy">
+        <span class="hero-kicker">Smart dashboard for your campus operations</span>
+        <h1>Welcome back, <span class="hero-name">{{ userName }}</span></h1>
+        <p>
+          Create events, monitor registrations, and review student feedback from one clean admin workspace.
+        </p>
+
+        <div class="hero-actions">
+          <button type="button" class="primary-hero-btn" (click)="openCreateModal()">
+            <span class="material-icons">add_circle</span>
+            Create Event
+          </button>
+          <button type="button" class="secondary-hero-btn" (click)="goToMyEvents()">
+            <span class="material-icons">view_carousel</span>
+            Open My Events
+          </button>
+        </div>
+
+        <div class="stat-grid">
+          <article class="stat-card" *ngFor="let stat of dashboardStats">
+            <div class="stat-icon" [attr.data-accent]="stat.accent">
+              <span class="material-icons">{{ stat.icon }}</span>
             </div>
-          </div>
-          <ng-template #noNotifications>
-            <div class="notification-empty">No new student registrations.</div>
-          </ng-template>
+            <div>
+              <div class="stat-value">{{ isLoading ? '...' : stat.count }}</div>
+              <div class="stat-label">{{ stat.title }}</div>
+            </div>
+          </article>
         </div>
       </div>
-      <button class="icon-btn" aria-label="Downloads" title="Export" (click)="exportEvents()">&#11015;</button>
-      <a class="user-pill user-pill--link" routerLink="/admin-profile">
-        <div class="avatar">
-          <img *ngIf="userAvatarUrl" [src]="userAvatarUrl" alt="Profile photo" />
-          <span *ngIf="!userAvatarUrl" class="avatar-text">{{ avatarText }}</span>
+    </section>
+
+    <section class="panel events-panel" *ngIf="activeTab === 'overview'">
+      <div class="panel-head">
+        <div class="signature-heading">
+          <h2>Recent Events</h2>
         </div>
-        <span>{{ userName }}</span>
-      </a>
-      <button type="button" class="logout-btn" (click)="logout()">Logout</button>
-    </div>
-  </header>
-
-  <div class="layout" [class.sidebar-expanded]="isSidebarVisible">
-    <aside
-      class="sidebar"
-      [class.expanded]="isSidebarVisible"
-      [class.pinned]="isSidebarPinned"
-      (mouseenter)="onSidebarMouseEnter()"
-      (mouseleave)="onSidebarMouseLeave()"
-    >
-      <div class="sidebar-head">
-        <button
-          class="menu-toggle-btn"
-          type="button"
-          (click)="toggleSidebar()"
-          [attr.aria-label]="isSidebarPinned ? 'Collapse menu' : 'Pin menu open'"
-          [class.active]="isSidebarPinned"
-        >
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-        <span class="sidebar-head-label">Menu</span>
+        <button type="button" class="view-all-btn" (click)="setTab('events')">View All</button>
       </div>
-      <ul class="menu" *ngIf="isSidebarVisible">
-        <li [class.active]="activeTab === 'overview'" (click)="setTab('overview'); onSidebarItemClick()">
-          <span class="menu-icon">&#127968;</span>Dashboard
-        </li>
-        <li (click)="openCreateModal(); onSidebarItemClick()">
-          <span class="menu-icon">&#128197;</span>Create Event
-        </li>
-        <li [class.active]="activeTab === 'events'" (click)="setTab('events'); onSidebarItemClick()">
-          <span class="menu-icon">&#128203;</span>Manage Events
-        </li>
-        <li [class.active]="registrationFilter === 'all'" (click)="showAllRegistrations(); onSidebarItemClick()">
-          <span class="menu-icon">&#129534;</span>All Registrations
-        </li>
-        <li [class.active]="activeTab === 'analytics'" (click)="setTab('analytics'); onSidebarItemClick()">
-          <span class="menu-icon">&#128200;</span>Analytics
-        </li>
-        <li [class.active]="registrationFilter === 'approved'" (click)="showApprovedStudents(); onSidebarItemClick()">
-          <span class="menu-icon">✅</span>Approved Students
-        </li>
-        <li (click)="setTab('overview'); onSidebarItemClick()">
-          <span class="menu-icon">&#128172;</span>Feedback
-        </li>
-      </ul>
-    </aside>
 
-    <main class="content">
-      <section class="summary-cards">
-        <article class="card stat">
-          <div class="stat-icon purple">&#128227;</div>
+      <div class="event-grid" *ngIf="recentAdminEventCards.length > 0; else noOverviewEvents">
+        <div class="event-card-stack" *ngFor="let event of recentAdminEventCards">
+          <app-admin-event-card
+            [event]="event"
+            [detailsRouteBase]="'/admin-my-events'"
+          ></app-admin-event-card>
+        </div>
+      </div>
+
+      <ng-template #noOverviewEvents>
+        <div class="empty-state compact">
+          <span class="material-icons">event_busy</span>
+          <h3>No events created yet</h3>
+          <p>Create your first event to see it here.</p>
+        </div>
+      </ng-template>
+    </section>
+
+    <section class="panel registrations-panel" *ngIf="activeTab === 'overview'">
+      <div class="panel-head">
+        <div>
+          <p class="section-kicker">Registration Control</p>
+          <h2>Event Registration Summary</h2>
+        </div>
+        <button type="button" class="view-all-btn" (click)="setTab('registrations')">Open Full Page</button>
+      </div>
+
+      <div class="registrations-spotlight">
+        <article class="registration-summary-card">
+          <span class="summary-icon material-icons">pending_actions</span>
           <div>
-            <p>Total Events</p>
-            <h3>{{ isLoading ? '...' : totalEvents }}</h3>
+            <strong>{{ getPendingCount() }}</strong>
+            <p>Pending registrations waiting for your review.</p>
           </div>
         </article>
-        <article class="card stat">
-          <div class="stat-icon teal">&#9989;</div>
+
+        <article class="registration-summary-card">
+          <span class="summary-icon material-icons">verified</span>
           <div>
-            <p>Active Events</p>
-            <h3>{{ isLoading ? '...' : activeEvents }}</h3>
+            <strong>{{ getApprovedCount() }}</strong>
+            <p>Approved students ready to join your events.</p>
           </div>
         </article>
-        <article class="card stat">
-          <div class="stat-icon lavender">&#127891;</div>
+
+        <article class="registration-summary-card">
+          <span class="summary-icon material-icons">bar_chart</span>
           <div>
-            <p>Total Registrations</p>
-            <h3>{{ isLoading ? '...' : totalRegistrations }}</h3>
+            <strong>{{ averageParticipants }}</strong>
+            <p>Average participants per event in your dashboard.</p>
           </div>
         </article>
-        <article class="card stat highlight">
+      </div>
+
+      <div class="registrations-cta">
+        <div>
+          <p class="section-kicker">Quick Actions</p>
+          <h3>Open the separate registrations page to see event-wise student counts.</h3>
+          <p>You can view separate totals for pending, approved, and rejected registrations for each event there.</p>
+        </div>
+        <button type="button" class="solid-btn" (click)="setTab('registrations')">Go To Registrations</button>
+      </div>
+    </section>
+
+    <app-admin-feedback-panel
+      *ngIf="activeTab === 'feedback'"
+      [feedbacks]="feedbacks"
+      [events]="events"
+      [isLoading]="isLoading"
+    />
+
+    <section class="panel events-panel" *ngIf="activeTab === 'events'">
+      <div class="panel-head">
+        <div class="signature-heading">
+          <h2>Manage Events</h2>
+        </div>
+        <button type="button" class="view-all-btn" (click)="openCreateModal()">Create Event</button>
+      </div>
+
+      <div class="event-grid" *ngIf="adminEventCards.length > 0; else noAdminEvents">
+        <div class="event-card-stack" *ngFor="let event of adminEventCards; let idx = index">
+          <app-admin-event-card
+            [event]="event"
+            [detailsRouteBase]="'/admin-my-events'"
+          ></app-admin-event-card>
+          <div class="admin-event-actions" *ngIf="getActiveCollegeFilteredEvents()[idx] as rawEvent">
+            <button type="button" class="ghost-btn" (click)="openEditModal(rawEvent)">Edit Event</button>
+            <button type="button" class="solid-btn danger-btn" (click)="deleteEvent(rawEvent)">Delete Event</button>
+          </div>
+        </div>
+      </div>
+
+      <ng-template #noAdminEvents>
+        <div class="empty-state compact">
+          <span class="material-icons">event_busy</span>
+          <h3>No active events found</h3>
+          <p>Closed events are available in the Old Events page.</p>
+        </div>
+      </ng-template>
+    </section>
+
+    <app-admin-registrations-panel
+      *ngIf="activeTab === 'registrations'"
+      [searchQuery]="registrationSearchQuery"
+      [groupedRegistrations]="groupedRegistrationsForView"
+      [flatRegistrations]="flatRegistrationsForView"
+      [registrationFilter]="registrationFilter"
+      (searchQueryChange)="registrationSearchQuery = $event; applyRegistrationFilter()"
+      (back)="setTab('overview')"
+      (review)="reviewRegistration($event)"
+    />
+
+    <app-admin-student-status-panel
+      *ngIf="activeTab === 'approvedStudents'"
+      [registrations]="registrations"
+    />
+
+    <app-admin-query-panel
+      *ngIf="activeTab === 'queries'"
+      [queries]="studentQueries"
+      [collegeName]="adminCollegeName"
+      [loading]="queryLoading"
+      [savingQueryId]="querySavingId"
+      [errorMessage]="queryErrorMessage"
+      (submitReply)="onSubmitQueryReply($event)"
+    />
+
+    <app-admin-attendance-management *ngIf="activeTab === 'attendance'" />
+
+    <section class="panel registrations-panel" *ngIf="activeTab === 'analytics'">
+      <div class="panel-head">
+        <div>
+          <p class="section-kicker">Performance Snapshot</p>
+          <h2>Analytics</h2>
+        </div>
+      </div>
+
+      <div class="registrations-spotlight">
+        <article class="registration-summary-card">
+          <span class="summary-icon material-icons">event</span>
           <div>
-            <p>Create New</p>
-            <h3>Create Event</h3>
-          </div>
-          <button class="primary-btn" (click)="openCreateModal()">+ Create</button>
-        </article>
-      </section>
-
-      <section class="grid-two1" *ngIf="activeTab === 'overview'">
-        <article class="card table-card">
-          <div class="card-head">
-            <h3>Recent Events</h3>
-            <button class="ghost-btn" (click)="setTab('events')">View All</button>
-          </div>
-          <div class="table">
-            <div class="table-row head">
-              <span>Event Name</span>
-              <span>Date</span>
-              <span>Participants</span>
-              <span></span>
-            </div>
-            <div class="table-row" *ngFor="let e of getFilteredEvents() | slice:0:3">
-              <span>{{ e.name }}</span>
-              <span>{{ formatDateTime(e.dateTime) }}</span>
-              <span>{{ e.approvedCount }}</span>
-              <span></span>
-            </div>
-            <div class="table-row" *ngIf="events.length === 0">
-              <span>No events yet.</span>
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
+            <strong>{{ totalEvents }}</strong>
+            <p>Total events currently visible in the admin dashboard.</p>
           </div>
         </article>
 
-        <article class="card chart-card">
-          <div class="card-head">
-            <h3>Registrations Overview</h3>
-            <span class="muted">Last 10 days</span>
-          </div>
-          <div class="chart">
-            <svg viewBox="0 0 420 180" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <defs>
-                <linearGradient id="line" x1="0" x2="1" y1="0" y2="1">
-                  <stop offset="0%" stop-color="#7d6bff"/>
-                  <stop offset="100%" stop-color="#62d2c3"/>
-                </linearGradient>
-                <linearGradient id="fill" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stop-color="#a797ff" stop-opacity="0.45"/>
-                  <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-                </linearGradient>
-              </defs>
-              <path d="M10 140 C50 120, 90 120, 130 105 C170 90, 210 95, 250 70 C290 50, 330 70, 370 40" fill="none" stroke="url(#line)" stroke-width="4" stroke-linecap="round"/>
-              <path d="M10 140 C50 120, 90 120, 130 105 C170 90, 210 95, 250 70 C290 50, 330 70, 370 40 L370 170 L10 170 Z" fill="url(#fill)"/>
-              <g fill="#6d5de2">
-                <circle cx="10" cy="140" r="4"/>
-                <circle cx="130" cy="105" r="4"/>
-                <circle cx="250" cy="70" r="4"/>
-                <circle cx="370" cy="40" r="4"/>
-              </g>
-            </svg>
-            <div class="chart-legend">
-              <span><i class="dot pending"></i>Pending</span>
-              <span><i class="dot approved"></i>Approved</span>
-              <span><i class="dot done"></i>Completed</span>
-            </div>
-          </div>
-        </article>
-      </section>
-
-      <section class="grid-two1 bottom" *ngIf="activeTab === 'overview'">
-        <article class="card hero-card">
-          <div class="hero-stats">
-            <div class="hero-stat-block">
-              <p>Average Participants</p>
-              <h4>{{ averageParticipants }}</h4>
-            </div>
-            <div class="hero-stat-block">
-              <p>Total Registrations</p>
-              <h4>{{ totalRegistrations }}</h4>
-            </div>
-            <button class="pill-btn hero-manage-btn" (click)="setTab('registrations')">Manage</button>
+        <article class="registration-summary-card">
+          <span class="summary-icon material-icons">event_available</span>
+          <div>
+            <strong>{{ activeEvents }}</strong>
+            <p>Active upcoming events still open in the system.</p>
           </div>
         </article>
 
-        <article class="card registrations-card">
-          <div class="card-head">
-            <h3>Recent Registrations</h3>
-            <button class="ghost-btn" (click)="setTab('registrations')">View All</button>
-          </div>
-          <div class="reg-list">
-            <div class="reg-item" *ngFor="let reg of registrations">
-              <div class="avatar small"></div>
-              <div>
-                <h4>{{ reg.studentName }} <span *ngIf="reg.status === 'APPROVED'" class="status-approved">Approved</span></h4>
-                <p style="font-size: 1rem;">{{ reg.college }}</p>
-              </div>
-              <div class="row-actions">
-                <button class="pill-btn" (click)="approveRegistration(reg)">Approve</button>
-                <button class="pill-btn pending" (click)="openRejectModal(reg)">Reject</button>
-              </div>
-            </div>
-            <div class="reg-item" *ngIf="registrations.length === 0">
-              <div class="avatar small"></div>
-              <div>
-                <h4>No registrations yet</h4>
-                <p>Waiting for students</p>
-              </div>
-              <button class="pill-btn pending" disabled>Pending</button>
-            </div>
+        <article class="registration-summary-card">
+          <span class="summary-icon material-icons">groups</span>
+          <div>
+            <strong>{{ totalRegistrations }}</strong>
+            <p>Total registrations tracked across your events.</p>
           </div>
         </article>
-      </section>
-
-      <section class="grid-two" *ngIf="activeTab === 'events'">
-        <article class="card table-card">
-          <div class="card-head">
-            <h3>All Events</h3>
-            <button class="ghost-btn" (click)="openCreateModal()">Create Event</button>
-          </div>
-          <div class="table">
-<div class="table-row head">
-              <span class="name-col">Event Name</span>
-              <span class="date-col">Date</span>
-              <span class="status-col">Status</span>
-              <span class="participants-col">Participants</span>
-              <span class="actions-col">Actions</span>
-            </div>
-<div class="table-row" *ngFor="let e of getFilteredEvents()">
-              <span class="name-col">{{ e.name }}</span>
-              <span class="date-col">{{ formatDateTime(e.dateTime) }}</span>
-              <span class="status-col">{{ e.status }}</span>
-              <span class="participants-col">{{ e.approvedCount }}</span>
-              <div class="actions-col row-actions">
-                <button class="pill-btn ghost" (click)="openEditModal(e)">Edit</button>
-                <button class="pill-btn pending" (click)="deleteEvent(e)">Delete</button>
-              </div>
-            </div>
-            <div class="table-row" *ngIf="getFilteredEvents().length === 0">
-              <span>No events created yet.</span>
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-          </div>
-        </article>
-      </section>
-
-      <section class="grid-two1 full-width-view" *ngIf="activeTab === 'registrations'">
-        <article class="card registrations-card">
-          <div class="card-head">
-            <h3>Registrations</h3>
-            <div class="card-actions">
-              <input
-                class="search-input"
-                type="text"
-                placeholder="Search registrations..."
-                [(ngModel)]="registrationSearchQuery"
-                (input)="applyRegistrationFilter()"
-              />
-              <button class="ghost-btn" (click)="setTab('overview')">Back</button>
-            </div>
-          </div>
-          <div class="reg-list">
-            <ng-container *ngIf="registrationFilter === 'all'; else flatList">
-              <div class="reg-group" *ngFor="let group of getFilteredRegistrations()">
-                <div class="group-header">
-                  <h4>{{ group.eventName }} ({{ group.total }})</h4>
-                </div>
-                <div class="reg-list-group">
-                  <div class="reg-item" *ngFor="let reg of group.registrations">
-                    <div class="avatar small"></div>
-                    <div>
-                      <h5>{{ reg.studentName }} <span *ngIf="reg.status === 'APPROVED'" class="status-approved">Approved</span></h5>
-                      <p>{{ reg.college }}</p>
-                    </div>
-                    <div class="row-actions">
-                      <button class="pill-btn" (click)="approveRegistration(reg)">Approve</button>
-                      <button class="pill-btn pending" (click)="openRejectModal(reg)">Reject</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </ng-container>
-            <ng-template #flatList>
-              <div class="reg-item" *ngFor="let reg of getFilteredRegistrations()">
-                <div class="avatar small"></div>
-                <div>
-                  <h4>{{ reg.studentName }} <span class="status-approved">Approved</span></h4>
-                  <p>{{ reg.college }} - {{ reg.eventName }}</p>
-                </div>
-              </div>
-            </ng-template>
-            <div class="reg-item" *ngIf="getFilteredRegistrations().length === 0">
-              <div class="avatar small"></div>
-              <div>
-                <h4>No registrations found</h4>
-                <p>Try another filter</p>
-              </div>
-              <button class="pill-btn pending" disabled>Pending</button>
-            </div>
-          </div>
-        </article>
-      </section>
-
-      <section class="grid-two1 full-width-view" *ngIf="activeTab === 'analytics'">
-        <article class="card table-card">
-          <div class="card-head">
-            <h3>Analytics Snapshot</h3>
-            <span class="muted">Overview</span>
-          </div>
-          <div class="table">
-            <div class="table-row head">
-              <span>Metric</span>
-              <span>Value</span>
-              <span></span>
-              <span></span>
-            </div>
-            <div class="table-row">
-              <span>Total Events</span>
-              <span>{{ totalEvents }}</span>
-              <span></span>
-              <span></span>
-            </div>
-            <div class="table-row">
-              <span>Active Events</span>
-              <span>{{ activeEvents }}</span>
-              <span></span>
-              <span></span>
-            </div>
-            <div class="table-row">
-              <span>Total Registrations</span>
-              <span>{{ totalRegistrations }}</span>
-              <span></span>
-              <span></span>
-            </div>
-          </div>
-        </article>
-      </section>
+      </div>
+    </section>
     </main>
   </div>
-
-  <div class="modal-backdrop" *ngIf="approveModalOpen" (click)="closeApproveModal()">
-    <div
-      class="modal approve-modal"
-      (click)="$event.stopPropagation()"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Approve registration"
-    >
-      <div class="modal__hero approve-hero">
-        <button type="button" class="modal__close" (click)="closeApproveModal()" aria-label="Close">&times;</button>
-        <div class="modal__heroText">
-          <h2>Approve Registration</h2>
-          <p>Confirm student registration approval</p>
-        </div>
-      </div>
-
-      <div class="modal__body">
-        <div class="approve-info" *ngIf="selectedRegistration">
-          <div class="info-grid">
-            <div class="info-block">
-              <span class="info-icon">&#128100;</span>
-              <div>
-                <div class="info-label">Student Name</div>
-                <div class="info-text">{{ selectedRegistration.studentName }}</div>
-              </div>
-            </div>
-            <div class="info-block">
-              <span class="info-icon">&#127380;</span>
-              <div>
-                <div class="info-label">Student ID</div>
-                <div class="info-text">{{ selectedRegistration.studentId }}</div>
-              </div>
-            </div>
-            <div class="info-block">
-              <span class="info-icon">&#128231;</span>
-              <div>
-                <div class="info-label">Email</div>
-                <div class="info-text">{{ selectedRegistration.email }}</div>
-              </div>
-            </div>
-            <div class="info-block">
-              <span class="info-icon">&#127979;</span>
-              <div>
-                <div class="info-label">College</div>
-                <div class="info-text">{{ selectedRegistration.college }}</div>
-              </div>
-            </div>
-            <div class="info-block">
-              <span class="info-icon">&#127919;</span>
-              <div>
-                <div class="info-label">Event</div>
-                <div class="info-text">{{ selectedRegistration.eventName }}</div>
-              </div>
-            </div>
-            <div class="info-block">
-              <span class="info-icon">&#128197;</span>
-              <div>
-                <div class="info-label">Submitted</div>
-                <div class="info-text">{{ formatDateTime(selectedRegistration.createdAt) }}</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="approval-message">
-            <div class="message-icon">&#8505;</div>
-            <p>The student will receive an immediate notification upon approval and can attend the event.</p>
-          </div>
-        </div>
-
-        <div class="modal__footer">
-          <button type="button" class="btn btn--ghost" (click)="closeApproveModal()">Cancel</button>
-          <button type="button" class="btn btn--success" (click)="confirmApproveRegistration()">
-            Approve Registration
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal-backdrop" *ngIf="rejectModalOpen" (click)="closeRejectModal()">
-    <div
-      class="modal reject-modal"
-      (click)="$event.stopPropagation()"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Reject registration"
-    >
-      <div class="modal__hero reject-hero">
-        <button type="button" class="modal__close" (click)="closeRejectModal()" aria-label="Close">&times;</button>
-        <div class="modal__heroText">
-          <h2>Reject Registration</h2>
-          <p>Provide a reason for rejecting this registration</p>
-        </div>
-      </div>
-
-      <div class="modal__body">
-        <div class="reject-info" *ngIf="selectedRegistration">
-          <div class="info-grid">
-            <div class="info-block">
-              <span class="info-icon">&#128100;</span>
-              <div>
-                <div class="info-label">Student Name</div>
-                <div class="info-text">{{ selectedRegistration.studentName }}</div>
-              </div>
-            </div>
-            <div class="info-block">
-              <span class="info-icon">&#127919;</span>
-              <div>
-                <div class="info-label">Event</div>
-                <div class="info-text">{{ selectedRegistration.eventName }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="field field--full">
-          <label for="rejectionReason">
-            <span class="field__icon">&#128221;</span>
-            Rejection Reason
-            <span class="field__required">*</span>
-          </label>
-          <textarea
-            id="rejectionReason"
-            name="rejectionReason"
-            [(ngModel)]="rejectionReason"
-            rows="4"
-            placeholder="Please provide a clear reason for rejection (minimum 10 characters)..."
-            class="rejection-textarea"
-            (click)="$event.stopPropagation()"
-            (keydown)="$event.stopPropagation()"
-            (input)="$event.stopPropagation()"
-          ></textarea>
-          <div class="help">Minimum 10 characters required. This will be shown to the student.</div>
-        </div>
-
-        <div class="rejection-warning">
-          <div class="warning-icon">&#9888;</div>
-          <p>The student will be notified with this reason. Please be clear and professional.</p>
-        </div>
-
-        <div class="modal__footer">
-          <button type="button" class="btn btn--ghost" (click)="closeRejectModal()">Cancel</button>
-          <button
-            type="button"
-            class="btn btn--danger"
-            [disabled]="!rejectionReason || rejectionReason.trim().length < 10"
-            (click)="confirmRejectRegistration()"
-          >
-            Reject Registration
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <app-create-event 
-    [visible]="createEventVisible" 
-    [editingEvent]="editingEvent"
-    (visibleChange)="createEventVisible = $event"
-    (eventSaved)="handleEventSaved($event)">
-  </app-create-event>
 
   <div class="toast-container">
     <div

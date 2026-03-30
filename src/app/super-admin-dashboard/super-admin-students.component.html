@@ -1,0 +1,142 @@
+<div class="container">
+  <header class="luxury-header">
+    <div class="header-inner">
+      <a class="brand-block" routerLink="/super-admin-dashboard" aria-label="Go to super admin dashboard">
+        <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub">
+        <span class="brand-name">
+          <span class="brand-campus">Campus</span>
+          <span class="brand-eventhub">Event Hub</span>
+        </span>
+      </a>
+
+      <nav class="header-nav" aria-label="Super admin navigation">
+        <a class="nav-link" routerLink="/super-admin-dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Dashboard</a>
+        <a class="nav-link" routerLink="/super-admin/students" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Students</a>
+        <a class="nav-link" routerLink="/super-admin/admins" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Admins</a>
+        <a class="nav-link" routerLink="/super-admin/events" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Events</a>
+      </nav>
+
+      <div class="header-actions">
+        <button class="action-btn export-btn" type="button">
+          <i class="fa-solid fa-download"></i>
+          Export Reports
+        </button>
+        <button class="action-btn logout-btn" type="button" (click)="logout()">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          Logout
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <section class="students-wrap">
+    <div class="students-header">
+      <h3>Students Across All Colleges</h3>
+      <div class="students-controls">
+        <input
+          type="text"
+          class="students-search"
+          [(ngModel)]="searchTerm"
+          placeholder="Search students"
+          aria-label="Search students"
+        >
+        <select
+          class="college-filter"
+          [(ngModel)]="selectedCollege"
+          aria-label="Filter by college"
+        >
+          <option value="all">Filter by college</option>
+          <option *ngFor="let college of collegeOptions" [value]="college">{{ college }}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="students-state" *ngIf="isLoadingStudents">
+      Loading students...
+    </div>
+
+    <div class="students-state error" *ngIf="!isLoadingStudents && studentsError">
+      {{ studentsError }}
+    </div>
+
+    <div class="students-state error" *ngIf="!isLoadingStudents && !studentsError && blockActionError">
+      {{ blockActionError }}
+    </div>
+
+    <div class="students-state" *ngIf="!isLoadingStudents && !studentsError && students.length === 0">
+      No students found.
+    </div>
+
+    <div class="students-state" *ngIf="!isLoadingStudents && !studentsError && students.length > 0 && filteredStudents.length === 0">
+      No students match your search or selected college.
+    </div>
+
+    <div class="students-list" *ngIf="!isLoadingStudents && !studentsError && filteredStudents.length > 0">
+      <article class="student-box" *ngFor="let student of filteredStudents; trackBy: trackStudent">
+        <div class="student-main">
+          <h4>{{ student.name }}</h4>
+          <p>{{ student.college || 'College not provided' }}</p>
+        </div>
+
+        <div class="student-actions">
+          <button type="button" class="student-btn ghost" (click)="openStudentDetails(student)">View details</button>
+          <button type="button" class="student-btn info" (click)="openStudentEvents(student)">View Events</button>
+          <button
+            type="button"
+            [class]="student.isBlocked ? 'student-btn success' : 'student-btn danger'"
+            [disabled]="updatingBlockStudentId === student._id"
+            (click)="toggleStudentBlock(student)"
+          >
+            {{ updatingBlockStudentId === student._id ? 'Updating...' : (student.isBlocked ? 'Unblock' : 'Block') }}
+          </button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <div class="modal-overlay" *ngIf="showDetailsModal" (click)="closeModals()">
+    <section class="student-modal" (click)="$event.stopPropagation()" aria-label="Student details dialog">
+      <div class="modal-head">
+        <h4>Student Details</h4>
+        <button type="button" class="modal-close" (click)="closeModals()">X</button>
+      </div>
+
+      <div class="modal-profile" *ngIf="selectedStudent as student">
+        <img class="modal-avatar" [src]="student.profileImageUrl || '/icon2.png'" [alt]="student.name">
+        <div class="modal-grid">
+          <p><strong>Name:</strong> {{ student.name }}</p>
+          <p><strong>College:</strong> {{ student.college || 'Not provided' }}</p>
+          <p><strong>Status:</strong> {{ getStudentStatus(student) }}</p>
+          <p><strong>Department:</strong> {{ student.department || 'Not provided' }}</p>
+          <p><strong>Phone:</strong> {{ student.phone || 'Not provided' }}</p>
+          <p><strong>Address:</strong> {{ getStudentAddress(student) }}</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal-overlay" *ngIf="showEventsModal" (click)="closeModals()">
+    <section class="student-modal events-modal" (click)="$event.stopPropagation()" aria-label="Student events dialog">
+      <div class="modal-head">
+        <h4>Registered Events - {{ selectedStudent?.name }}</h4>
+        <button type="button" class="modal-close" (click)="closeModals()">X</button>
+      </div>
+
+      <div class="students-state" *ngIf="isLoadingEvents">Loading events...</div>
+      <div class="students-state error" *ngIf="!isLoadingEvents && eventsError">{{ eventsError }}</div>
+      <div class="students-state" *ngIf="!isLoadingEvents && !eventsError && selectedStudentEvents.length === 0">
+        No registered events found for this student.
+      </div>
+
+      <ul class="event-list" *ngIf="!isLoadingEvents && !eventsError && selectedStudentEvents.length > 0">
+        <li *ngFor="let event of selectedStudentEvents">
+          <div>
+            <h5>{{ event.eventName }}</h5>
+            <p>Registration ID: {{ event.id }}</p>
+          </div>
+          <span class="event-status">{{ event.status }}</span>
+        </li>
+      </ul>
+    </section>
+  </div>
+</div>

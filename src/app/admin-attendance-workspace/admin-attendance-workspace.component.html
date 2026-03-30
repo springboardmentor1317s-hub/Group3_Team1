@@ -1,0 +1,113 @@
+<section class="attendance-shell">
+  <header class="attendance-header">
+    <div>
+      <p class="eyebrow">Attendance Management</p>
+      <h2>Mark Presence with QR Scanner</h2>
+      <p class="subtitle">Open today's events, view approved students, and mark attendance in real-time.</p>
+    </div>
+  </header>
+
+  <div class="top-flow-actions">
+    <button type="button" class="flow-btn flow-btn-primary" (click)="showTodayEventCards()">
+      <span class="material-icons">today</span>
+      <span>Show Today's Events in Card Layout</span>
+    </button>
+    <button type="button" class="flow-btn flow-btn-secondary" (click)="openAttendanceFromButton()">
+      <span class="material-icons">how_to_reg</span>
+      <span>Click Event to Open Attendance Screen</span>
+    </button>
+  </div>
+
+  <p class="scan-banner" *ngIf="actionMessage" [attr.data-tone]="actionTone">{{ actionMessage }}</p>
+
+  <section class="stats-grid" *ngIf="showAttendanceScreen && roster">
+    <article class="stat-card total"><span>Total</span><strong>{{ totalStudents }}</strong></article>
+    <article class="stat-card present"><span>Present</span><strong>{{ presentStudents }}</strong></article>
+    <article class="stat-card pending"><span>Pending</span><strong>{{ pendingStudents }}</strong></article>
+  </section>
+
+  <div class="loading-card" *ngIf="loadingEvents">Loading today's events...</div>
+
+  <section class="events-grid" *ngIf="!loadingEvents && events.length > 0">
+    <article
+      class="event-card"
+      *ngFor="let event of events"
+      [class.active]="selectedEvent?.eventId === event.eventId"
+      (click)="openAttendanceScreen(event)"
+    >
+      <h3>{{ event.eventName }}</h3>
+      <p><span class="material-icons">event</span>{{ event.eventDateTime | date:'medium' }}</p>
+      <p><span class="material-icons">location_on</span>{{ event.eventLocation }}</p>
+      <div class="badge-row">
+        <span>Present {{ event.presentCount }}</span>
+        <span>Approved {{ event.approvedCount }}</span>
+      </div>
+    </article>
+  </section>
+
+  <div class="empty-state" *ngIf="!loadingEvents && events.length === 0">
+    <span class="material-icons">event_busy</span>
+    <h3>No today's events</h3>
+    <p>Attendance cards will appear automatically when events are scheduled today.</p>
+  </div>
+
+  <section class="attendance-grid" *ngIf="showAttendanceScreen && selectedEvent">
+    <article class="panel left-panel">
+      <header class="panel-head">
+        <div>
+          <h3>Approved Students</h3>
+          <p>{{ selectedEvent.eventName }}</p>
+        </div>
+        <label class="search-box">
+          <span class="material-icons">search</span>
+          <input type="text" placeholder="Search student" [(ngModel)]="studentSearch" />
+        </label>
+      </header>
+
+      <div class="loading-card" *ngIf="loadingRoster">Loading approved students...</div>
+
+      <div class="student-list" *ngIf="!loadingRoster && roster">
+        <article class="student-row" *ngFor="let student of filteredStudents">
+          <div class="student-meta">
+            <strong>{{ student.studentName }}</strong>
+            <small>{{ student.studentId }}</small>
+          </div>
+          <span class="status-pill" [class]="getStatusClass(student.status)">
+            <span class="dot"></span>
+            {{ getStatusLabel(student.status) }}
+          </span>
+        </article>
+      </div>
+    </article>
+
+    <article class="panel right-panel">
+      <header class="panel-head scanner-head">
+        <h3>Scan QR to Mark Attendance</h3>
+        <button
+          type="button"
+          class="open-camera-btn"
+          (click)="openCamera()"
+          [disabled]="openingCamera || !selectedEvent || !roster"
+        >
+          {{ openingCamera ? 'Opening...' : (cameraStarted ? 'Camera Active' : 'Open Camera') }}
+        </button>
+      </header>
+
+      <div class="scanner-frame">
+        <video #scannerVideo autoplay muted playsinline></video>
+        <div class="scanner-overlay"></div>
+      </div>
+
+      <p class="scanner-message">{{ scannerMessage }}</p>
+      <p class="scanner-warning" *ngIf="scannerWarning">{{ scannerWarning }}</p>
+
+      <div class="manual-scan-box">
+        <input type="text" placeholder="Paste QR payload if needed" [(ngModel)]="scanInput" />
+        <button type="button" (click)="onManualScanSubmit()" [disabled]="scanBusy || !scanInput.trim()">
+          {{ scanBusy ? 'Scanning...' : 'Submit Scan' }}
+        </button>
+      </div>
+      <canvas #scannerCanvas hidden></canvas>
+    </article>
+  </section>
+</section>

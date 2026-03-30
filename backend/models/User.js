@@ -23,11 +23,79 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  parentPhone: {
+    type: String,
+    default: ""
+  },
+  gender: {
+    type: String,
+    default: ""
+  },
+  dateOfBirth: {
+    type: String,
+    default: ""
+  },
   location: {
     type: String,
     default: ""
   },
   department: {
+    type: String,
+    default: ""
+  },
+  departmentOther: {
+    type: String,
+    default: ""
+  },
+  currentClass: {
+    type: String,
+    default: ""
+  },
+  semester: {
+    type: String,
+    default: ""
+  },
+  currentCgpa: {
+    type: String,
+    default: ""
+  },
+  currentState: {
+    type: String,
+    default: ""
+  },
+  currentDistrict: {
+    type: String,
+    default: ""
+  },
+  currentCity: {
+    type: String,
+    default: ""
+  },
+  currentPincode: {
+    type: String,
+    default: ""
+  },
+  currentAddressLine: {
+    type: String,
+    default: ""
+  },
+  permanentState: {
+    type: String,
+    default: ""
+  },
+  permanentDistrict: {
+    type: String,
+    default: ""
+  },
+  permanentCity: {
+    type: String,
+    default: ""
+  },
+  permanentPincode: {
+    type: String,
+    default: ""
+  },
+  permanentAddressLine: {
     type: String,
     default: ""
   },
@@ -59,6 +127,10 @@ const userSchema = new mongoose.Schema({
   adminReviewedAt: {
     type: Date,
     default: null
+  },
+  isBlocked: {
+    type: Boolean,
+    default: false
   }
 }, { timestamps: true });
 

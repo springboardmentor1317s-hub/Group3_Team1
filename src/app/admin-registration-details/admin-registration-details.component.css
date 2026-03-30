@@ -1,0 +1,568 @@
+﻿:host {
+  display: block;
+}
+
+.admin-registration-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.88), transparent 24%),
+    radial-gradient(circle at top right, rgba(191, 219, 254, 0.36), transparent 28%),
+    linear-gradient(180deg, #f5efe7 0%, #f7fbff 42%, #edf3ff 100%);
+  padding: 140px 0 1.4rem;
+}
+
+.dashboard-layout {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0 0.9rem 2rem 0;
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 0.95rem;
+  align-items: start;
+  transition: grid-template-columns 0.35s ease, gap 0.35s ease;
+}
+
+.dashboard-layout.sidebar-collapsed {
+  grid-template-columns: 82px minmax(0, 1fr);
+}
+
+.page-main {
+  min-width: 0;
+  width: 100%;
+  display: grid;
+  gap: 1rem;
+}
+
+.hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
+
+.hero-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 0.95rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.event-chip {
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+}
+
+.status-chip.pending {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(251, 191, 36, 0.22));
+  color: #9a3412;
+}
+
+.status-chip.approved {
+  background: rgba(16, 185, 129, 0.15);
+  color: #047857;
+}
+
+.status-chip.rejected {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.16), rgba(244, 114, 182, 0.18));
+  color: #b91c1c;
+}
+
+.ghost-chip {
+  background: rgba(255, 255, 255, 0.88);
+  color: #475569;
+  border: 1px solid rgba(191, 219, 254, 0.75);
+}
+
+.eyebrow,
+.section-tag {
+  margin: 0;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.review-overview-card h2,
+.group-head h2,
+.student-card h3,
+.section-heading h3 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.muted,
+.group-head p,
+.student-card p,
+.empty-inline,
+.section-heading span,
+.decision-status-card p,
+.identity-copy p {
+  margin: 0;
+  color: #64748b;
+}
+
+.error-banner,
+.state-card,
+.group-card,
+.review-dialog {
+  border-radius: 28px;
+}
+
+.error-banner,
+.state-card,
+.group-card {
+  padding: 1rem 1.2rem;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
+}
+
+.error-banner {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.review-page-shell,
+.group-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.group-card {
+  padding: 1.2rem;
+}
+
+.group-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.status-pill.closed {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
+.student-list {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.student-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.97), rgba(239, 246, 255, 0.92));
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.07);
+  align-items: center;
+}
+
+.student-meta {
+  display: grid;
+  gap: 0.35rem;
+  color: #334155;
+}
+
+.student-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.review-btn,
+.approve-btn,
+.reject-btn,
+.close-btn {
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 800;
+  transition: transform 0.18s ease, opacity 0.18s ease, box-shadow 0.18s ease;
+}
+
+.review-btn,
+.close-btn {
+  padding: 0.88rem 1.18rem;
+  background: rgba(255, 255, 255, 0.94);
+  color: #132238;
+  box-shadow: inset 0 0 0 1px rgba(191, 219, 254, 0.9), 0 12px 24px rgba(148, 163, 184, 0.12);
+}
+
+.primary-back-btn {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.97), rgba(240, 247, 255, 0.95));
+}
+
+.card-back-btn {
+  min-width: 120px;
+}
+
+.approve-btn {
+  padding: 1rem 1.35rem;
+  background: linear-gradient(135deg, #10b981, #14b8a6);
+  color: #fff;
+  box-shadow: 0 18px 30px rgba(16, 185, 129, 0.22);
+}
+
+.reject-btn {
+  padding: 1rem 1.35rem;
+  background: linear-gradient(135deg, #f97316, #ef4444);
+  color: #fff;
+  box-shadow: 0 18px 30px rgba(249, 115, 22, 0.22);
+}
+
+.approve-btn:disabled,
+.reject-btn:disabled {
+  opacity: 0.68;
+  cursor: not-allowed;
+}
+
+.review-btn:hover,
+.approve-btn:hover,
+.reject-btn:hover,
+.close-btn:hover {
+  transform: translateY(-1px);
+}
+
+.premium-review {
+  width: 100%;
+  padding: 1.35rem;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.92), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(240, 247, 255, 0.97));
+  border: 1px solid rgba(255, 255, 255, 0.84);
+  box-shadow: 0 34px 74px rgba(15, 23, 42, 0.13);
+}
+
+.review-overview-card {
+  display: grid;
+  gap: 1.2rem;
+  padding: 1.2rem;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.9), transparent 28%),
+    linear-gradient(135deg, rgba(245, 239, 232, 0.96), rgba(224, 236, 252, 0.94));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96), 0 18px 36px rgba(148, 163, 184, 0.12);
+}
+
+.review-card-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.identity-block {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.identity-avatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 26px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(49, 88, 224, 0.16), rgba(251, 146, 60, 0.22));
+  color: #10213a;
+  font-size: 1.75rem;
+  font-weight: 900;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.identity-copy {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.identity-copy h2 {
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  letter-spacing: -0.04em;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.overview-stat {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.95rem 1rem;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.92);
+}
+
+.overview-stat span,
+.detail-card span,
+.reject-reason span,
+.decision-label {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.overview-stat strong,
+.detail-card strong,
+.verify-check {
+  color: #132238;
+}
+
+.overview-stat strong {
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.review-body-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.78fr);
+  gap: 1rem;
+  margin-top: 1rem;
+  align-items: start;
+}
+
+.review-main-column,
+.review-side-column {
+  display: grid;
+  gap: 1rem;
+}
+
+.review-section {
+  display: grid;
+  gap: 0.95rem;
+  padding: 1.1rem;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.94), 0 18px 30px rgba(148, 163, 184, 0.08);
+}
+
+.feature-section {
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.78), transparent 30%),
+    rgba(255, 255, 255, 0.9);
+}
+
+.section-heading,
+.section-heading-row {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.detail-grid {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.detail-grid.two-column {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.detail-grid.one-column {
+  grid-template-columns: 1fr;
+}
+
+.detail-card {
+  display: grid;
+  gap: 0.48rem;
+  padding: 1rem 1.05rem;
+  border-radius: 22px;
+  background: rgba(248, 250, 252, 0.96);
+  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.95);
+  min-width: 0;
+}
+
+.detail-card strong {
+  font-size: 1.02rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.detail-card-wide {
+  grid-column: 1 / -1;
+}
+
+.decision-panel {
+  position: sticky;
+  top: 146px;
+}
+
+.decision-status-card {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem;
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(243, 244, 246, 0.92), rgba(239, 246, 255, 0.92));
+  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.95);
+}
+
+.decision-status-card strong {
+  color: #0f172a;
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+}
+
+.verification-section {
+  gap: 1rem;
+}
+
+.verify-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  font-weight: 700;
+}
+
+.premium-check {
+  padding: 0.95rem 1rem;
+  border-radius: 18px;
+  background: rgba(248, 250, 252, 0.94);
+  box-shadow: inset 0 0 0 1px rgba(226, 232, 240, 0.95);
+}
+
+.reject-reason {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.reject-reason textarea {
+  width: 100%;
+  min-height: 124px;
+  padding: 1rem 1.05rem;
+  border-radius: 20px;
+  border: 1px solid rgba(203, 213, 225, 0.95);
+  background: rgba(255, 255, 255, 0.97);
+  color: #0f172a;
+  resize: vertical;
+  outline: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.action-stack {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.8rem;
+}
+
+.state-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.8rem 1rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.approved-chip {
+  background: rgba(16, 185, 129, 0.14);
+  color: #047857;
+}
+
+.rejected-chip {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+}
+
+@media (max-width: 1380px) {
+  .review-body-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .decision-panel {
+    position: static;
+  }
+}
+
+@media (max-width: 1180px) {
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+    padding-right: 1.1rem;
+    gap: 1rem;
+  }
+
+  .overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .admin-registration-shell {
+    padding: 136px 0 1.5rem;
+  }
+
+  .dashboard-layout {
+    padding: 0 0.75rem 1.5rem;
+  }
+
+  .group-head,
+  .student-card,
+  .detail-grid.two-column,
+  .overview-grid,
+  .identity-block,
+  .review-card-topbar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .student-actions {
+    justify-content: stretch;
+  }
+
+  .review-btn,
+  .approve-btn,
+  .reject-btn,
+  .close-btn,
+  .primary-back-btn {
+    width: 100%;
+  }
+
+  .premium-review {
+    padding: 1rem;
+  }
+
+  .identity-avatar {
+    width: 68px;
+    height: 68px;
+  }
+}
+
+@media (max-width: 560px) {
+  .hero-meta {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .review-section,
+  .review-overview-card,
+  .detail-card,
+  .overview-stat {
+    padding-left: 0.9rem;
+    padding-right: 0.9rem;
+  }
+}

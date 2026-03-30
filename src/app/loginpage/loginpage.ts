@@ -18,6 +18,10 @@ export class Loginpage {
   show = false;
   errorMessage = '';
   isLoggingIn = false;
+  popupMessage = '';
+  isPopupOpen = false;
+  private pendingRouteAfterPopup: string | null = null;
+  private pendingQueryParamsAfterPopup: Record<string, string> | null = null;
   user = {
     email: '',
     password: '',
@@ -57,27 +61,61 @@ export class Loginpage {
     // }
   // }
 
-  login() {
+  private readonly emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
+  closePopup(): void {
+    this.isPopupOpen = false;
+    if (this.pendingRouteAfterPopup) {
+      const route = this.pendingRouteAfterPopup;
+      const queryParams = this.pendingQueryParamsAfterPopup || undefined;
+      this.pendingRouteAfterPopup = null;
+      this.pendingQueryParamsAfterPopup = null;
+      this.router.navigate([route], queryParams ? { queryParams } : undefined);
+    }
+  }
+
+  private openPopup(message: string): void {
+    this.popupMessage = message;
+    this.isPopupOpen = true;
+    this.cdr.detectChanges();
+  }
+
+  private isValidEmail(identifier: string): boolean {
+    return this.emailPattern.test(identifier.trim().toLowerCase());
+  }
+
+  login() {
   this.errorMessage = '';
+
+  const trimmedIdentifier = this.user.email.trim().toLowerCase();
+  if (!this.isValidEmail(trimmedIdentifier)) {
+    this.openPopup('Please enter a valid email address like name@gmail.com.');
+    return;
+  }
+
+  if (!this.user.password.trim()) {
+    this.openPopup('Please enter your password.');
+    return;
+  }
+
+  this.user.email = trimmedIdentifier;
   this.isLoggingIn = true;
   this.studentDashboardService.resetDashboardState();
 
      if (this.user.role === 'super_admin') {
-          if (this.user.email === 'super@campus.com' && this.user.password === 'super@123') {
+          if (this.user.email.toLowerCase() === 'super@campus.com' && this.user.password === 'super@123') {
           this.auth.setRole('super_admin');
           this.router.navigate(['/super-admin-dashboard']);
       } else {
         this.errorMessage = 'Invalid credentials';
+        this.openPopup('Please enter a valid super admin email and password.');
         this.cdr.detectChanges();
       }
       this.isLoggingIn = false;
       return;
     } 
 
-  const payload: any = { identifier: this.user.email, password: this.user.password };
-
-  this.authService.login(payload).subscribe({
+  this.authService.login({ identifier: this.user.email, password: this.user.password }).subscribe({
     next: (res: any) => {
       console.log('Login Success', res);
 
@@ -86,19 +124,22 @@ export class Loginpage {
       if (actualRole && selectedRole && actualRole !== selectedRole) {
         this.errorMessage = `Account role is ${actualRole.replace('_', ' ')}. Please select the correct role.`;
         this.isLoggingIn = false;
+        this.openPopup(this.errorMessage);
         this.cdr.detectChanges();
         return;
       }
 
       // store token and role
       if (res.token) localStorage.setItem('token', res.token);
-      const currentUser = {
+const currentUser = {
   id: res.userId || '',
   name: res.name || 'Student',
   userId: res.userId || '',
   email: res.email || this.user.email,
   role: res.role || 'student',
-  college: res.college || 'Not Set'
+  profileCompleted: res.profileCompleted !== false,
+  college: res.college || 'Not Set',
+  profileImageUrl: res.profileImageUrl || ''
 };
 localStorage.setItem('currentUser', JSON.stringify(currentUser));
 localStorage.setItem('userName', currentUser.name)
@@ -107,6 +148,12 @@ localStorage.setItem('role', res.role);
       // navigate
       if (res.role === 'admin' || res.role === 'college_admin') {
         this.isLoggingIn = false;
+        if (res.profileCompleted === false) {
+          this.pendingRouteAfterPopup = '/admin-profile';
+          this.pendingQueryParamsAfterPopup = { requireProfileUpdate: '1' };
+          this.openPopup('Please complete your admin profile first. Dashboard access will be enabled after profile completion.');
+          return;
+        }
         this.router.navigate(['/admin-dashboard']);
       } else if (res.role === 'super_admin') {
         this.isLoggingIn = false;
@@ -119,9 +166,10 @@ localStorage.setItem('role', res.role);
             this.router.navigate(['/student-dashboard']);
           },
           error: (dashboardError) => {
+            console.error('Student dashboard preload failed', dashboardError);
             this.isLoggingIn = false;
-            this.errorMessage = dashboardError?.error?.message || 'Student dashboard data load nahi hua. Please try again.';
-            this.cdr.detectChanges();
+            this.errorMessage = '';
+            this.router.navigate(['/student-dashboard']);
           }
         });
       }
@@ -129,6 +177,13 @@ localStorage.setItem('role', res.role);
     error: (err) => {
       this.isLoggingIn = false;
       console.log('Login Failed', err);
+      if (err?.status === 403 && err?.error?.accountStatus === 'blocked') {
+        this.router.navigate(['/admin-approval-pending'], {
+          queryParams: { status: 'blocked' }
+        });
+        return;
+      }
+
       if (err?.status === 403 && err?.error?.approvalStatus) {
         const status = err.error.approvalStatus;
         const reason = err.error.rejectionReason || '';
@@ -138,6 +193,7 @@ localStorage.setItem('role', res.role);
         return;
       }
       this.errorMessage = err?.error?.message || 'Invalid credentials';
+      this.openPopup(this.errorMessage);
       this.cdr.detectChanges();
     }
   });

@@ -1,0 +1,118 @@
+<div class="admin-feedback-panel">
+  <section class="summary-cards">
+    <article class="card stat">
+      <div class="stat-icon feedback-icon">★</div>
+      <div>
+        <p>Average Rating</p>
+        <h3>{{ isLoading ? '...' : averageRating.toFixed(1) }}</h3>
+        <p class="stat-subtext">
+          {{ totalFeedbacks }} {{ totalFeedbacks === 1 ? 'review' : 'reviews' }}
+        </p>
+      </div>
+    </article>
+
+    <article class="card stat">
+      <div class="stat-icon purple">📊</div>
+      <div>
+        <p>Total Feedback</p>
+        <h3>{{ isLoading ? '...' : totalFeedbacks }}</h3>
+      </div>
+    </article>
+
+    <article class="card stat">
+      <div class="stat-icon teal">👍</div>
+      <div>
+        <p>5 Star Reviews</p>
+        <h3>{{ isLoading ? '...' : getFeedbackCountByRating(5) }}</h3>
+      </div>
+    </article>
+
+    <article class="card stat">
+      <div class="stat-icon lavender">📈</div>
+      <div>
+        <p>Response Rate</p>
+        <h3>{{ isLoading ? '...' : responseRate + '%' }}</h3>
+      </div>
+    </article>
+  </section>
+
+  <section class="grid-two1">
+    <article class="card feedback-detailed-card">
+      <div class="card-head">
+        <h3>Student Feedback Overview</h3>
+        <span class="muted">{{ averageRating.toFixed(1) }} / 5.0</span>
+      </div>
+
+      <div class="feedback-summary">
+        <div class="rating-overview">
+          <div class="rating-number">{{ averageRating.toFixed(1) }}</div>
+          <div class="rating-stars">{{ averageRatingStars }}</div>
+          <div class="rating-count">{{ totalFeedbacks }} reviews</div>
+        </div>
+
+        <div class="rating-breakdown">
+          <div class="rating-bar-item" *ngFor="let num of [5, 4, 3, 2, 1]">
+            <span class="rating-label">{{ num }}★</span>
+            <div class="rating-bar">
+              <div class="rating-bar-fill" [style.width.%]="getRatingPercentage(num)"></div>
+            </div>
+            <span class="rating-count-small">{{ getFeedbackCountByRating(num) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="empty-feedback" *ngIf="!isLoading && totalFeedbacks === 0">
+        <div class="empty-icon">💬</div>
+        <p>No feedback yet</p>
+        <span class="muted">Students have not submitted feedback yet.</span>
+      </div>
+    </article>
+  </section>
+
+  <section class="event-feedback-section">
+    <div class="section-head">
+      <div>
+        <p class="section-kicker">Student dashboard style</p>
+        <h3>Event-wise Ratings And Feedback</h3>
+      </div>
+      <span class="muted">{{ eventRows.length }} events with reviews</span>
+    </div>
+
+    <div class="event-feedback-grid" *ngIf="eventRows.length > 0; else noEventWiseFeedback">
+      <article class="card event-feedback-card" *ngFor="let row of eventRows; trackBy: trackByEventId">
+        <div class="event-row-head">
+          <div>
+            <h4>{{ row.eventName }}</h4>
+            <span class="updated-at">Updated: {{ formatDate(row.lastUpdated) }}</span>
+          </div>
+          <div class="rating-right">
+            <span class="event-stars">{{ getRowStars(row.averageRating) }}</span>
+            <span class="rating-chip">{{ row.averageRating.toFixed(1) }}/5</span>
+          </div>
+        </div>
+
+        <div class="event-metrics">
+          <span>{{ row.totalReviews }} {{ row.totalReviews === 1 ? 'review' : 'reviews' }}</span>
+          <span>Event ID: {{ row.eventId }}</span>
+        </div>
+
+        <div class="event-comments">
+          <div class="event-comment" *ngFor="let fb of row.recentFeedbacks; trackBy: trackByFeedbackId">
+            <div class="feedback-header">
+              <span class="feedback-rating">{{ fb.rating }}★</span>
+              <span class="feedback-date">{{ formatDate(fb.createdAt) }}</span>
+            </div>
+            <p class="feedback-text">{{ fb.feedback || 'No written feedback for this review.' }}</p>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <ng-template #noEventWiseFeedback>
+      <article class="card empty-feedback">
+        <p>No event-wise feedback available yet.</p>
+        <span class="muted">Event cards will appear here after students submit ratings.</span>
+      </article>
+    </ng-template>
+  </section>
+</div>

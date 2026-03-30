@@ -1,24 +1,34 @@
+
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
 import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
+import { EventCardComponent } from '../shared/event-card/event-card.component';
+import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
+import { timeout } from 'rxjs';
 import {
   StudentDashboardService,
-  StudentEventCard
+  StudentEventCard,
+  StudentNotificationItem,
+  StudentEventReview,
+  StudentRegistrationRecord
 } from '../services/student-dashboard.service';
+
 
 @Component({
   selector: 'app-student-events-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, EventCardComponent, StudentHeaderComponent],
   templateUrl: './student-events-page.component.html',
   styleUrls: ['./student-events-page.component.scss']
 })
-export class StudentEventsPageComponent implements OnInit {
+export class StudentEventsPageComponent implements OnInit, OnDestroy {
   events: StudentEventCard[] = [];
   filteredEvents: StudentEventCard[] = [];
+  registrations: StudentRegistrationRecord[] = [];
+  notifications: StudentNotificationItem[] = [];
   categories: string[] = ['All'];
   colleges: string[] = ['All'];
   searchQuery = '';
@@ -26,16 +36,24 @@ export class StudentEventsPageComponent implements OnInit {
   selectedCollege = 'All';
   selectedDate = '';
   loading = true;
-  actionEventId = '';
+  notificationsLoading = true;
+  notificationsDropdownOpen = false;
   errorMessage = '';
+  eventRatingSummaryByEventId: Record<string, { average: number; count: number }> = {};
   expandedEventIds = new Set<string>();
   private focusEventId = '';
+  private notificationsRefreshTimer: ReturnType<typeof setInterval> | null = null;
+  private ratingRefreshTimer: ReturnType<typeof setInterval> | null = null;
+  private loadingRatingSummaryEventIds = new Set<string>();
+  private ratingSummaryRetryCountByEventId: Record<string, number> = {};
 
   constructor(
     private studentDashboardService: StudentDashboardService,
     private auth: Auth,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private cdr: ChangeDetectorRef,
+    private zone: NgZone
   ) {}
 
   ngOnInit(): void {
@@ -46,27 +64,66 @@ export class StudentEventsPageComponent implements OnInit {
 
     this.prefillFromCache();
     this.loadEvents();
+    this.loadRegistrationStatuses();
+    this.loadNotifications();
+    this.startNotificationsRefresh();
+    this.startRatingsRefresh();
+  }
+
+  ngOnDestroy(): void {
+    if (this.notificationsRefreshTimer) {
+      clearInterval(this.notificationsRefreshTimer);
+      this.notificationsRefreshTimer = null;
+    }
+    if (this.ratingRefreshTimer) {
+      clearInterval(this.ratingRefreshTimer);
+      this.ratingRefreshTimer = null;
+    }
   }
 
   get studentName(): string {
     return JSON.parse(localStorage.getItem('currentUser') || '{}')?.name || 'Student';
   }
 
+  get profilePhotoUrl(): string {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    return String(
+      currentUser.profileImageUrl
+      || currentUser.profilePhotoUrl
+      || currentUser.avatarUrl
+      || currentUser.photoUrl
+      || ''
+    ).trim();
+  }
+
+  get hasVisibleEventsData(): boolean {
+    return this.events.length > 0 || this.filteredEvents.length > 0;
+  }
+
   loadEvents(): void {
     this.errorMessage = '';
 
-    this.studentDashboardService.getEvents().subscribe({
+    this.studentDashboardService.getEvents().pipe(
+      timeout(9000)
+    ).subscribe({
       next: (events) => {
-        this.setEvents(events);
-        this.loading = false;
-        setTimeout(() => this.scrollToFocusedEvent(), 0);
+        this.zone.run(() => {
+          this.setEvents(events);
+          this.loading = false;
+          this.flushView();
+          setTimeout(() => this.scrollToFocusedEvent(), 0);
+        });
       },
       error: (error) => {
-        this.setEvents(this.studentDashboardService.getCachedEvents());
-        this.loading = false;
-        if (!this.events.length) {
-          this.errorMessage = error?.error?.message || 'Unable to load events right now.';
-        }
+        this.zone.run(() => {
+          this.prefillFromCache();
+          this.setEvents(this.studentDashboardService.getCachedEvents());
+          this.loading = false;
+          if (!this.events.length) {
+            this.errorMessage = error?.error?.message || 'Unable to load events right now.';
+          }
+          this.flushView();
+        });
       }
     });
   }
@@ -86,6 +143,7 @@ export class StudentEventsPageComponent implements OnInit {
 
       return matchesQuery && matchesCategory && matchesCollege && matchesDate;
     });
+
   }
 
   clearFilters(): void {
@@ -97,20 +155,17 @@ export class StudentEventsPageComponent implements OnInit {
   }
 
   registerForEvent(event: StudentEventCard): void {
-    if (event.status !== 'Open') {
+    if (this.isRegisterDisabled(event)) {
       return;
     }
 
-    this.actionEventId = event.id;
-    this.studentDashboardService.registerForEvent(event.id).subscribe({
-      next: () => {
-        this.actionEventId = '';
-        this.loading = true;
-        this.loadEvents();
-      },
-      error: (error) => {
-        this.actionEventId = '';
-        this.errorMessage = error?.error?.error || error?.error?.message || 'Registration failed. Please try again.';
+    const registration = this.studentDashboardService
+      .getCachedRegistrations()
+      .find((item) => item.eventId === event.id) || null;
+    this.router.navigate(['/student-event-registration', event.id], {
+      state: {
+        event,
+        registration
       }
     });
   }
@@ -125,7 +180,7 @@ export class StudentEventsPageComponent implements OnInit {
       return;
     }
     if (path === 'feedback') {
-      this.router.navigate(['/new-student-dashboard'], { fragment: 'feedback-section' });
+      this.router.navigate(['/student-feedback']);
       return;
     }
     if (path === 'profile') {
@@ -134,8 +189,9 @@ export class StudentEventsPageComponent implements OnInit {
     }
   }
 
-  openNotifications(): void {
-    this.router.navigate(['/new-student-dashboard'], { fragment: 'notifications-section' });
+  openNotifications(event?: Event): void {
+    event?.stopPropagation();
+    this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
   }
 
   logout(): void {
@@ -144,32 +200,78 @@ export class StudentEventsPageComponent implements OnInit {
   }
 
   getRegisterLabel(event: StudentEventCard): string {
-    if (event.status === 'Registered') {
+    const normalizedStatus = String(event.status || '').toLowerCase();
+    const registration = this.getRegistrationForEvent(event.id);
+    if (registration?.status === 'APPROVED') {
+      return 'Approved';
+    }
+    if (registration?.status === 'PENDING') {
+      return 'Under Review';
+    }
+    if (this.hasRejectedRegistration(event.id)) {
+      return 'Update & Resubmit';
+    }
+    if (this.isEventExpired(event)) {
+      return 'Event Closed';
+    }
+    if (normalizedStatus === 'registered') {
       return 'Registered';
     }
-    if (this.actionEventId === event.id) {
-      return 'Joining...';
-    }
-    if (event.status === 'Full') {
+    if (normalizedStatus === 'full') {
       return 'Full';
     }
-    if (event.status === 'Closed') {
+    if (normalizedStatus === 'closed') {
       return 'Closed';
     }
     return 'Register Now';
   }
 
-  toggleEventDescription(eventId: string): void {
-    if (this.expandedEventIds.has(eventId)) {
-      this.expandedEventIds.delete(eventId);
-      return;
-    }
-
-    this.expandedEventIds.add(eventId);
+  hasRejectedRegistration(eventId: string): boolean {
+    return this.getRegistrationForEvent(eventId)?.status === 'REJECTED';
   }
 
-  isEventDescriptionExpanded(eventId: string): boolean {
-    return this.expandedEventIds.has(eventId);
+  isRegisterDisabled(event: StudentEventCard): boolean {
+    if (this.isEventExpired(event)) {
+      return true;
+    }
+
+    const normalizedStatus = String(event.status || '').toLowerCase();
+    if (normalizedStatus === 'closed' || normalizedStatus === 'full') {
+      return true;
+    }
+
+    const registration = this.getRegistrationForEvent(event.id);
+    if (registration && registration.status !== 'REJECTED') {
+      return true;
+    }
+
+    return false;
+  }
+
+  isEventCompleted(event: StudentEventCard): boolean {
+    return this.isEventExpired(event);
+  }
+
+  getEventRatingAverage(eventId: string): number | null {
+    const summary = this.eventRatingSummaryByEventId[eventId];
+    return summary ? summary.average : null;
+  }
+
+  getEventRatingCount(eventId: string): number {
+    return this.eventRatingSummaryByEventId[eventId]?.count || 0;
+  }
+
+  isRatingSummaryLoading(eventId: string): boolean {
+    return this.loadingRatingSummaryEventIds.has(eventId);
+  }
+
+
+
+
+
+  @HostListener('document:click')
+  closeNotificationsDropdown(): void {
+    this.notificationsDropdownOpen = false;
   }
 
   trackById(_: number, item: StudentEventCard): string {
@@ -188,16 +290,183 @@ export class StudentEventsPageComponent implements OnInit {
 
   private prefillFromCache(): void {
     const cachedEvents = this.studentDashboardService.getCachedEvents();
+    const cachedRegistrations = this.studentDashboardService.getCachedRegistrations();
+    const cachedNotifications = this.studentDashboardService.getCachedNotifications();
+
     if (cachedEvents.length) {
       this.setEvents(cachedEvents);
       this.loading = false;
     }
+
+    if (cachedRegistrations.length) {
+      this.registrations = cachedRegistrations;
+    }
+
+    if (cachedNotifications.length) {
+      this.notifications = cachedNotifications;
+      this.notificationsLoading = false;
+    }
+
+    this.flushView();
   }
 
   private setEvents(events: StudentEventCard[]): void {
-    this.events = [...events].sort((a, b) => new Date(a.dateTime).getTime() - new Date(b.dateTime).getTime());
+    this.events = [...events].sort((a, b) => this.getEventTimestamp(b) - this.getEventTimestamp(a));
     this.categories = ['All', ...Array.from(new Set(this.events.map((event) => event.category).filter(Boolean)))];
     this.colleges = ['All', ...Array.from(new Set(this.events.map((event) => event.collegeName).filter(Boolean)))];
     this.applyFilters();
+    this.loadVisibleEventRatingSummaries(this.events, true);
+    this.flushView();
+  }
+
+  private loadVisibleEventRatingSummaries(sourceEvents: StudentEventCard[] = this.filteredEvents, forceRefresh = false): void {
+    for (const event of sourceEvents) {
+      if (!this.isEventCompleted(event)) {
+        continue;
+      }
+      if (!forceRefresh && this.eventRatingSummaryByEventId[event.id]) {
+        continue;
+      }
+      if (this.loadingRatingSummaryEventIds.has(event.id)) {
+        continue;
+      }
+      this.fetchEventRatingSummary(event.id);
+    }
+  }
+
+  private fetchEventRatingSummary(eventId: string): void {
+    this.loadingRatingSummaryEventIds.add(eventId);
+
+    this.studentDashboardService.getEventReviews(eventId).pipe(
+      timeout(7000)
+    ).subscribe({
+      next: (reviews) => {
+        const { average, count } = this.buildEventRatingSummary(reviews || []);
+        this.eventRatingSummaryByEventId[eventId] = { average, count };
+        this.ratingSummaryRetryCountByEventId[eventId] = 0;
+        this.loadingRatingSummaryEventIds.delete(eventId);
+      },
+      error: () => {
+        this.loadingRatingSummaryEventIds.delete(eventId);
+        const retries = (this.ratingSummaryRetryCountByEventId[eventId] || 0) + 1;
+        this.ratingSummaryRetryCountByEventId[eventId] = retries;
+
+        if (retries <= 3) {
+          setTimeout(() => {
+            this.fetchEventRatingSummary(eventId);
+          }, 1200 * retries);
+          return;
+        }
+
+        this.eventRatingSummaryByEventId[eventId] = { average: 0, count: 0 };
+      }
+    });
+  }
+
+  private buildEventRatingSummary(reviews: StudentEventReview[]): { average: number; count: number } {
+    const validRatings = (reviews || [])
+      .map((review) => Number(review.rating || 0))
+      .filter((rating) => Number.isFinite(rating) && rating >= 1 && rating <= 5);
+
+    if (!validRatings.length) {
+      return { average: 0, count: 0 };
+    }
+
+    const total = validRatings.reduce((sum, rating) => sum + rating, 0);
+    const average = Math.round((total / validRatings.length) * 10) / 10;
+    return { average, count: validRatings.length };
+  }
+
+  private getEventTimestamp(event: StudentEventCard): number {
+    const timestamp = new Date(event.dateTime).getTime();
+    return Number.isNaN(timestamp) ? 0 : timestamp;
+  }
+
+  private isEventExpired(event: StudentEventCard): boolean {
+    const normalizedStatus = String(event.status || '').toLowerCase();
+    if (normalizedStatus === 'closed' || normalizedStatus === 'completed' || normalizedStatus === 'past') {
+      return true;
+    }
+
+    const parseDate = (value?: string | null): number => {
+      if (!value) return Number.NaN;
+      const trimmed = String(value).trim();
+      if (!trimmed) return Number.NaN;
+      const isDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(trimmed);
+      const parsed = new Date(isDateOnly ? `${trimmed}T23:59:59.999` : trimmed).getTime();
+      return Number.isNaN(parsed) ? Number.NaN : parsed;
+    };
+
+    const endTimestamp = parseDate(event.endDate);
+    if (!Number.isNaN(endTimestamp)) {
+      return endTimestamp < Date.now();
+    }
+
+    const startTimestamp = parseDate(event.dateTime);
+    if (!Number.isNaN(startTimestamp)) {
+      return startTimestamp < Date.now();
+    }
+
+    return false;
+  }
+
+  private loadNotifications(): void {
+    this.notificationsLoading = true;
+
+    this.studentDashboardService.refreshDashboardSnapshot().subscribe({
+      next: (snapshot) => {
+        this.notifications = snapshot.notifications || [];
+        this.notificationsLoading = false;
+        this.flushView();
+      },
+      error: () => {
+        this.notifications = this.studentDashboardService.getCachedNotifications();
+        this.notificationsLoading = false;
+        this.flushView();
+      }
+    });
+  }
+
+  private loadRegistrationStatuses(): void {
+    this.studentDashboardService.fetchLatestRegistrations().pipe(
+      timeout(9000)
+    ).subscribe({
+      next: (registrations) => {
+        this.registrations = registrations || [];
+      },
+      error: () => {
+        this.registrations = this.studentDashboardService.getCachedRegistrations();
+      }
+    });
+  }
+
+  private getRegistrationForEvent(eventId: string): StudentRegistrationRecord | null {
+    const source = this.registrations.length
+      ? this.registrations
+      : this.studentDashboardService.getCachedRegistrations();
+    return source.find((item) => item.eventId === eventId) || null;
+  }
+
+  private startNotificationsRefresh(): void {
+    this.notificationsRefreshTimer = setInterval(() => {
+      this.studentDashboardService.refreshDashboardSnapshot().subscribe({
+        next: (snapshot) => {
+          this.notifications = snapshot.notifications || [];
+          this.notificationsLoading = false;
+          this.flushView();
+        },
+        error: () => void 0
+      });
+    }, 8000);
+  }
+
+  private startRatingsRefresh(): void {
+    this.ratingRefreshTimer = setInterval(() => {
+      this.loadVisibleEventRatingSummaries(this.filteredEvents, true);
+    }, 8000);
+  }
+
+  private flushView(): void {
+    this.cdr.detectChanges();
   }
 }

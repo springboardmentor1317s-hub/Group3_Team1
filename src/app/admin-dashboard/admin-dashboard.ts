@@ -1,16 +1,25 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
-import { EventService, BackendEvent } from '../services/event.service';
-import { CreateEventComponent } from '../create-event/create-event.component';
-import { catchError, finalize, forkJoin, timeout } from 'rxjs';
+import { ActivatedRoute, Router } from '@angular/router';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { EventService } from '../services/event.service';
+import { catchError, finalize, forkJoin, of, timeout } from 'rxjs';
 import { Auth } from '../auth/auth';
+import { AuthService } from '../services/auth.service';
+import { FeedbackService, Feedback } from '../services/feedback.service';
+import { AdminFeedbackPanelComponent } from '../admin-feedback-panel/admin-feedback-panel.component';
+import { AdminEventCardComponent } from '../shared/admin-event-card/admin-event-card.component';
+import { StudentEventCard } from '../services/student-dashboard.service';
+import { AdminDashboardSidebarComponent } from '../admin-dashboard-sidebar/admin-dashboard-sidebar.component';
+import { AdminRegistrationsPanelComponent } from '../admin-registrations-panel/admin-registrations-panel.component';
+import { isEventClosedByDate, parseEventLocalDay, resolveEventDateCandidate } from '../shared/event-date.util';
+import { AdminCommonHeaderComponent } from '../shared/admin-common-header/admin-common-header.component';
+import { AdminStudentStatusPanelComponent } from '../admin-student-status-panel/admin-student-status-panel.component';
+import { AdminQueryPanelComponent, AdminStudentQuery } from '../admin-query-panel/admin-query-panel.component';
+import { AdminAttendanceManagementComponent } from '../admin-attendance-management/admin-attendance-management.component';
 
-
-
-type DashboardTab = 'overview' | 'events' | 'analytics' | 'registrations';
+type DashboardTab = 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries' | 'attendance';
 
 interface OrganizerEvent {
   id: string;
@@ -24,7 +33,7 @@ interface OrganizerEvent {
   description: string;
   category?: string;
   teamSize?: number | null;
-  maxAttendees?: number;
+  maxAttendees?: number | null;
   collegeName?: string;
   status: 'Active' | 'Draft' | 'Past';
   registrations: number;
@@ -45,8 +54,10 @@ interface Registration {
   registrationDate: string;
   submittedDate: string;
   createdAt: string;
+  updatedAt?: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   rejectionReason?: string;
+  reviewProfile?: unknown;
 }
 
 interface AdminNotification {
@@ -58,78 +69,84 @@ interface AdminNotification {
   timeLabel: string;
 }
 
-
+interface RegistrationGroup {
+  eventId: string;
+  eventName: string;
+  registrations: Registration[];
+  total: number;
+  isClosed: boolean;
+  statusLabel: 'Open' | 'Closed';
+}
 
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, CreateEventComponent],
+  imports: [CommonModule, FormsModule, AdminFeedbackPanelComponent, AdminEventCardComponent, AdminDashboardSidebarComponent, AdminRegistrationsPanelComponent, AdminCommonHeaderComponent, AdminStudentStatusPanelComponent, AdminQueryPanelComponent, AdminAttendanceManagementComponent],
   templateUrl: './admin-dashboard.html',
   styleUrls: ['./admin-dashboard.css']
 })
 export class AdminDashboard implements OnInit, OnDestroy {
 
+  feedbacks: Feedback[] = [];
+  averageRating: number = 0;
+  totalFeedbacks: number = 0;
+
   private readonly API_URL = '/api/events';
+  private readonly COLLEGE_EVENTS_API_URL = '/api/events/college';
   private readonly REGISTRATIONS_API_URL = '/api/registrations';
+  private readonly COLLEGE_REGISTRATIONS_API_URL = '/api/registrations/college';
+  private readonly STUDENT_QUERIES_API_URL = '/api/student-queries';
+  private readonly COLLEGE_QUERIES_API_URL = '/api/student-queries/college';
   private readonly NOTIFICATION_POLL_INTERVAL_MS = 12000;
   private notificationPollTimer: ReturnType<typeof setInterval> | null = null;
   private sidebarHoverCloseTimer: ReturnType<typeof setTimeout> | null = null;
   private knownRegistrationIds = new Set<string>();
+  private knownRegistrationStatuses = new Map<string, Registration['status']>();
+  private knownQueryIds = new Set<string>();
+  private knownQueryUpdateAt = new Map<string, string>();
+  private queryBootstrapDone = false;
   private notificationStorageKey = 'admin-dashboard-last-seen-registration-at';
+  private myEventsCacheStorageKey = 'admin-my-events-cache';
+  private currentCollege = '';
+  adminCollegeName = '';
 
-  // ✅ Inject ChangeDetectorRef to manually trigger UI update after async data loads
   constructor(
     private readonly http: HttpClient,
     private readonly eventService: EventService,
     private readonly cdr: ChangeDetectorRef,
     private readonly elementRef: ElementRef<HTMLElement>,
     private readonly auth: Auth,
-    private readonly router: Router
+    private readonly authService: AuthService,
+    private readonly route: ActivatedRoute,
+    private readonly router: Router,
+    private readonly feedbackService: FeedbackService
   ) {}
 
   @ViewChild('dashboardSearchInput') private dashboardSearchInput?: ElementRef<HTMLInputElement>;
 
   openCreateModal(): void {
-    this.editingEvent = null;
-    this.createEventVisible = true;
+    this.router.navigate(['/admin-create-event']);
   }
 
   openEditModal(event: OrganizerEvent): void {
-    // Map OrganizerEvent to BackendEvent for child component
-    this.editingEvent = {
-      id: event.id,
-      name: event.name,
-      dateTime: event.dateTime,
-      endDate: event.endDate || undefined,
-      registrationDeadline: event.registrationDeadline || undefined,
-      location: event.location,
-      organizer: event.organizer,
-      contact: event.contact,
-      description: event.description,
-      category: event.category || undefined,
-      teamSize: event.teamSize || undefined,
-      maxAttendees: event.maxAttendees || undefined,
-      posterDataUrl: event.posterDataUrl || null,
-      status: event.status as any,
-      registrations: event.registrations,
-      participants: event.participants,
-      collegeName: event.collegeName || undefined
-    };
-    this.createEventVisible = true;
-  }
-
-  handleEventSaved(savedEvent: BackendEvent): void {
-    // Refresh events list using service or direct API
-    this.refreshEvents();
-    this.createEventVisible = false;
-    this.showSuccessToast('Event saved successfully!');
-    this.setTab('events');
+    if (!this.isCollegeEvent(event)) {
+      this.showErrorToast('You can edit only the events from your college dashboard.');
+      return;
+    }
+    try {
+      sessionStorage.setItem(`admin-edit-event:${event.id}`, JSON.stringify(event));
+    } catch {}
+    this.router.navigate(['/admin-create-event'], {
+      queryParams: { edit: event.id },
+      state: { editingEvent: event }
+    });
   }
 
   private refreshEvents(): void {
-    this.http.get<OrganizerEvent[]>(this.API_URL).subscribe({
+    this.http.get<OrganizerEvent[]>(this.COLLEGE_EVENTS_API_URL, { headers: this.getAuthHeaders() }).subscribe({
       next: (data) => {
         this.events = data;
+        this.persistMyEventsCache(data);
         this.refreshEventStatuses();
         this.cdr.detectChanges();
       },
@@ -139,44 +156,33 @@ export class AdminDashboard implements OnInit, OnDestroy {
     });
   }
 
-
-
   userName: string = '';
   userAvatarUrl: string | null = null;
+  sidebarCollapsed = false;
   isDarkMode: boolean = false;
-  isSidebarPinned = false;
+  isSidebarPinned = true;
   isSidebarHovered = false;
   activeTab: DashboardTab = 'overview';
-  showCreateEventModal = false;
   private manageHiddenEventIds = new Set<string>();
 
   events: OrganizerEvent[] = [];
   registrations: Registration[] = [];
+  studentQueries: AdminStudentQuery[] = [];
   filteredRegistrations: Registration[] = [];
   registrationStatusFilter: 'All' | 'Pending' | 'Approved' | 'Rejected' = 'All';
   registrationSearchText: string = '';
   registrationFilter: string = 'all';
   registrationSearchQuery: string = '';
   dashboardSearchQuery: string = '';
-  rejectionModalOpen = false;
-  approveModalOpen = false;
-  rejectModalOpen = false;
   showNotifications = false;
   unreadNotificationCount = 0;
   notifications: AdminNotification[] = [];
-  selectedRegistrationForRejection: Registration | null = null;
-  selectedRegistration: Registration | null = null;
-  rejectionReason: string = '';
-
-  // Create Event Component visibility
-  createEventVisible = false;
-  editingEvent: BackendEvent | null = null;
-
+  queryLoading = false;
+  queryErrorMessage = '';
+  querySavingId = '';
   showToast = false;
   toastMessage = '';
   toastType: 'success' | 'error' = 'success';
-
-  // ✅ Loading state so the template can show a spinner instead of 0
   isLoading = true;
 
   ngOnInit(): void {
@@ -185,40 +191,53 @@ export class AdminDashboard implements OnInit, OnDestroy {
     this.userAvatarUrl = user.profileImageUrl || null;
     const userId = user.id || user._id || this.userName || 'admin';
     this.notificationStorageKey = `admin-dashboard-last-seen-registration-at-${userId}`;
+    this.myEventsCacheStorageKey = this.buildMyEventsCacheStorageKey(user);
+    this.currentCollege = String(user.college || '').trim().toLowerCase();
+    this.adminCollegeName = String(user.college || '').trim();
 
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark' || (savedTheme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       this.isDarkMode = true;
     }
 
-    // ✅ Use forkJoin to fire BOTH requests in parallel and wait for BOTH to complete
-    //    before updating any state. This ensures the stats are never shown as 0.
+    this.route.queryParamMap.subscribe((params) => {
+      const tab = params.get('tab') as DashboardTab | null;
+      if (tab && ['overview', 'events', 'analytics', 'registrations', 'feedback', 'approvedStudents', 'queries', 'attendance'].includes(tab)) {
+        this.activeTab = tab;
+      }
+      if (params.get('create') === 'true') {
+        this.router.navigate(['/admin-create-event']);
+      }
+    });
+
     this.isLoading = true;
     forkJoin({
-      events: this.http.get<OrganizerEvent[]>(this.API_URL),
-      registrations: this.http.get<Registration[]>(this.REGISTRATIONS_API_URL)
+      events: this.http.get<OrganizerEvent[]>(this.COLLEGE_EVENTS_API_URL, { headers: this.getAuthHeaders() }),
+      registrations: this.http.get<Registration[]>(this.COLLEGE_REGISTRATIONS_API_URL, { headers: this.getAuthHeaders() }),
+      feedbacks: this.feedbackService.getAllFeedbacks().pipe(
+        catchError(() => of([] as Feedback[]))
+      )
     }).subscribe({
-      next: ({ events, registrations }) => {
-        // Add approvedCount to events
+      next: ({ events, registrations, feedbacks }) => {
         const eventsWithApproved = events.map(event => ({
           ...event,
           approvedCount: registrations.filter(r => r.eventId === event.id && r.status === 'APPROVED').length
         }));
+        const eventIds = new Set(eventsWithApproved.map((event) => String(event.id)));
         
         this.events = eventsWithApproved;
+        this.persistMyEventsCache(eventsWithApproved);
         this.refreshEventStatuses();
-
         this.registrations = registrations;
         this.applyRegistrationFilters();
         this.syncEventRegistrationStats(registrations);
-        this.initializeNotifications(registrations);
+        
+        this.feedbacks = (feedbacks || []).filter((feedback) => eventIds.has(String(feedback.eventId)));
+        
+        this.initializeNotifications(registrations, []);
+        this.fetchCollegeQueries();
         this.startNotificationPolling();
-
         this.isLoading = false;
-
-        // ✅ Tell Angular to re-check this component's bindings right now,
-        //    so totalEvents / activeEvents / totalRegistrations / averageParticipants
-        //    reflect real data on first paint instead of showing 0.
         this.cdr.detectChanges();
       },
       error: (err) => {
@@ -227,6 +246,24 @@ export class AdminDashboard implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  get averageRatingStars(): string {
+    const fullStars = Math.floor(this.averageRating);
+    const hasHalfStar = this.averageRating % 1 >= 0.5;
+    let stars = '⭐'.repeat(fullStars);
+    if (hasHalfStar) stars += '½';
+    return stars;
+  }
+
+  getFeedbackCountByRating(rating: number): number {
+    return this.feedbacks.filter(f => f.rating === rating).length;
+  }
+
+  getRecentFeedbacks(limit: number = 5): Feedback[] {
+    return [...this.feedbacks]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, limit);
   }
 
   ngOnDestroy(): void {
@@ -258,6 +295,9 @@ export class AdminDashboard implements OnInit, OnDestroy {
 
   setTab(tab: DashboardTab): void {
     this.activeTab = tab;
+    if (tab === 'queries') {
+      this.fetchCollegeQueries();
+    }
   }
 
   get isSidebarVisible(): boolean {
@@ -269,6 +309,10 @@ export class AdminDashboard implements OnInit, OnDestroy {
     if (this.isSidebarPinned) {
       this.isSidebarHovered = true;
     }
+  }
+
+  setSidebarCollapsed(collapsed: boolean): void {
+    this.sidebarCollapsed = collapsed;
   }
 
   onSidebarMouseEnter(): void {
@@ -315,6 +359,39 @@ export class AdminDashboard implements OnInit, OnDestroy {
     this.router.navigate(['/login']);
   }
 
+  goToMyEvents(): void {
+    this.persistMyEventsCache(this.events);
+    this.router.navigate(['/admin-my-events']);
+  }
+
+  goToRegistrationDetails(): void {
+    this.router.navigate(['/admin-registration-details']);
+  }
+
+  goToOldEvents(): void {
+    this.router.navigate(['/admin-old-events']);
+  }
+
+  private buildMyEventsCacheStorageKey(user: Record<string, unknown>): string {
+    const cacheUserId = String(
+      user?.['userId'] ||
+      user?.['id'] ||
+      user?.['_id'] ||
+      user?.['email'] ||
+      'default'
+    ).trim();
+
+    return `admin-my-events-cache:${cacheUserId}`;
+  }
+
+  private persistMyEventsCache(events: OrganizerEvent[]): void {
+    try {
+      localStorage.setItem(this.myEventsCacheStorageKey, JSON.stringify(events || []));
+    } catch {
+      return;
+    }
+  }
+
   onManageClick(event: OrganizerEvent, targetTab: DashboardTab): void {
     this.manageHiddenEventIds.add(event.id);
     this.setTab(targetTab);
@@ -334,9 +411,10 @@ export class AdminDashboard implements OnInit, OnDestroy {
   }
 
   private pollLatestRegistrations(): void {
-    this.http.get<Registration[]>(this.REGISTRATIONS_API_URL).subscribe({
+    this.http.get<Registration[]>(this.COLLEGE_REGISTRATIONS_API_URL, { headers: this.getAuthHeaders() }).subscribe({
       next: (registrations) => {
-        this.handleRegistrationUpdates(registrations);
+        this.handleRegistrationUpdates(registrations || []);
+        this.fetchCollegeQueries(true);
       },
       error: (err) => {
         console.error('Notification poll failed', err);
@@ -344,25 +422,63 @@ export class AdminDashboard implements OnInit, OnDestroy {
     });
   }
 
-  private initializeNotifications(registrations: Registration[]): void {
+  private fetchCollegeQueries(silent = false): void {
+    if (!silent) {
+      this.queryLoading = true;
+      this.queryErrorMessage = '';
+    }
+
+    this.http.get<AdminStudentQuery[]>(this.COLLEGE_QUERIES_API_URL, { headers: this.getAuthHeaders() }).subscribe({
+      next: (queries) => {
+        const normalized = (queries || []).map((query) => this.normalizeAdminQuery(query));
+
+        if (!this.queryBootstrapDone) {
+          this.studentQueries = normalized;
+          this.initializeNotifications(this.registrations, normalized);
+          this.queryBootstrapDone = true;
+        } else {
+          this.handleQueryUpdates(normalized);
+        }
+
+        this.queryLoading = false;
+      },
+      error: (error) => {
+        if (!silent) {
+          this.queryLoading = false;
+          this.queryErrorMessage = error?.error?.message || 'Unable to load student queries right now.';
+        }
+      }
+    });
+  }
+
+  private initializeNotifications(registrations: Registration[], queries: AdminStudentQuery[] = []): void {
     this.knownRegistrationIds = new Set(registrations.map((reg) => reg.id));
+    this.knownRegistrationStatuses = new Map(registrations.map((reg) => [reg.id, reg.status]));
+    this.knownQueryIds = new Set((queries || []).map((query) => query.id));
+    this.knownQueryUpdateAt = new Map((queries || []).map((query) => [query.id, String(query.updatedAt || query.createdAt || '')]));
     const sortedRegistrations = [...registrations].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-
-    // Always keep notification history visible in the panel.
-    this.notifications = sortedRegistrations.slice(0, 25).map((reg) => this.buildNotification(reg));
-
+    const queryNotifications = (queries || [])
+      .slice()
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 25)
+      .map((query) => this.buildQueryNotification(query));
+    this.notifications = [...queryNotifications, ...sortedRegistrations.slice(0, 25).map((reg) => this.buildNotification(reg))]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 25);
     const lastSeenAt = localStorage.getItem(this.notificationStorageKey) || '';
     if (!lastSeenAt) {
       this.markNotificationsAsRead(registrations);
       return;
     }
-
-    const unread = sortedRegistrations
+    const unreadRegistrationNotifications = sortedRegistrations
       .filter((reg) => new Date(reg.createdAt).getTime() > new Date(lastSeenAt).getTime())
       .map((reg) => this.buildNotification(reg));
-
+    const unreadQueryNotifications = (queries || [])
+      .filter((query) => new Date(query.createdAt).getTime() > new Date(lastSeenAt).getTime())
+      .map((query) => this.buildQueryNotification(query));
+    const unread = [...unreadQueryNotifications, ...unreadRegistrationNotifications];
     this.unreadNotificationCount = unread.length;
   }
 
@@ -370,7 +486,9 @@ export class AdminDashboard implements OnInit, OnDestroy {
     const newRegistrations = registrations
       .filter((reg) => !this.knownRegistrationIds.has(reg.id))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
+    const resubmittedRegistrations = registrations
+      .filter((reg) => this.knownRegistrationStatuses.get(reg.id) === 'REJECTED' && reg.status === 'PENDING')
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
     if (newRegistrations.length > 0) {
       const newNotifications = newRegistrations.map((reg) => this.buildNotification(reg));
       this.notifications = [...newNotifications, ...this.notifications].slice(0, 25);
@@ -378,11 +496,70 @@ export class AdminDashboard implements OnInit, OnDestroy {
       const first = newRegistrations[0];
       this.showSuccessToast(`${first.studentName} registered for ${first.eventName}.`);
     }
-
+    if (resubmittedRegistrations.length > 0) {
+      const retryNotifications = resubmittedRegistrations.map((reg) => ({
+        id: `${reg.id}-resubmitted`,
+        studentName: reg.studentName,
+        eventName: reg.eventName,
+        createdAt: reg.updatedAt || reg.createdAt,
+        message: `${reg.studentName} updated details and resubmitted for ${reg.eventName}`,
+        timeLabel: this.formatNotificationTime(reg.updatedAt || reg.createdAt)
+      }));
+      this.notifications = [...retryNotifications, ...this.notifications].slice(0, 25);
+      this.unreadNotificationCount += retryNotifications.length;
+      const firstRetry = resubmittedRegistrations[0];
+      this.showSuccessToast(`${firstRetry.studentName} resubmitted registration for ${firstRetry.eventName}.`);
+    }
     this.knownRegistrationIds = new Set(registrations.map((reg) => reg.id));
+    this.knownRegistrationStatuses = new Map(registrations.map((reg) => [reg.id, reg.status]));
     this.registrations = registrations;
     this.applyRegistrationFilters();
     this.syncEventRegistrationStats(registrations);
+  }
+
+  private handleQueryUpdates(queries: AdminStudentQuery[]): void {
+    const normalizedQueries = (queries || []).map((query) => this.normalizeAdminQuery(query));
+    const freshQueries = normalizedQueries
+      .filter((query) => !this.knownQueryIds.has(query.id))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    const updatedReplies = normalizedQueries
+      .filter((query) => {
+        const knownTime = this.knownQueryUpdateAt.get(query.id) || '';
+        const nextTime = String(query.updatedAt || query.createdAt || '');
+        if (!knownTime) return false;
+        if (knownTime === nextTime) return false;
+        return !!String(query.adminResponse || '').trim();
+      })
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
+
+    if (freshQueries.length > 0) {
+      const queryNotifications = freshQueries.map((query) => this.buildQueryNotification(query));
+      this.notifications = [...queryNotifications, ...this.notifications]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 25);
+      this.unreadNotificationCount += queryNotifications.length;
+      this.showSuccessToast(`${freshQueries[0].studentName} raised a new query.`);
+    }
+
+    if (updatedReplies.length > 0) {
+      const replyNotifications = updatedReplies.map((query) => ({
+        id: `${query.id}-reply-update`,
+        studentName: query.studentName,
+        eventName: query.subject || 'Student Query',
+        createdAt: query.updatedAt || query.createdAt,
+        message: `Query updated for ${query.studentName}: ${query.subject || 'Support Query'}`,
+        timeLabel: this.formatNotificationTime(query.updatedAt || query.createdAt)
+      }));
+      this.notifications = [...replyNotifications, ...this.notifications]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 25);
+      this.unreadNotificationCount += replyNotifications.length;
+    }
+
+    this.studentQueries = normalizedQueries;
+    this.knownQueryIds = new Set(normalizedQueries.map((query) => query.id));
+    this.knownQueryUpdateAt = new Map(normalizedQueries.map((query) => [query.id, String(query.updatedAt || query.createdAt || '')]));
   }
 
   private buildNotification(registration: Registration): AdminNotification {
@@ -409,10 +586,17 @@ export class AdminDashboard implements OnInit, OnDestroy {
 
   private markNotificationsAsRead(sourceRegs: Registration[] = this.registrations): void {
     this.unreadNotificationCount = 0;
-    const latest = sourceRegs
+    const latestRegistrationTime = sourceRegs
       .map((reg) => reg.createdAt)
       .filter(Boolean)
       .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+    const latestQueryTime = (this.studentQueries || [])
+      .map((query) => query.createdAt)
+      .filter(Boolean)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+    const latest = [latestRegistrationTime, latestQueryTime]
+      .filter(Boolean)
+      .sort((a, b) => new Date(String(b)).getTime() - new Date(String(a)).getTime())[0];
     if (latest) {
       localStorage.setItem(this.notificationStorageKey, latest);
     }
@@ -431,20 +615,13 @@ export class AdminDashboard implements OnInit, OnDestroy {
     });
   }
 
-
-
-
-
-
-
   filterRegistrationsByStatus(status: 'All' | 'Pending' | 'Approved' | 'Rejected'): void {
     this.registrationStatusFilter = status;
     this.applyRegistrationFilters();
   }
 
   applyRegistrationFilters(): void {
-    let filtered = this.registrations;
-
+    let filtered = this.getCollegeRegistrations();
     if (this.registrationStatusFilter !== 'All') {
       const statusMap: { [key: string]: string } = {
         'Pending': 'PENDING',
@@ -453,7 +630,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
       };
       filtered = filtered.filter((r) => r.status === statusMap[this.registrationStatusFilter]);
     }
-
     if (this.registrationSearchText.trim()) {
       const searchLower = this.registrationSearchText.toLowerCase();
       filtered = filtered.filter(
@@ -463,7 +639,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
           r.eventName.toLowerCase().includes(searchLower)
       );
     }
-
     this.filteredRegistrations = filtered;
   }
 
@@ -481,7 +656,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
   }
 
   applyDashboardSearch(): void {
-    // Reuse existing filtering behavior; dashboardSearchQuery is applied inside getters.
     this.applyRegistrationFilters();
   }
 
@@ -509,9 +683,48 @@ export class AdminDashboard implements OnInit, OnDestroy {
     this.dashboardSearchQuery = '';
   }
 
-  getFilteredRegistrations(): any[] {
-    let filtered = this.registrations;
+  onSubmitQueryReply(payload: {
+    queryId: string;
+    adminResponse: string;
+    status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
+    progressNote: string;
+  }): void {
+    const queryId = String(payload?.queryId || '').trim();
+    const adminResponse = String(payload?.adminResponse || '').trim();
+    if (!queryId || adminResponse.length < 3 || this.querySavingId) {
+      return;
+    }
 
+    this.querySavingId = queryId;
+    this.queryErrorMessage = '';
+
+    this.http.patch<AdminStudentQuery>(
+      `${this.STUDENT_QUERIES_API_URL}/${encodeURIComponent(queryId)}/reply`,
+      {
+        adminResponse,
+        status: payload.status,
+        progressNote: String(payload.progressNote || '').trim()
+      },
+      { headers: this.getAuthHeaders() }
+    ).subscribe({
+      next: (updatedQuery) => {
+        this.querySavingId = '';
+        const nextId = String(updatedQuery?.id || queryId);
+        this.studentQueries = this.studentQueries.map((query) => query.id === nextId ? {
+          ...query,
+          ...updatedQuery
+        } : query);
+        this.showSuccessToast('Query reply sent successfully.');
+      },
+      error: (error) => {
+        this.querySavingId = '';
+        this.queryErrorMessage = error?.error?.message || 'Unable to save query reply right now.';
+      }
+    });
+  }
+
+  getFilteredRegistrations(): any[] {
+    let filtered = this.getCollegeRegistrations();
     const combinedSearch = `${this.registrationSearchQuery} ${this.dashboardSearchQuery}`.trim();
     if (combinedSearch) {
       const searchLower = combinedSearch.toLowerCase();
@@ -523,7 +736,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
           r.eventName.toLowerCase().includes(searchLower)
       );
     }
-
     if (this.registrationFilter !== 'all') {
       const statusMap: { [key: string]: string } = {
         'pending': 'PENDING',
@@ -532,21 +744,27 @@ export class AdminDashboard implements OnInit, OnDestroy {
       };
       filtered = filtered.filter((r) => r.status === statusMap[this.registrationFilter]);
     }
-
-    // Group by event ONLY for main Registrations tab (not for approved filter)
     if (this.registrationFilter === 'all') {
       const grouped = filtered.reduce((acc, reg) => {
-        if (!acc[reg.eventName]) {
-          acc[reg.eventName] = { eventName: reg.eventName, registrations: [], total: 0 };
+        const key = reg.eventId || reg.eventName;
+        if (!acc[key]) {
+          const matchedEvent = this.findEventForRegistration(reg);
+          const isClosed = matchedEvent ? this.isEventClosed(matchedEvent) : false;
+          acc[key] = {
+            eventId: reg.eventId,
+            eventName: reg.eventName,
+            registrations: [],
+            total: 0,
+            isClosed,
+            statusLabel: isClosed ? 'Closed' : 'Open'
+          };
         }
-        acc[reg.eventName].registrations.push(reg);
-        acc[reg.eventName].total++;
+        acc[key].registrations.push(reg);
+        acc[key].total++;
         return acc;
-      }, {} as { [key: string]: { eventName: string; registrations: Registration[]; total: number } });
-
+      }, {} as { [key: string]: RegistrationGroup });
       return Object.values(grouped);
     }
-
     return filtered;
   }
 
@@ -560,7 +778,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
         (e.category ?? '').toLowerCase().includes(query)
       );
     });
-    // Sort by dateTime descending (newest first)
     filtered.sort((a, b) => {
       const dateA = new Date(a.dateTime).getTime();
       const dateB = new Date(b.dateTime).getTime();
@@ -569,103 +786,28 @@ export class AdminDashboard implements OnInit, OnDestroy {
     return filtered;
   }
 
-  openRejectModal(registration: Registration): void {
-    this.selectedRegistration = registration;
-    this.rejectionReason = '';
-    this.rejectModalOpen = true;
-    setTimeout(() => {
-      const textarea = document.getElementById('rejectionReason') as HTMLTextAreaElement;
-      if (textarea) {
-        textarea.focus();
-      }
-    }, 100);
-  }
-
-  closeRejectModal(): void {
-    this.rejectModalOpen = false;
-    this.selectedRegistration = null;
-    this.rejectionReason = '';
-  }
-
-  openApproveModal(registration: Registration): void {
-    this.selectedRegistration = registration;
-    this.approveModalOpen = true;
-  }
-
-  closeApproveModal(): void {
-    this.approveModalOpen = false;
-    this.selectedRegistration = null;
-  }
-
-  confirmApproveRegistration(): void {
-    if (!this.selectedRegistration) return;
-    const reg = this.selectedRegistration;
-    this.http.patch<Registration>(`${this.REGISTRATIONS_API_URL}/${reg.id}/approve`, {}).subscribe({
-      next: (updated) => {
-        const idx = this.registrations.findIndex((r) => r.id === reg.id);
-        if (idx >= 0) {
-          this.registrations[idx] = updated;
-          this.applyRegistrationFilter();
-          this.syncEventRegistrationStats(this.registrations);
+  reviewRegistration(registration: Registration): void {
+    this.router.navigate(['/admin-registration-details'], {
+      queryParams: { registrationId: registration.id },
+      state: {
+        registrationReview: {
+          registration,
+          profile: registration.reviewProfile || null
         }
-        this.closeApproveModal();
-        this.showSuccessToast('Registration approved successfully!');
-      },
-      error: (err) => {
-        console.error('Error approving registration', err);
-        this.showErrorToast('Could not approve registration. Please try again.');
       }
     });
-  }
-
-  confirmRejectRegistration(): void {
-    if (!this.selectedRegistration || !this.rejectionReason.trim()) {
-      this.showErrorToast('Please enter a rejection reason.');
-      return;
-    }
-    const reg = this.selectedRegistration;
-    const reason = this.rejectionReason.trim();
-
-    this.http.patch<Registration>(`${this.REGISTRATIONS_API_URL}/${reg.id}/reject`, {
-      reason: reason
-    }).subscribe({
-      next: (updated) => {
-        const idx = this.registrations.findIndex((r) => r.id === reg.id);
-        if (idx >= 0) {
-          this.registrations[idx] = updated;
-          this.applyRegistrationFilter();
-          this.syncEventRegistrationStats(this.registrations);
-        }
-        this.closeRejectModal();
-        this.showSuccessToast('Registration rejected successfully!');
-      },
-      error: (err) => {
-        console.error('Error rejecting registration', err);
-        this.showErrorToast('Could not reject registration. Please try again.');
-      }
-    });
-  }
-
-  confirmReject(): void {
-    if (confirm('Are you sure you want to reject this registration? This action cannot be undone.')) {
-      this.confirmRejectRegistration();
-    }
-  }
-
-  approveRegistration(registration: Registration): void {
-    this.openApproveModal(registration);
   }
 
   getPendingCount(): number {
-    return this.registrations.filter((r) => r.status === 'PENDING').length;
+    return this.getCollegeRegistrations().filter((r) => r.status === 'PENDING').length;
   }
 
   getApprovedCount(): number {
-    return this.registrations.filter((r) => r.status === 'APPROVED').length;
+    return this.getCollegeRegistrations().filter((r) => r.status === 'APPROVED').length;
   }
 
   getRejectedCount(): number {
-    return this.registrations.filter((r) => r.status === 'REJECTED').length;
+    return this.getCollegeRegistrations().filter((r) => r.status === 'REJECTED').length;
   }
 
   trackByRegistrationId(_index: number, reg: Registration): string {
@@ -690,12 +832,13 @@ export class AdminDashboard implements OnInit, OnDestroy {
     }, 3000);
   }
 
-  // Remove duplicate handleEventSaved - already defined above
-
   deleteEvent(event: OrganizerEvent): void {
+    if (!this.isCollegeEvent(event)) {
+      this.showErrorToast('You can delete only the events from your college dashboard.');
+      return;
+    }
     const ok = window.confirm(`Delete "${event.name}"? This can't be undone.`);
     if (!ok) return;
-
     this.http.delete<void>(`${this.API_URL}/${event.id}`).subscribe({
       next: () => {
         this.events = this.events.filter((e) => e.id !== event.id);
@@ -713,7 +856,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
       alert('No events to export yet.');
       return;
     }
-
     const rows = [
       ['Event Name', 'Date', 'Location', 'Organizer', 'Contact', 'Status', 'Registrations', 'Participants'],
       ...this.events.map((e) => [
@@ -727,11 +869,9 @@ export class AdminDashboard implements OnInit, OnDestroy {
         String(e.participants)
       ])
     ];
-
     const csv = rows
       .map((r) => r.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(','))
       .join('\n');
-
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -745,7 +885,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
 
   formatDateTime(value: string): string {
     if (!value) return '';
-    const date = this.parseLocalDay(value);
+    const date = parseEventLocalDay(value);
     if (!date) return value;
     return date.toLocaleDateString(undefined, {
       year: 'numeric',
@@ -762,29 +902,54 @@ export class AdminDashboard implements OnInit, OnDestroy {
     return 1245;
   }
 
+  get dashboardStats(): Array<{ title: string; count: number; icon: string; accent: 'violet' | 'gold' | 'emerald' }> {
+    return [
+      { title: 'Total Events', count: this.totalEvents, icon: 'event', accent: 'violet' },
+      { title: 'Active Events', count: this.activeEvents, icon: 'verified', accent: 'gold' },
+      { title: 'Registrations', count: this.totalRegistrations, icon: 'groups', accent: 'emerald' }
+    ];
+  }
+
+  get adminEventCards(): StudentEventCard[] {
+    return this.getActiveCollegeFilteredEvents().map((event) => this.mapEventCard(event));
+  }
+
+  get recentAdminEventCards(): StudentEventCard[] {
+    return this.getActiveCollegeEvents().slice(0, 3).map((event) => this.mapEventCard(event));
+  }
+
+  get groupedRegistrationsForView(): RegistrationGroup[] {
+    return this.getFilteredRegistrations();
+  }
+
+  get flatRegistrationsForView(): Registration[] {
+    return [];
+  }
+
   get totalEvents(): number {
-    return this.events.length;
+    return this.getCollegeEvents().length;
   }
 
   get activeEvents(): number {
-    return this.events.filter((e) => e.status === 'Active').length;
+    return this.getCollegeEvents().filter((e) => !this.isEventClosed(e)).length;
   }
 
   get totalRegistrations(): number {
-    return this.events.reduce((sum, e) => sum + e.registrations, 0);
+    return this.getCollegeEvents().reduce((sum, e) => sum + e.registrations, 0);
   }
 
   get averageParticipants(): number {
-    if (this.events.length === 0) return 0;
-    const total = this.events.reduce((sum, e) => sum + e.participants, 0);
-    return Math.round(total / this.events.length);
+    const collegeEvents = this.getCollegeEvents();
+    if (collegeEvents.length === 0) return 0;
+    const total = collegeEvents.reduce((sum, e) => sum + e.participants, 0);
+    return Math.round(total / collegeEvents.length);
   }
 
-getPendingApprovals(): number {
+  getPendingApprovals(): number {
     return this.getPendingCount();
   }
 
-getPendingRegistrationsCount(): number {
+  getPendingRegistrationsCount(): number {
     return this.getPendingCount();
   }
 
@@ -796,6 +961,51 @@ getPendingRegistrationsCount(): number {
     return this.getRejectedCount();
   }
 
+  private buildQueryNotification(query: AdminStudentQuery): AdminNotification {
+    return {
+      id: `query-${query.id}`,
+      studentName: query.studentName,
+      eventName: query.subject || 'Student Query',
+      createdAt: query.createdAt,
+      message: `${query.studentName} asked: ${query.subject || 'Support Query'}`,
+      timeLabel: this.formatNotificationTime(query.createdAt)
+    };
+  }
+
+  private normalizeAdminQuery(query: AdminStudentQuery): AdminStudentQuery {
+    const normalizedStatus = String(query?.status || 'OPEN').toUpperCase() as AdminStudentQuery['status'];
+    const studentCollege = this.resolveStudentCollegeForQuery(query);
+    return {
+      ...query,
+      status: normalizedStatus,
+      studentCollege
+    };
+  }
+
+  private resolveStudentCollegeForQuery(query: AdminStudentQuery): string {
+    const queryCollege = String(query?.studentCollege || '').trim();
+    if (queryCollege) {
+      return queryCollege;
+    }
+
+    const queryStudentId = String(query?.studentId || '').trim().toLowerCase();
+    const queryEmail = String(query?.studentEmail || '').trim().toLowerCase();
+
+    const matchedRegistration = (this.registrations || []).find((registration) => {
+      const regStudentId = String(registration?.studentId || '').trim().toLowerCase();
+      const regEmail = String(registration?.studentEmail || registration?.email || '').trim().toLowerCase();
+      if (queryStudentId && regStudentId && queryStudentId === regStudentId) {
+        return true;
+      }
+      if (queryEmail && regEmail && queryEmail === regEmail) {
+        return true;
+      }
+      return false;
+    });
+
+    return String(matchedRegistration?.college || '').trim();
+  }
+
   get avatarText(): string {
     const name = (this.userName || '').trim();
     if (!name) return 'U';
@@ -804,45 +1014,86 @@ getPendingRegistrationsCount(): number {
   }
 
   private refreshEventStatuses(): void {
-    const today = this.startOfToday();
     this.events = this.events.map((event) => {
       if (event.status === 'Draft') return event;
-      const day = this.parseLocalDay(event.dateTime);
-      if (!day) return event;
-
-      const nextStatus: OrganizerEvent['status'] = day.getTime() < today.getTime() ? 'Past' : 'Active';
+      const nextStatus: OrganizerEvent['status'] = this.isEventClosed(event) ? 'Past' : 'Active';
       if (event.status === nextStatus) return event;
       return { ...event, status: nextStatus };
     });
   }
 
-  private isPastEventDate(value: string): boolean {
-    const day = this.parseLocalDay(value);
-    if (!day) return false;
-    return day.getTime() < this.startOfToday().getTime();
+  private getCollegeEvents(): OrganizerEvent[] {
+    return this.events
+      .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime());
   }
 
-  private startOfToday(): Date {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return today;
+  private getActiveCollegeEvents(): OrganizerEvent[] {
+    return this.getCollegeEvents().filter((event) => !this.isEventClosed(event));
   }
 
-  private parseLocalDay(value: string): Date | null {
-    const trimmed = value.trim();
-    const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
-    if (dateOnlyMatch) {
-      const year = Number(dateOnlyMatch[1]);
-      const monthIndex = Number(dateOnlyMatch[2]) - 1;
-      const day = Number(dateOnlyMatch[3]);
-      const local = new Date(year, monthIndex, day);
-      return Number.isNaN(local.getTime()) ? null : local;
-    }
-
-    const parsed = new Date(trimmed);
-    if (Number.isNaN(parsed.getTime())) return null;
-    return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  private getCollegeRegistrations(): Registration[] {
+    const collegeEventIds = new Set(this.getCollegeEvents().map((event) => event.id));
+    return this.registrations.filter((registration) => collegeEventIds.has(registration.eventId));
   }
 
+  getCollegeFilteredEvents(): OrganizerEvent[] {
+    return this.getFilteredEvents();
+  }
+
+  getActiveCollegeFilteredEvents(): OrganizerEvent[] {
+    return this.getCollegeFilteredEvents().filter((event) => !this.isEventClosed(event));
+  }
+
+  private isCollegeEvent(event: OrganizerEvent): boolean {
+    return true;
+  }
+
+  private mapEventCard(event: OrganizerEvent): StudentEventCard {
+    const resolvedDateValue = resolveEventDateCandidate(event as OrganizerEvent & Record<string, unknown>);
+    const date = parseEventLocalDay(resolvedDateValue);
+    const deadlineDate = event.registrationDeadline ? new Date(event.registrationDeadline) : null;
+    const status: StudentEventCard['status'] = this.isEventClosed(event) ? 'Closed' : 'Open';
+    const fallbackId = (event as OrganizerEvent & Record<string, unknown>)['_id'];
+    return {
+      id: String(event.id || fallbackId || ''),
+      title: event.name,
+      description: event.description || 'Manage this event and review registrations from one place.',
+      category: event.category || 'Campus Event',
+      location: event.location || 'Campus Venue',
+      dateTime: resolvedDateValue || event.dateTime,
+      registrationDeadline: event.registrationDeadline ?? null,
+      registrationDeadlineLabel: deadlineDate && !Number.isNaN(deadlineDate.getTime())
+        ? deadlineDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : 'Not specified',
+      dateLabel: date && !Number.isNaN(date.getTime())
+        ? date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : event.dateTime,
+      timeLabel: date && !Number.isNaN(date.getTime())
+        ? date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+        : 'Time TBA',
+      imageUrl: event.posterDataUrl || null,
+      organizer: event.organizer || 'Campus Event Hub',
+      contact: event.contact || 'Contact admin',
+      status,
+      registrations: event.registrations || 0,
+      maxAttendees: event.maxAttendees ?? null,
+      collegeName: event.collegeName || 'Campus Event Hub',
+      endDate: event.endDate ?? null
+    };
+  }
+
+  private findEventForRegistration(registration: Registration): OrganizerEvent | undefined {
+    return this.events.find((event) =>
+      event.id === registration.eventId ||
+      event.name.toLowerCase() === registration.eventName.toLowerCase()
+    );
+  }
+
+  private isEventClosed(event: Pick<OrganizerEvent, 'status' | 'dateTime' | 'endDate'>): boolean {
+    return isEventClosedByDate(event as Pick<OrganizerEvent, 'status' | 'dateTime' | 'endDate'> & Record<string, unknown>);
+  }
+
+  private getAuthHeaders(): HttpHeaders {
+    return this.authService.getAuthHeaders();
+  }
 }
-
