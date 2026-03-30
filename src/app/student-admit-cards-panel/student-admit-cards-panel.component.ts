@@ -26,6 +26,14 @@ export class StudentAdmitCardsPanelComponent implements OnInit {
     return this.approvedEvents.length > 0;
   }
 
+  get readyCount(): number {
+    return this.approvedEvents.filter((item) => item.canDownloadAdmitCard).length;
+  }
+
+  get pendingCount(): number {
+    return this.approvedEvents.length - this.readyCount;
+  }
+
   downloadAdmitCard(item: StudentApprovedEventItem): void {
     if (!item.canDownloadAdmitCard || this.downloadingEventId) {
       return;
