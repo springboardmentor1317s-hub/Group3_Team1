@@ -33,7 +33,7 @@
       <div class="admit-item-head">
         <h3>{{ item.eventName }}</h3>
         <span class="status-chip" [class.pending]="!item.canDownloadAdmitCard">
-          {{ item.canDownloadAdmitCard ? 'Admit Ready' : 'Pending Admin Generation' }}
+          {{ getStatusLabel(item) }}
         </span>
       </div>
 

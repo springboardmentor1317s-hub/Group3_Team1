@@ -1,37 +1,45 @@
 <div class="admin-feedback-panel">
+  <section class="feedback-hero card">
+    <div class="feedback-hero-copy">
+      <p class="section-kicker">Premium Insight Desk</p>
+      <h2>Student Sentiment, Reframed</h2>
+      <p class="hero-note">
+        Track how students are reacting to your events with a more refined feedback workspace built for quick decisions.
+      </p>
+    </div>
+
+    <div class="hero-highlight">
+      <span class="hero-highlight-label">Current Rating</span>
+      <strong>{{ isLoading ? '...' : averageRating.toFixed(1) }}</strong>
+      <span>{{ totalFeedbacks }} {{ totalFeedbacks === 1 ? 'review' : 'reviews' }} collected</span>
+    </div>
+  </section>
+
   <section class="summary-cards">
     <article class="card stat">
       <div class="stat-icon feedback-icon">★</div>
       <div>
         <p>Average Rating</p>
         <h3>{{ isLoading ? '...' : averageRating.toFixed(1) }}</h3>
-        <p class="stat-subtext">
-          {{ totalFeedbacks }} {{ totalFeedbacks === 1 ? 'review' : 'reviews' }}
-        </p>
+        <p class="stat-subtext">Experience quality across all reviewed events</p>
       </div>
     </article>
 
     <article class="card stat">
-      <div class="stat-icon purple">📊</div>
+      <div class="stat-icon purple">◎</div>
       <div>
-        <p>Total Feedback</p>
+        <p>Total Reviews</p>
         <h3>{{ isLoading ? '...' : totalFeedbacks }}</h3>
+        <p class="stat-subtext">All submitted student responses in one place</p>
       </div>
     </article>
 
     <article class="card stat">
-      <div class="stat-icon teal">👍</div>
+      <div class="stat-icon teal">✓</div>
       <div>
         <p>5 Star Reviews</p>
         <h3>{{ isLoading ? '...' : getFeedbackCountByRating(5) }}</h3>
-      </div>
-    </article>
-
-    <article class="card stat">
-      <div class="stat-icon lavender">📈</div>
-      <div>
-        <p>Response Rate</p>
-        <h3>{{ isLoading ? '...' : responseRate + '%' }}</h3>
+        <p class="stat-subtext">Moments that students rated as exceptional</p>
       </div>
     </article>
   </section>
@@ -39,7 +47,10 @@
   <section class="grid-two1">
     <article class="card feedback-detailed-card">
       <div class="card-head">
-        <h3>Student Feedback Overview</h3>
+        <div>
+          <p class="section-kicker">Overview</p>
+          <h3>Student Feedback Overview</h3>
+        </div>
         <span class="muted">{{ averageRating.toFixed(1) }} / 5.0</span>
       </div>
 
@@ -62,7 +73,7 @@
       </div>
 
       <div class="empty-feedback" *ngIf="!isLoading && totalFeedbacks === 0">
-        <div class="empty-icon">💬</div>
+        <div class="empty-icon">◌</div>
         <p>No feedback yet</p>
         <span class="muted">Students have not submitted feedback yet.</span>
       </div>
@@ -71,10 +82,7 @@
 
   <section class="event-feedback-section">
     <div class="section-head">
-      <div>
-        <p class="section-kicker">Student dashboard style</p>
-        <h3>Event-wise Ratings And Feedback</h3>
-      </div>
+      <h3>Event Performance And Feedback</h3>
       <span class="muted">{{ eventRows.length }} events with reviews</span>
     </div>
 

@@ -120,14 +120,22 @@ export class AdminAttendanceManagementComponent implements AfterViewInit, OnDest
 
   openAttendanceScannerPage(): void {
     const eventId = String(this.selectedEvent?.eventId || '').trim();
+    const navigationState = {
+      attendanceEvents: this.events,
+      selectedAttendanceEvent: this.selectedEvent,
+      attendanceRoster: this.roster
+    };
     if (eventId) {
       this.router.navigate(['/admin-attendance-screen'], {
-        queryParams: { eventId }
+        queryParams: { eventId },
+        state: navigationState
       });
       return;
     }
 
-    this.router.navigate(['/admin-attendance-screen']);
+    this.router.navigate(['/admin-attendance-screen'], {
+      state: navigationState
+    });
   }
 
   openSelectedAttendanceScreen(): void {
@@ -286,10 +294,29 @@ export class AdminAttendanceManagementComponent implements AfterViewInit, OnDest
     }
 
     this.distributionActionInProgress = true;
-    setTimeout(() => {
-      this.distributionActionInProgress = false;
-      this.showNotification('Admit card links distributed to all approved students.', 'success');
-    }, 450);
+    this.errorMessage = '';
+
+    this.attendanceService.distributeAdmitCards(this.selectedEvent.eventId).pipe(
+      timeout(18000),
+      finalize(() => {
+        this.distributionActionInProgress = false;
+      })
+    ).subscribe({
+      next: (response) => {
+        this.showNotification(
+          response?.message || 'Admit card links distributed to all approved students.',
+          'success'
+        );
+        this.loadTodayEvents();
+        if (this.selectedEvent?.eventId) {
+          this.loadRoster(this.selectedEvent.eventId);
+        }
+      },
+      error: async (error: HttpErrorResponse) => {
+        const message = await this.getApiErrorMessage(error, 'Failed to distribute admit cards.');
+        this.showNotification(message, 'error');
+      }
+    });
   }
 
   generateAdmitCards(event: AdminAttendanceEventItem): void {

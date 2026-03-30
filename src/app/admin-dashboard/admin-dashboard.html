@@ -185,7 +185,7 @@
     />
 
     <app-admin-query-panel
-      *ngIf="activeTab === 'queries'"
+      [hidden]="activeTab !== 'queries'"
       [queries]="studentQueries"
       [collegeName]="adminCollegeName"
       [loading]="queryLoading"
@@ -194,7 +194,7 @@
       (submitReply)="onSubmitQueryReply($event)"
     />
 
-    <app-admin-attendance-management *ngIf="activeTab === 'attendance'" />
+    <app-admin-attendance-management [hidden]="activeTab !== 'attendance'" />
 
     <section class="panel registrations-panel" *ngIf="activeTab === 'analytics'">
       <div class="panel-head">
