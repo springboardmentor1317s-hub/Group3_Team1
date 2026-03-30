@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, Input, OnChanges } from '@angular/core';
+import { Component, HostListener, Input, OnChanges, OnDestroy } from '@angular/core';
 import { PaymentRecord, PaymentService } from '../services/payment.service';
 
 type PaymentEventSummary = {
@@ -31,6 +31,7 @@ export class AdminPaymentDetailsComponent implements OnChanges {
   loading = false;
   errorMessage = '';
   payments: PaymentRecord[] = [];
+  private refreshTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(private readonly paymentService: PaymentService) {}
 
@@ -57,7 +58,8 @@ export class AdminPaymentDetailsComponent implements OnChanges {
 
   ngOnChanges(): void {
     if (!this.selectedEventId && this.paidEvents.length > 0) {
-      this.selectedEventId = this.paidEvents[0].id;
+      this.openEventDetails(this.paidEvents[0]);
+      return;
     }
 
     if (this.selectedEventId) {
@@ -68,7 +70,14 @@ export class AdminPaymentDetailsComponent implements OnChanges {
         return;
       }
       this.selectedEvent = matchedEvent;
+      if (this.showEventModal) {
+        this.loadPayments();
+      }
     }
+  }
+
+  ngOnDestroy(): void {
+    this.stopAutoRefresh();
   }
 
   openEventDetails(event: PaymentEventSummary): void {
@@ -76,6 +85,7 @@ export class AdminPaymentDetailsComponent implements OnChanges {
     this.selectedEvent = event;
     this.showEventModal = true;
     this.loadPayments();
+    this.startAutoRefresh();
   }
 
   closeEventModal(): void {
@@ -84,6 +94,7 @@ export class AdminPaymentDetailsComponent implements OnChanges {
     this.errorMessage = '';
     this.payments = [];
     this.loading = false;
+    this.stopAutoRefresh();
   }
 
   formatDate(value: string): string {
@@ -147,5 +158,21 @@ export class AdminPaymentDetailsComponent implements OnChanges {
         this.loading = false;
       }
     });
+  }
+
+  private startAutoRefresh(): void {
+    if (this.refreshTimer) return;
+    this.refreshTimer = setInterval(() => {
+      if (!this.showEventModal || !this.selectedEventId || this.loading) {
+        return;
+      }
+      this.loadPayments();
+    }, 5000);
+  }
+
+  private stopAutoRefresh(): void {
+    if (!this.refreshTimer) return;
+    clearInterval(this.refreshTimer);
+    this.refreshTimer = null;
   }
 }
