@@ -16,6 +16,8 @@ export class SuperAdminAdminsComponent implements OnInit {
   admins: ReviewableUser[] = [];
   isLoadingAdmins = false;
   adminsError = '';
+  blockActionError = '';
+  updatingBlockAdminId = '';
   searchTerm = '';
   selectedCollege = 'all';
   showDetailsModal = false;
@@ -39,6 +41,7 @@ export class SuperAdminAdminsComponent implements OnInit {
   loadAdmins(): void {
     this.isLoadingAdmins = true;
     this.adminsError = '';
+    this.blockActionError = '';
 
     this.superAdminService.getReviewableAdminUsers().subscribe({
       next: (admins) => {
@@ -95,6 +98,39 @@ export class SuperAdminAdminsComponent implements OnInit {
   openAdminDetails(admin: ReviewableUser): void {
     this.selectedAdmin = admin;
     this.showDetailsModal = true;
+  }
+
+  toggleAdminBlock(admin: ReviewableUser): void {
+    if (this.updatingBlockAdminId) {
+      return;
+    }
+
+    const shouldBlock = !Boolean(admin.isBlocked);
+    this.updatingBlockAdminId = admin._id;
+    this.blockActionError = '';
+
+    this.superAdminService.updateUserBlockStatus(admin._id, shouldBlock).subscribe({
+      next: () => {
+        this.admins = this.admins.map((item) => {
+          if (item._id === admin._id) {
+            return { ...item, isBlocked: shouldBlock };
+          }
+          return item;
+        });
+
+        if (this.selectedAdmin?._id === admin._id) {
+          this.selectedAdmin = { ...this.selectedAdmin, isBlocked: shouldBlock };
+        }
+
+        this.updatingBlockAdminId = '';
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.updatingBlockAdminId = '';
+        this.blockActionError = 'Failed to update block status. Please try again.';
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   openAdminEvents(admin: ReviewableUser): void {

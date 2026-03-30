@@ -107,6 +107,11 @@
   cursor: pointer;
 }
 
+.admin-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .admin-btn.ghost {
   color: #1e3a8a;
   background: linear-gradient(135deg, #eef2ff, #dbeafe);
@@ -120,6 +125,11 @@
 .admin-btn.danger {
   color: #ffffff;
   background: linear-gradient(135deg, #dc2626, #ef4444);
+}
+
+.admin-btn.success {
+  color: #ffffff;
+  background: linear-gradient(135deg, #15803d, #22c55e);
 }
 
 .modal-overlay {

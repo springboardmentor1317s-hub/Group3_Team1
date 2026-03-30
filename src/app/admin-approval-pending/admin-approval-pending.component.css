@@ -79,7 +79,7 @@
   border: 1px solid #99f6e4;
 }
 
-.status-pill.is-rejected {
+.status-pill.is-critical {
   color: #991b1b;
   background: #fee2e2;
   border-color: #fecaca;
@@ -100,7 +100,7 @@
   border: 2px solid #5eead4;
 }
 
-.icon-wrap.is-rejected {
+.icon-wrap.is-critical {
   color: #b91c1c;
   background: #fee2e2;
   border-color: #fca5a5;
