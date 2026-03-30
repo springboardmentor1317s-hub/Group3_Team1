@@ -1,0 +1,60 @@
+<section class="panel payments-panel">
+  <div class="panel-head">
+    <div>
+      <p class="section-kicker">Payment Details</p>
+      <h2>Event-wise Student Payments</h2>
+    </div>
+  </div>
+
+  <p *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</p>
+
+  <div class="payment-layout" *ngIf="paidEvents.length > 0; else noPaidEvents">
+    <aside class="event-list">
+      <button
+        *ngFor="let event of paidEvents"
+        type="button"
+        class="event-pill"
+        [class.active]="selectedEventId === event.id"
+        (click)="selectEvent(event.id)"
+      >
+        <strong>{{ event.name }}</strong>
+        <span>{{ event.currency || 'INR' }} {{ event.amount || 0 }}</span>
+      </button>
+    </aside>
+
+    <div class="payment-table-shell">
+      <div *ngIf="loading" class="state-card">Loading payment records...</div>
+      <div *ngIf="!loading && payments.length === 0" class="state-card">No payment records found for this event yet.</div>
+
+      <table *ngIf="!loading && payments.length > 0" class="payment-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Payment ID</th>
+            <th>Order ID</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let payment of payments">
+            <td>
+              <strong>{{ payment.userName }}</strong>
+              <div>{{ payment.userEmail }}</div>
+            </td>
+            <td>{{ payment.paymentId }}</td>
+            <td>{{ payment.orderId }}</td>
+            <td>{{ payment.currency }} {{ payment.amount }}</td>
+            <td>{{ payment.status | uppercase }}</td>
+            <td>{{ formatDate(payment.updatedAt || payment.createdAt) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <ng-template #noPaidEvents>
+    <div class="state-card">No paid events are available for this college admin yet.</div>
+  </ng-template>
+</section>

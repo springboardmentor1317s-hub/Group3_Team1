@@ -46,6 +46,11 @@ export interface StudentRegistrationRecord {
   email: string;
   college: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  paymentRequired?: boolean;
+  paymentStatus?: 'NOT_REQUIRED' | 'PENDING' | 'SUCCESS' | 'FAILED';
+  paymentVerified?: boolean;
+  paymentId?: string;
+  orderId?: string;
   rejectionReason: string;
   approvedAt: string | null;
   rejectedAt: string | null;
@@ -62,6 +67,9 @@ export interface StudentRegistrationRecord {
     category: string;
     posterDataUrl: string | null;
     status: string;
+    isPaid?: boolean;
+    amount?: number;
+    currency?: string;
     registrations: number;
     maxAttendees: number | null;
     dateLabel: string;
@@ -83,6 +91,10 @@ export interface StudentEventCard {
   organizer: string;
   contact: string;
   status: 'Open' | 'Registered' | 'Full' | 'Closed';
+  isPaid?: boolean;
+  amount?: number;
+  currency?: string;
+  priceLabel?: string;
   registrations: number;
   maxAttendees: number | null;
   collegeName: string;
@@ -550,7 +562,11 @@ export class StudentDashboardService {
       return {
         ...event,
         registrationDeadline,
-        registrationDeadlineLabel
+        registrationDeadlineLabel,
+        isPaid: dbEvent.isPaid === true,
+        amount: Number(dbEvent.amount || 0),
+        currency: dbEvent.currency || 'INR',
+        priceLabel: dbEvent.isPaid ? `${dbEvent.currency || 'INR'} ${Number(dbEvent.amount || 0).toFixed(2)}` : 'Free'
       };
     });
   }
@@ -689,6 +705,11 @@ export class StudentDashboardService {
       email: String(registration.email || ''),
       college: String(registration.college || ''),
       status: registration.status === 'APPROVED' || registration.status === 'REJECTED' ? registration.status : 'PENDING',
+      paymentRequired: Boolean(registration.paymentRequired),
+      paymentStatus: registration.paymentStatus || 'NOT_REQUIRED',
+      paymentVerified: Boolean(registration.paymentVerified),
+      paymentId: String(registration.paymentId || ''),
+      orderId: String(registration.orderId || ''),
       rejectionReason: String(registration.rejectionReason || ''),
       approvedAt: registration.approvedAt || null,
       rejectedAt: registration.rejectedAt || null,
@@ -705,6 +726,9 @@ export class StudentDashboardService {
         category: event.category,
         posterDataUrl: event.imageUrl,
         status: event.status,
+        isPaid: event.isPaid === true,
+        amount: Number(event.amount || 0),
+        currency: event.currency || 'INR',
         registrations: event.registrations,
         maxAttendees: event.maxAttendees ?? null,
         dateLabel: event.dateLabel
@@ -803,6 +827,11 @@ export class StudentDashboardService {
       email: profile?.email || '',
       college: profile?.college || '',
       status: 'PENDING',
+      paymentRequired: Boolean(event.isPaid),
+      paymentStatus: event.isPaid ? 'PENDING' : 'NOT_REQUIRED',
+      paymentVerified: !event.isPaid,
+      paymentId: '',
+      orderId: '',
       rejectionReason: '',
       approvedAt: null,
       rejectedAt: null,
@@ -819,6 +848,9 @@ export class StudentDashboardService {
         category: event.category,
         posterDataUrl: event.imageUrl,
         status: event.status,
+        isPaid: event.isPaid === true,
+        amount: Number(event.amount || 0),
+        currency: event.currency || 'INR',
         registrations: event.registrations + 1,
         maxAttendees: event.maxAttendees ?? null,
         dateLabel: event.dateLabel
@@ -948,11 +980,16 @@ export class StudentDashboardService {
         ? registrationDeadlineDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
         : 'Not specified');
     const normalizedStatus: StudentEventCard['status'] = this.isEventExpired(event) ? 'Closed' : event.status;
+    const isPaid = event.isPaid === true && Number(event.amount || 0) > 0;
 
     return {
       ...event,
       registrationDeadlineLabel,
-      status: normalizedStatus
+      status: normalizedStatus,
+      isPaid,
+      amount: Number(event.amount || 0),
+      currency: event.currency || 'INR',
+      priceLabel: isPaid ? `${event.currency || 'INR'} ${Number(event.amount || 0).toFixed(2)}` : 'Free'
     };
   }
 
@@ -1254,6 +1291,10 @@ export class StudentDashboardService {
       contact: event.contact || 'Contact admin',
       status: this.eventService.convertToFrontendEvent(event).status,
       registered: event.registered === true,
+      isPaid: event.isPaid === true,
+      amount: Number(event.amount || 0),
+      currency: event.currency || 'INR',
+      priceLabel: event.isPaid ? `${event.currency || 'INR'} ${Number(event.amount || 0).toFixed(2)}` : 'Free',
       registrations: event.registrations || 0,
       maxAttendees: event.maxAttendees ?? null,
       collegeName: event.collegeName || 'Campus Event Hub'

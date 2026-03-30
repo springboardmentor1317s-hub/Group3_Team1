@@ -7,6 +7,7 @@ import { SiteFooterComponent } from '../shared/site-footer/site-footer.component
 import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
 import { StudentDashboardService, StudentEventCard, StudentEventComment, StudentRegistrationRecord } from '../services/student-dashboard.service';
 import { EventService } from '../services/event.service';
+import { PaymentService, PaymentStatus } from '../services/payment.service';
 
 interface ReplyThreadNode {
   id: string;
@@ -54,6 +55,9 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
   actionEventId = '';
   errorMessage = '';
   submitError = '';
+  paymentStatus: PaymentStatus | null = null;
+  paymentStatusLoading = false;
+  receiptDownloading = false;
 
   feedbackDraftText = '';
   feedbackDraftRating = 0;
@@ -76,7 +80,8 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     private router: Router,
     private studentDashboardService: StudentDashboardService,
     private cdr: ChangeDetectorRef,
-    private eventService: EventService
+    private eventService: EventService,
+    private paymentService: PaymentService
   ) {}
 
   ngOnInit(): void {
@@ -195,6 +200,12 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
 
   get canShowFeedbackPanel(): boolean {
     return this.isEventCompleted();
+  }
+
+  get paymentStatusLabel(): string {
+    if (!this.event?.isPaid) return 'Not Required';
+    if (this.paymentStatusLoading) return 'Checking...';
+    return this.paymentStatus?.status || 'PENDING';
   }
 
   get canSubmitFeedback(): boolean {
@@ -555,6 +566,40 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     });
   }
 
+  refreshPaymentStatus(): void {
+    if (!this.event?.id) {
+      return;
+    }
+    this.loadPaymentStatus(this.event.id);
+  }
+
+  downloadReceipt(): void {
+    if (!this.paymentStatus?.id || this.receiptDownloading) {
+      return;
+    }
+
+    this.receiptDownloading = true;
+    this.paymentService.downloadReceipt(this.paymentStatus.id).pipe(
+      finalize(() => {
+        this.receiptDownloading = false;
+      })
+    ).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `receipt-${this.paymentStatus?.paymentId || 'payment'}.pdf`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        window.URL.revokeObjectURL(url);
+      },
+      error: (error) => {
+        this.errorMessage = error?.error?.error || error?.error?.message || 'Unable to download the receipt right now.';
+      }
+    });
+  }
+
   private loadEvent(eventId: string): void {
     this.loading = true;
     this.registrationStateLoading = true;
@@ -577,11 +622,13 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       next: (registrations) => {
         this.currentRegistration = registrations.find((item) => item.eventId === eventId) || null;
         this.registrationStateLoading = false;
+        this.loadPaymentStatus(eventId);
         this.cdr.detectChanges();
       },
       error: () => {
         this.currentRegistration = this.studentDashboardService.getCachedRegistrations().find((item) => item.eventId === eventId) || null;
         this.registrationStateLoading = false;
+        this.loadPaymentStatus(eventId);
         this.cdr.detectChanges();
       }
     });
@@ -629,6 +676,29 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
           this.errorMessage = error?.error?.message || 'Unable to load event details right now.';
         }
         this.cdr.detectChanges();
+      }
+    });
+  }
+
+  private loadPaymentStatus(eventId: string): void {
+    const targetEvent = this.event || this.studentDashboardService.getCachedEvents().find((item) => item.id === eventId) || null;
+    if (!targetEvent?.isPaid) {
+      this.paymentStatus = null;
+      this.paymentStatusLoading = false;
+      return;
+    }
+
+    this.paymentStatusLoading = true;
+    this.paymentService.getPaymentStatus(eventId).pipe(
+      finalize(() => {
+        this.paymentStatusLoading = false;
+      })
+    ).subscribe({
+      next: (status) => {
+        this.paymentStatus = status;
+      },
+      error: () => {
+        this.paymentStatus = null;
       }
     });
   }

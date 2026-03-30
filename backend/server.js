@@ -12,6 +12,7 @@ const profileRoutes = require('./routes/profileRoutes');
 const eventReviewRoutes = require('./routes/eventReviewRoutes');
 const eventCommentRoutes = require('./routes/eventCommentRoutes');
 const studentQueryRoutes = require('./routes/studentQueryRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 const app = express();
 
 app.use(cors());
@@ -26,14 +27,16 @@ app.use('/api/registrations', registrationRoutes);
 app.use('/api/event-reviews', eventReviewRoutes);
 app.use('/api/event-comments', eventCommentRoutes);
 app.use('/api/student-queries', studentQueryRoutes);
+app.use('/api/payments', paymentRoutes);
 
 app.get('/', (req, res) => {
   res.send('Backend Running Successfully');
 });
 
 const PORT = process.env.PORT || 5000;
+const databaseUrl = process.env.DATABASE_URL || process.env.MONGO_URI;
 
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(databaseUrl)
   .then(() => {
     console.log('MongoDB Connected');
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

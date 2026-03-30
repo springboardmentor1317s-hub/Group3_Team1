@@ -15,6 +15,8 @@ import { AdminCommonHeaderComponent } from '../shared/admin-common-header/admin-
 import { buildAdminProfileIdentifiers, filterEventsOwnedByAdmin } from '../shared/admin-owned-events.util';
 import { AuthService } from '../services/auth.service';
 
+type DashboardTab = 'overview' | 'events' | 'payments' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries';
+
 @Component({
   selector: 'app-admin-my-events',
   standalone: true,
@@ -181,7 +183,7 @@ export class AdminMyEventsComponent implements OnInit, OnDestroy {
     this.router.navigate(['/admin-dashboard']);
   }
 
-  handleTabChange(tab: 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries'): void {
+  handleTabChange(tab: DashboardTab): void {
     this.router.navigate(['/admin-dashboard'], { queryParams: { tab } });
   }
 
@@ -219,6 +221,10 @@ export class AdminMyEventsComponent implements OnInit, OnDestroy {
       organizer: event.organizer || 'Campus Event Hub',
       contact: event.contact || 'Contact admin',
       status: this.isPastEvent(event) ? 'Closed' : 'Open',
+      isPaid: event.isPaid === true,
+      amount: Number(event.amount || 0),
+      currency: event.currency || 'INR',
+      priceLabel: event.isPaid ? `${event.currency || 'INR'} ${Number(event.amount || 0).toFixed(2)}` : 'Free',
       registrations: event.registrations || 0,
       maxAttendees: event.maxAttendees ?? null,
       collegeName: event.collegeName || 'Campus Event Hub',

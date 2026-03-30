@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 
-type DashboardTab = 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries';
+type DashboardTab = 'overview' | 'events' | 'payments' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries';
 type SidebarTab = DashboardTab | 'myEvents' | 'none';
 type NavItem = {
   key: SidebarTab;
@@ -52,6 +52,13 @@ export class AdminDashboardSidebarComponent implements OnInit {
     }
   ];
   readonly secondaryNavItems: NavItem[] = [
+    {
+      key: 'payments',
+      label: 'Payment Details',
+      caption: 'Track event-wise payments',
+      icon: 'payments',
+      action: 'tab'
+    },
     {
       key: 'registrations',
       label: 'Registrations',

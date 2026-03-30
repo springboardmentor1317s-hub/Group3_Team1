@@ -1,6 +1,6 @@
 ﻿<div class="app student-shell admin-shell" [class.dark]="isDarkMode">
   <app-admin-common-header
-    [activeTab]="activeTab === 'events' ? 'events' : activeTab === 'registrations' || activeTab === 'queries' ? 'registrations' : 'overview'"
+    [activeTab]="activeTab === 'events' ? 'events' : activeTab === 'registrations' || activeTab === 'payments' || activeTab === 'queries' ? 'registrations' : 'overview'"
     [userName]="userName"
     [userAvatarUrl]="userAvatarUrl"
     [(searchQuery)]="dashboardSearchQuery"
@@ -136,6 +136,11 @@
       [feedbacks]="feedbacks"
       [events]="events"
       [isLoading]="isLoading"
+    />
+
+    <app-admin-payment-details
+      *ngIf="activeTab === 'payments'"
+      [events]="events"
     />
 
     <section class="panel events-panel" *ngIf="activeTab === 'events'">

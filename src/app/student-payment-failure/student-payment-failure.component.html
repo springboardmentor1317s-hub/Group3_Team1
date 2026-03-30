@@ -1,0 +1,7 @@
+<section class="payment-result-shell">
+  <article class="payment-card">
+    <h1>Payment Failed</h1>
+    <p>{{ state['message'] || 'Your transaction failed. Please try again after some time.' }}</p>
+    <button type="button" (click)="retry()">Retry Payment</button>
+  </article>
+</section>

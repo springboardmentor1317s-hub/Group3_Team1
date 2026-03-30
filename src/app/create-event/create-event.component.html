@@ -212,6 +212,35 @@
           </div>
         </div>
 
+        <div class="field-group">
+          <div class="field">
+            <label for="eventPaymentType">
+              <span class="field-icon material-icons" aria-hidden="true">payments</span>
+              Payment Type
+            </label>
+            <select id="eventPaymentType" name="isPaid" [(ngModel)]="createForm.isPaid">
+              <option [ngValue]="false">Free Event</option>
+              <option [ngValue]="true">Paid Event</option>
+            </select>
+          </div>
+          <div class="field" *ngIf="createForm.isPaid">
+            <label for="eventAmount">
+              <span class="field-icon material-icons" aria-hidden="true">currency_rupee</span>
+              Amount <span class="req">*</span>
+            </label>
+            <input
+              id="eventAmount"
+              type="number"
+              name="amount"
+              [(ngModel)]="createForm.amount"
+              placeholder="Enter event fee"
+              min="1"
+              required
+            />
+            <div class="hint">Shown on student and admin event cards.</div>
+          </div>
+        </div>
+
         <div class="field span-2">
           <label for="eventDescription">
             <span class="field-icon material-icons" aria-hidden="true">notes</span>

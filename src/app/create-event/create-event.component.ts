@@ -16,6 +16,9 @@ export interface CreateEventForm {
   description: string;
   teamSize: number | null;
   maxAttendees: number | null;
+  isPaid: boolean;
+  amount: number | null;
+  currency: string;
   posterDataUrl: string | null;
   category: string;
 }
@@ -130,6 +133,9 @@ export class CreateEventComponent implements OnInit, OnChanges {
       description: this.createForm.description.trim(),
       teamSize: this.createForm.teamSize ?? null,
       maxAttendees: this.createForm.maxAttendees ?? null,
+      isPaid: Boolean(this.createForm.isPaid),
+      amount: this.createForm.isPaid ? (this.createForm.amount ?? 0) : 0,
+      currency: String(this.createForm.currency || 'INR').trim() || 'INR',
       posterDataUrl: this.createForm.posterDataUrl,
       category,
       status: 'Active',
@@ -229,6 +235,9 @@ export class CreateEventComponent implements OnInit, OnChanges {
       description: event.description ?? '',
       teamSize: event.teamSize ?? null,
       maxAttendees: event.maxAttendees ?? null,
+      isPaid: event.isPaid === true,
+      amount: typeof event.amount === 'number' ? event.amount : null,
+      currency: event.currency || 'INR',
       posterDataUrl: event.posterDataUrl ?? null,
       category: event.category ?? ''
     };
@@ -269,6 +278,9 @@ export class CreateEventComponent implements OnInit, OnChanges {
       description: '',
       teamSize: null,
       maxAttendees: null,
+      isPaid: false,
+      amount: null,
+      currency: 'INR',
       posterDataUrl: null,
       category: ''
     };

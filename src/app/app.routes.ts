@@ -107,6 +107,16 @@ export const routes: Routes = [
     loadComponent: () => import('./student-event-registration-page/student-event-registration-page.component').then(m => m.StudentEventRegistrationPageComponent),
     canActivate: [roleGuard('student')]
   },
+  {
+    path: 'student-payment-success',
+    loadComponent: () => import('./student-payment-success/student-payment-success.component').then(m => m.StudentPaymentSuccessComponent),
+    canActivate: [roleGuard('student')]
+  },
+  {
+    path: 'student-payment-failure',
+    loadComponent: () => import('./student-payment-failure/student-payment-failure.component').then(m => m.StudentPaymentFailureComponent),
+    canActivate: [roleGuard('student')]
+  },
 
   {
     path: 'student-registrations',

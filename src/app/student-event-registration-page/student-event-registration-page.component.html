@@ -15,11 +15,12 @@
         <div class="hero-copy">
           <p class="eyebrow">Student Registration Form</p>
           <h1>{{ pageTitle }}</h1>
-          <p>Review your profile, update anything missing, and submit it for college admin approval.</p>
+          <p>Review your profile, update anything missing, and {{ isPaidEvent ? 'complete payment before the registration goes to admin review.' : 'submit it for college admin approval.' }}</p>
         </div>
 
         <div class="hero-side">
           <div class="hero-chip">{{ details.category || 'Campus Event' }}</div>
+          <div class="hero-chip">{{ isPaidEvent ? (details.priceLabel || 'Paid Event') : 'Free Event' }}</div>
           <button type="button" class="back-btn" (click)="goBack()">Back To Event</button>
         </div>
       </section>
@@ -212,10 +213,27 @@
           </div>
         </section>
 
+        <section class="form-section">
+          <div class="section-title">
+            <h3>Payment Details</h3>
+            <span>{{ isPaidEvent ? 'This event requires payment before admin review.' : 'No payment is required for this event.' }}</span>
+          </div>
+          <div class="form-grid two-column">
+            <label class="field">
+              <span>Event Type</span>
+              <input type="text" [value]="isPaidEvent ? 'PAID' : 'FREE'" disabled>
+            </label>
+            <label class="field">
+              <span>Payable Amount</span>
+              <input type="text" [value]="details.priceLabel || 'Free'" disabled>
+            </label>
+          </div>
+        </section>
+
         <section class="submit-card">
           <label class="check-row" *ngIf="canEditForm">
             <input type="checkbox" [(ngModel)]="confirmChecked" name="confirmChecked">
-            <span>I checked every detail, updated anything required, and I am ready to submit this registration for admin review.</span>
+            <span>I checked every detail carefully. I understand that incorrect details are my responsibility, paid registrations are non-refundable, and final payment confirmation depends on backend verification.</span>
           </label>
 
           <div class="submit-actions">

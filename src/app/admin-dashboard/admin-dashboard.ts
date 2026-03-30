@@ -17,8 +17,9 @@ import { isEventClosedByDate, parseEventLocalDay, resolveEventDateCandidate } fr
 import { AdminCommonHeaderComponent } from '../shared/admin-common-header/admin-common-header.component';
 import { AdminStudentStatusPanelComponent } from '../admin-student-status-panel/admin-student-status-panel.component';
 import { AdminQueryPanelComponent, AdminStudentQuery } from '../admin-query-panel/admin-query-panel.component';
+import { AdminPaymentDetailsComponent } from '../admin-payment-details/admin-payment-details.component';
 
-type DashboardTab = 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries';
+type DashboardTab = 'overview' | 'events' | 'payments' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries';
 
 interface OrganizerEvent {
   id: string;
@@ -39,6 +40,9 @@ interface OrganizerEvent {
   participants: number;
   approvedCount: number;
   posterDataUrl?: string | null;
+  isPaid?: boolean;
+  amount?: number;
+  currency?: string;
 }
 
 interface Registration {
@@ -55,6 +59,11 @@ interface Registration {
   createdAt: string;
   updatedAt?: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  paymentRequired?: boolean;
+  paymentStatus?: string;
+  paymentVerified?: boolean;
+  paymentId?: string;
+  orderId?: string;
   rejectionReason?: string;
   reviewProfile?: unknown;
 }
@@ -80,7 +89,7 @@ interface RegistrationGroup {
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, AdminFeedbackPanelComponent, AdminEventCardComponent, AdminDashboardSidebarComponent, AdminRegistrationsPanelComponent, AdminCommonHeaderComponent, AdminStudentStatusPanelComponent, AdminQueryPanelComponent],
+  imports: [CommonModule, FormsModule, AdminFeedbackPanelComponent, AdminEventCardComponent, AdminDashboardSidebarComponent, AdminRegistrationsPanelComponent, AdminCommonHeaderComponent, AdminStudentStatusPanelComponent, AdminQueryPanelComponent, AdminPaymentDetailsComponent],
   templateUrl: './admin-dashboard.html',
   styleUrls: ['./admin-dashboard.css']
 })
@@ -201,7 +210,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
 
     this.route.queryParamMap.subscribe((params) => {
       const tab = params.get('tab') as DashboardTab | null;
-      if (tab && ['overview', 'events', 'analytics', 'registrations', 'feedback', 'approvedStudents', 'queries'].includes(tab)) {
+      if (tab && ['overview', 'events', 'payments', 'analytics', 'registrations', 'feedback', 'approvedStudents', 'queries'].includes(tab)) {
         this.activeTab = tab;
       }
       if (params.get('create') === 'true') {
@@ -1074,6 +1083,10 @@ export class AdminDashboard implements OnInit, OnDestroy {
       organizer: event.organizer || 'Campus Event Hub',
       contact: event.contact || 'Contact admin',
       status,
+      isPaid: event.isPaid === true,
+      amount: Number(event.amount || 0),
+      currency: event.currency || 'INR',
+      priceLabel: event.isPaid ? `${event.currency || 'INR'} ${Number(event.amount || 0).toFixed(2)}` : 'Free',
       registrations: event.registrations || 0,
       maxAttendees: event.maxAttendees ?? null,
       collegeName: event.collegeName || 'Campus Event Hub',
