@@ -46,11 +46,14 @@ export class AdminAttendanceWorkspaceComponent implements OnDestroy {
   private lastScannedRawValue = '';
   private lastScannedAt = 0;
   private pendingOpenEventId = '';
+  private readonly attendanceCacheStorageKey = this.buildAttendanceCacheStorageKey();
 
   constructor(
     private readonly attendanceService: AttendanceService,
     private readonly route: ActivatedRoute
   ) {
+    this.hydrateFromNavigationState();
+    this.restoreAttendanceCache();
     this.route.queryParamMap.subscribe((params) => {
       this.pendingOpenEventId = String(params.get('eventId') || '').trim();
       if (this.pendingOpenEventId && this.events.length) {
@@ -90,7 +93,8 @@ export class AdminAttendanceWorkspaceComponent implements OnDestroy {
   }
 
   loadTodayEvents(): void {
-    this.loadingEvents = true;
+    const showLoading = !this.events.length;
+    this.loadingEvents = showLoading;
     this.attendanceService.getTodayAttendanceEvents().pipe(
       finalize(() => {
         this.loadingEvents = false;
@@ -98,6 +102,7 @@ export class AdminAttendanceWorkspaceComponent implements OnDestroy {
     ).subscribe({
       next: (events) => {
         this.events = events || [];
+        this.persistAttendanceCache();
         if (!this.selectedEvent && this.events.length > 0 && !this.pendingOpenEventId) {
           this.openAttendanceScreen(this.events[0]);
           return;
@@ -145,6 +150,7 @@ export class AdminAttendanceWorkspaceComponent implements OnDestroy {
     this.stopScanner();
     this.cameraStarted = false;
     this.scannerMessage = 'Click "Open Camera" to start QR scanning.';
+    this.persistAttendanceCache();
     this.loadRoster(event.eventId);
   }
 
@@ -170,8 +176,11 @@ export class AdminAttendanceWorkspaceComponent implements OnDestroy {
   }
 
   private loadRoster(eventId: string): void {
-    this.loadingRoster = true;
-    this.roster = null;
+    const showLoading = !this.roster || String(this.selectedEvent?.eventId || '') !== String(eventId || '');
+    this.loadingRoster = showLoading;
+    if (showLoading) {
+      this.roster = null;
+    }
 
     this.attendanceService.getAttendanceRoster(eventId).pipe(
       finalize(() => {
@@ -182,6 +191,7 @@ export class AdminAttendanceWorkspaceComponent implements OnDestroy {
         this.roster = roster;
         this.scannerWarning = '';
         this.scannerMessage = 'Click "Open Camera" to start QR scanning.';
+        this.persistAttendanceCache();
       },
       error: (error) => {
         this.roster = null;
@@ -297,6 +307,7 @@ export class AdminAttendanceWorkspaceComponent implements OnDestroy {
           if (typeof response.presentCount === 'number' && this.roster) {
             this.roster.presentCount = Number(response.presentCount);
           }
+          this.persistAttendanceCache();
           return;
         }
 
@@ -375,17 +386,20 @@ export class AdminAttendanceWorkspaceComponent implements OnDestroy {
     this.attendanceService.getTodayAttendanceEvents().subscribe({
       next: (events) => {
         this.events = events || [];
+        this.persistAttendanceCache();
         if (!this.selectedEvent) return;
 
         const selectedEventId = this.selectedEvent.eventId;
         const refreshedSelected = this.events.find((event) => event.eventId === selectedEventId) || null;
         this.selectedEvent = refreshedSelected;
         if (!refreshedSelected || !this.showAttendanceScreen) {
+          this.persistAttendanceCache();
           return;
         }
         this.attendanceService.getAttendanceRoster(refreshedSelected.eventId).subscribe({
           next: (roster) => {
             this.roster = roster;
+            this.persistAttendanceCache();
           }
         });
       }
@@ -401,6 +415,82 @@ export class AdminAttendanceWorkspaceComponent implements OnDestroy {
 
     this.pendingOpenEventId = '';
     this.openAttendanceScreen(matchedEvent);
+  }
+
+  private hydrateFromNavigationState(): void {
+    const state = window.history.state as {
+      attendanceEvents?: AdminAttendanceEventItem[];
+      selectedAttendanceEvent?: AdminAttendanceEventItem | null;
+      attendanceRoster?: AdminAttendanceRosterResponse | null;
+    };
+
+    const events = Array.isArray(state?.attendanceEvents) ? state.attendanceEvents : [];
+    if (!events.length) {
+      return;
+    }
+
+    this.events = events;
+    this.selectedEvent = state?.selectedAttendanceEvent || null;
+    this.roster = state?.attendanceRoster || null;
+    this.showAttendanceScreen = !!this.selectedEvent;
+    this.persistAttendanceCache();
+  }
+
+  private buildAttendanceCacheStorageKey(): string {
+    try {
+      const user = JSON.parse(localStorage.getItem('currentUser') || '{}') as Record<string, unknown>;
+      const cacheUserId = String(
+        user?.['userId'] ||
+        user?.['id'] ||
+        user?.['_id'] ||
+        user?.['email'] ||
+        'default'
+      ).trim();
+
+      return `admin-attendance-workspace:${cacheUserId}`;
+    } catch {
+      return 'admin-attendance-workspace:default';
+    }
+  }
+
+  private restoreAttendanceCache(): void {
+    if (this.events.length) {
+      return;
+    }
+
+    try {
+      const raw = sessionStorage.getItem(this.attendanceCacheStorageKey);
+      if (!raw) {
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as {
+        events?: AdminAttendanceEventItem[];
+        selectedEvent?: AdminAttendanceEventItem | null;
+        roster?: AdminAttendanceRosterResponse | null;
+        showAttendanceScreen?: boolean;
+      };
+
+      this.events = Array.isArray(parsed?.events) ? parsed.events : [];
+      this.selectedEvent = parsed?.selectedEvent || null;
+      this.roster = parsed?.roster || null;
+      this.showAttendanceScreen = !!parsed?.showAttendanceScreen && !!this.selectedEvent;
+    } catch {
+      return;
+    }
+  }
+
+  private persistAttendanceCache(): void {
+    try {
+      sessionStorage.setItem(this.attendanceCacheStorageKey, JSON.stringify({
+        events: this.events,
+        selectedEvent: this.selectedEvent,
+        roster: this.roster,
+        showAttendanceScreen: this.showAttendanceScreen
+      }));
+    } catch {
+      return;
+    }
   }
 
   private buildManualScanPayload(inputValue: string): string | { studentId: string; eventId: string; token: string } {

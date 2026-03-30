@@ -66,14 +66,6 @@
         </select>
       </label>
 
-      <label class="toolbar-control rows-control">
-        <span>Rows</span>
-        <select [(ngModel)]="rowsPerPage" (ngModelChange)="onFilterChange()">
-          <option [ngValue]="8">8</option>
-          <option [ngValue]="10">10</option>
-          <option [ngValue]="15">15</option>
-        </select>
-      </label>
     </div>
 
     <div class="table-shell">
@@ -95,6 +87,7 @@
             <tr
               *ngFor="let query of pagedQueries; trackBy: trackByQueryId"
               [class.selected-row]="isSelected(query.id)"
+              (click)="selectQuery(query)"
             >
               <td>
                 <div class="student-cell">
@@ -132,11 +125,6 @@
 
       <div class="table-footer">
         <p>Showing {{ filteredQueries.length }} queries</p>
-        <div class="pagination">
-          <button type="button" (click)="goToPage(currentPage - 1)" [disabled]="currentPage <= 1">Prev</button>
-          <span>Page {{ currentPage }} of {{ totalPages }}</span>
-          <button type="button" (click)="goToPage(currentPage + 1)" [disabled]="currentPage >= totalPages">Next</button>
-        </div>
       </div>
     </div>
 
@@ -205,7 +193,7 @@
 
     <div class="select-hint" *ngIf="!selectedQuery">
       <span class="material-icons">touch_app</span>
-      <p>Student name par click karke query details aur reply section open karein.</p>
+      <p>Click a student name to open the query details and reply section.</p>
     </div>
   </ng-container>
 
