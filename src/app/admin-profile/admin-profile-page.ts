@@ -298,7 +298,7 @@ export class AdminProfilePageComponent implements OnInit {
     this.router.navigate(['/admin-dashboard']);
   }
 
-  handleTabChange(tab: 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries'): void {
+  handleTabChange(tab: 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries' | 'attendance'): void {
     if (tab === 'registrations') {
       this.router.navigate(['/admin-registration-details']);
       return;
@@ -488,3 +488,4 @@ export class AdminProfilePageComponent implements OnInit {
     };
   }
 }
+

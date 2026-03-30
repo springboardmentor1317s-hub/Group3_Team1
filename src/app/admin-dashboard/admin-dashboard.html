@@ -1,6 +1,6 @@
 ﻿<div class="app student-shell admin-shell" [class.dark]="isDarkMode">
   <app-admin-common-header
-    [activeTab]="activeTab === 'events' ? 'events' : activeTab === 'registrations' || activeTab === 'queries' ? 'registrations' : 'overview'"
+    [activeTab]="activeTab === 'events' ? 'events' : activeTab === 'registrations' || activeTab === 'queries' || activeTab === 'attendance' ? 'registrations' : 'overview'"
     [userName]="userName"
     [userAvatarUrl]="userAvatarUrl"
     [(searchQuery)]="dashboardSearchQuery"
@@ -193,6 +193,8 @@
       [errorMessage]="queryErrorMessage"
       (submitReply)="onSubmitQueryReply($event)"
     />
+
+    <app-admin-attendance-management *ngIf="activeTab === 'attendance'" />
 
     <section class="panel registrations-panel" *ngIf="activeTab === 'analytics'">
       <div class="panel-head">

@@ -395,6 +395,44 @@
   margin-top: 0.25rem;
 }
 
+.approved-registration-block {
+  margin-top: 0.4rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.download-admit-btn {
+  width: fit-content;
+  border: none;
+  border-radius: 12px;
+  padding: 0.7rem 1rem;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #ffffff;
+  background: linear-gradient(135deg, #1d4ed8, #2563eb 55%, #38bdf8);
+  box-shadow: 0 12px 20px rgba(37, 99, 235, 0.24);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.download-admit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 24px rgba(37, 99, 235, 0.3);
+}
+
+.download-admit-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.admit-error {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .delete-registration-btn {
   border: none;
   border-radius: 10px;

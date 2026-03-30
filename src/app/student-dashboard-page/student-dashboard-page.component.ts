@@ -6,6 +6,7 @@ import { Auth } from '../auth/auth';
 import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 import { EventCardComponent } from '../shared/event-card/event-card.component';
 import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
+import { StudentAdmitCardsPanelComponent } from '../student-admit-cards-panel/student-admit-cards-panel.component';
 import { finalize, timeout } from 'rxjs';
 import {
   StudentDashboardService,
@@ -28,7 +29,7 @@ interface DashboardStat {
 @Component({
   selector: 'app-student-dashboard-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, EventCardComponent, StudentHeaderComponent],
+  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, EventCardComponent, StudentHeaderComponent, StudentAdmitCardsPanelComponent],
   templateUrl: './student-dashboard-page.component.html',
   styleUrls: ['./student-dashboard-page.component.scss']
 })

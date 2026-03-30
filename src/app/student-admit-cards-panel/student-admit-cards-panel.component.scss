@@ -1,0 +1,110 @@
+.admit-panel {
+  border: 1px solid rgba(191, 219, 254, 0.8);
+  background:
+    radial-gradient(circle at 16% 6%, rgba(191, 219, 254, 0.35), transparent 30%),
+    radial-gradient(circle at 92% 0%, rgba(167, 139, 250, 0.2), transparent 34%),
+    linear-gradient(145deg, #ffffff, #f7fbff);
+  box-shadow: 0 24px 40px rgba(30, 64, 175, 0.08);
+}
+
+.panel-head h2 {
+  margin: 0.2rem 0;
+}
+
+.panel-note {
+  margin: 0;
+  color: #4b5563;
+}
+
+.admit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 0.8rem;
+}
+
+.admit-item {
+  border-radius: 16px;
+  border: 1px solid rgba(191, 219, 254, 0.85);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.98), rgba(239, 246, 255, 0.9));
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.7rem;
+  box-shadow: 0 14px 24px rgba(15, 23, 42, 0.07);
+}
+
+.admit-item-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.admit-item-head h3 {
+  margin: 0;
+  font-size: 1.03rem;
+  color: #0f172a;
+}
+
+.status-chip {
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.18);
+  color: #047857;
+  font-weight: 700;
+  font-size: 0.74rem;
+  padding: 0.22rem 0.62rem;
+}
+
+.status-chip.pending {
+  background: rgba(251, 191, 36, 0.2);
+  color: #92400e;
+}
+
+.admit-meta {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.admit-meta p {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  color: #334155;
+  font-size: 0.88rem;
+}
+
+.admit-meta .material-icons {
+  font-size: 1rem;
+  color: #2563eb;
+}
+
+.download-btn {
+  border: 0;
+  border-radius: 12px;
+  padding: 0.68rem 0.9rem;
+  color: #fff;
+  font-weight: 700;
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6 45%, #6366f1);
+  box-shadow: 0 14px 24px rgba(37, 99, 235, 0.25);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.download-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 28px rgba(37, 99, 235, 0.3);
+}
+
+.download-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.error-text {
+  margin: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: rgba(254, 242, 242, 0.95);
+  color: #b91c1c;
+  padding: 0.56rem 0.72rem;
+}

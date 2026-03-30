@@ -64,7 +64,7 @@ export class AdminOldEventsComponent implements OnInit {
     this.router.navigate(['/admin-my-events']);
   }
 
-  handleTabChange(tab: 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries'): void {
+  handleTabChange(tab: 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries' | 'attendance'): void {
     this.router.navigate(['/admin-dashboard'], { queryParams: { tab } });
   }
 
