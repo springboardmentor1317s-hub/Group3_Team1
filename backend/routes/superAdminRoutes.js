@@ -8,8 +8,11 @@ router.get("/admin-requests", ctrl.getAdminApprovalRequests);
 router.patch("/admin-requests/:id/approve", ctrl.approveAdminRequest);
 router.patch("/admin-requests/:id/reject", ctrl.rejectAdminRequest);
 router.get("/students", ctrl.getAllStudents);
+router.get('/students/export', ctrl.exportStudentsCsv);
 router.get("/students/:studentId/events", ctrl.getStudentRegisteredEvents);
 router.get("/admins/:adminId/events", ctrl.getAdminCreatedEvents);
+router.get('/admins/export', ctrl.exportAdminsCsv);
+router.get('/events/export', ctrl.exportEventsCsv);
 router.patch('/users/:id/block', ctrl.updateUserBlockStatus);
 
 // NEW: Admin Activity Report
