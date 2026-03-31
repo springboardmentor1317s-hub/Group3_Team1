@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { finalize, timeout } from 'rxjs';
@@ -11,7 +11,6 @@ import {
   PROGRAM_OPTIONS,
   SEMESTER_OPTIONS
 } from './profile-form-options';
-import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
 import {
   StudentDashboardService,
@@ -19,11 +18,12 @@ import {
   StudentProfile,
   StudentRegistrationRecord
 } from '../services/student-dashboard.service';
+import { NotificationService } from '../services/notification.service';
 
 @Component({
   selector: 'app-student-profile-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, StudentHeaderComponent],
+  imports: [CommonModule, FormsModule, RouterModule, StudentHeaderComponent],
   templateUrl: './student-profile-page.component.html',
   styleUrls: ['./student-profile-page.component.scss']
 })
@@ -74,8 +74,11 @@ export class StudentProfilePageComponent implements OnInit, OnDestroy {
   };
   notificationsLoading = true;
   notificationsDropdownOpen = false;
+  unseenNotificationCount = 0;
+  showNotificationViewMore = true;
   photoUploadInProgress = false;
   photoUploadFeedbackActive = false;
+  timelineRefreshing = false;
   private previewObjectUrl: string | null = null;
   private notificationsRefreshTimer: ReturnType<typeof setInterval> | null = null;
   private photoUploadFeedbackTimer: ReturnType<typeof setTimeout> | null = null;
@@ -85,7 +88,9 @@ export class StudentProfilePageComponent implements OnInit, OnDestroy {
     private studentDashboardService: StudentDashboardService,
     private auth: Auth,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private cdr: ChangeDetectorRef,
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -281,6 +286,26 @@ export class StudentProfilePageComponent implements OnInit, OnDestroy {
     this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
   }
 
+  openNotificationsPage(): void {
+    this.notificationsDropdownOpen = false;
+    this.router.navigate(['/student-notifications']);
+  }
+
+  deleteNotificationFromDropdown(id: string): void {
+    if (!id) {
+      return;
+    }
+
+    this.notificationService.deleteNotification(id).subscribe({
+      next: () => {
+        this.notifications = this.notifications.filter((item) => item.id !== id);
+        this.unseenNotificationCount = this.notifications.length;
+        this.cdr.detectChanges();
+      },
+      error: () => void 0
+    });
+  }
+
   logout(): void {
     this.auth.logout();
     this.router.navigate(['/login']);
@@ -296,6 +321,32 @@ export class StudentProfilePageComponent implements OnInit, OnDestroy {
 
   trackByRegistration(_index: number, registration: StudentRegistrationRecord): string {
     return registration.id;
+  }
+
+  refreshTimeline(): void {
+    if (this.timelineRefreshing) {
+      return;
+    }
+
+    this.timelineRefreshing = true;
+    this.errorMessage = '';
+    this.studentDashboardService.invalidateDashboardCache();
+
+    this.studentDashboardService.fetchLatestRegistrations().pipe(
+      timeout(3500)
+    ).subscribe({
+      next: (registrations) => {
+        this.registrations = registrations || [];
+        this.timelineRefreshing = false;
+        this.cdr.detectChanges();
+        this.showSuccessMessage('Registration history refreshed.');
+      },
+      error: (error) => {
+        this.timelineRefreshing = false;
+        this.errorMessage = error?.error?.message || 'Unable to refresh registration history right now.';
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   startEdit(): void {
@@ -599,10 +650,11 @@ export class StudentProfilePageComponent implements OnInit, OnDestroy {
       this.registrations = cachedRegistrations;
     }
 
-    if (cachedNotifications.length) {
-      this.notifications = cachedNotifications;
-      this.notificationsLoading = false;
-    }
+    const cachedDropdownState = this.notificationService.getCachedDropdownState();
+    this.notifications = (cachedDropdownState.items.length ? cachedDropdownState.items : cachedNotifications) as StudentNotificationItem[];
+    this.unseenNotificationCount = cachedDropdownState.unseenCount;
+    this.showNotificationViewMore = cachedDropdownState.hasMore;
+    this.notificationsLoading = this.notifications.length === 0;
 
     if (this.profile || this.registrations.length) {
       this.loading = false;
@@ -729,13 +781,18 @@ export class StudentProfilePageComponent implements OnInit, OnDestroy {
   private loadNotifications(): void {
     this.notificationsLoading = true;
 
-    this.studentDashboardService.refreshDashboardSnapshot().subscribe({
-      next: (snapshot) => {
-        this.notifications = snapshot.notifications || [];
+    this.notificationService.getDropdownNotifications(15).subscribe({
+      next: (state) => {
+        this.notifications = state.items as StudentNotificationItem[];
+        this.unseenNotificationCount = state.unseenCount;
+        this.showNotificationViewMore = state.hasMore;
         this.notificationsLoading = false;
       },
       error: () => {
-        this.notifications = this.studentDashboardService.getCachedNotifications();
+        const cached = this.notificationService.getCachedDropdownState();
+        this.notifications = cached.items as StudentNotificationItem[];
+        this.unseenNotificationCount = cached.unseenCount;
+        this.showNotificationViewMore = cached.hasMore;
         this.notificationsLoading = false;
       }
     });
@@ -743,15 +800,18 @@ export class StudentProfilePageComponent implements OnInit, OnDestroy {
 
   private startNotificationsRefresh(): void {
     this.notificationsRefreshTimer = setInterval(() => {
-      this.studentDashboardService.refreshDashboardSnapshot().subscribe({
-        next: (snapshot) => {
-          this.notifications = snapshot.notifications || [];
+      this.notificationService.getDropdownNotifications(15).subscribe({
+        next: (state) => {
+          this.notifications = state.items as StudentNotificationItem[];
+          this.unseenNotificationCount = state.unseenCount;
+          this.showNotificationViewMore = state.hasMore;
           this.notificationsLoading = false;
         },
         error: () => void 0
       });
     }, 8000);
   }
+
 
   private showSuccessMessage(message: string): void {
     this.successMessage = message;

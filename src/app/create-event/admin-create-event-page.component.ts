@@ -8,7 +8,7 @@ import { AdminCommonHeaderComponent, AdminHeaderTab } from '../shared/admin-comm
 import { Auth } from '../auth/auth';
 import { EventService } from '../services/event.service';
 
-type DashboardTab = 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries' | 'attendance';
+type DashboardTab = 'overview' | 'events' | 'payments' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries' | 'attendance';
 
 @Component({
   selector: 'app-admin-create-event-page',
@@ -112,7 +112,6 @@ export class AdminCreateEventPageComponent implements OnInit {
   private normalizeEditingEvent(event: BackendEvent): BackendEvent {
     return {
       ...event,
-      dateTime: this.normalizeDateValue(event.dateTime),
       endDate: this.normalizeDateValue(event.endDate),
       registrationDeadline: this.normalizeDateValue(event.registrationDeadline)
     };

@@ -32,6 +32,7 @@
     "@angular/router": "^21.1.5",
     "@fortawesome/fontawesome-free": "^7.2.0",
     "@zxing/browser": "^0.1.5",
+    "@zxing/library": "^0.21.3",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",

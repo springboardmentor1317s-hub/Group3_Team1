@@ -21,6 +21,9 @@ export interface BackendEvent {
   registrations: number;
   participants: number;
   maxAttendees?: number | null;
+  isPaid?: boolean;
+  amount?: number;
+  currency?: string;
   attendeeIds?: string[];
   registered?: boolean;
   collegeName?: string;
@@ -212,10 +215,17 @@ export class EventService {
       title: backendEvent.name,
       date: dateObj ? dateObj.toISOString().split('T')[0] : '',
       time: dateObj ? dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+      dateLabel: dateObj ? dateObj.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }) : '',
+      timeLabel: dateObj ? dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Time TBA',
+      dateTime: backendEvent.dateTime,
       location: backendEvent.location,
       category: backendEvent.category || this.determineCategory(backendEvent.name, backendEvent.description || ''),
       attendees: backendEvent.registrations || 0,
       maxAttendees: backendEvent.maxAttendees ?? null,
+      isPaid: backendEvent.isPaid === true,
+      amount: Number(backendEvent.amount || 0),
+      currency: backendEvent.currency || 'INR',
+      priceLabel: backendEvent.isPaid ? `${backendEvent.currency || 'INR'} ${Number(backendEvent.amount || 0).toFixed(2)}` : 'Free',
       status,
       description: backendEvent.description,
       registered: isRegistered,

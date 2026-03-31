@@ -31,8 +31,12 @@ export class StudentHeaderComponent {
   @Input() notifications: StudentHeaderNotification[] = [];
   @Input() notificationsLoading = false;
   @Input() notificationsOpen = false;
+  @Input() unseenNotificationCount = 0;
+  @Input() showViewMore = false;
 
   @Output() notificationToggle = new EventEmitter<Event | undefined>();
+  @Output() viewMoreNotifications = new EventEmitter<void>();
+  @Output() notificationDelete = new EventEmitter<string>();
 
   constructor(
     private router: Router,
@@ -41,6 +45,10 @@ export class StudentHeaderComponent {
 
   get notificationCount(): number {
     return this.notifications.length;
+  }
+
+  get badgeCount(): number {
+    return Math.max(0, Number(this.unseenNotificationCount || 0));
   }
 
   get headerInitials(): string {
@@ -63,6 +71,10 @@ export class StudentHeaderComponent {
 
   get remainingNotifications(): StudentHeaderNotification[] {
     return this.notifications.slice(1);
+  }
+
+  get shouldShowViewAllButton(): boolean {
+    return this.showViewMore && !this.notificationsLoading;
   }
 
   navigate(tab: 'dashboard' | 'events' | 'registrations' | 'feedback' | 'query'): void {
@@ -108,6 +120,19 @@ export class StudentHeaderComponent {
     }
 
     this.router.navigate(['/new-student-dashboard'], { fragment: 'notifications-section' });
+  }
+
+  onViewMore(event?: Event): void {
+    event?.stopPropagation();
+    this.viewMoreNotifications.emit();
+  }
+
+  onDeleteNotification(event: Event, id: string): void {
+    event.stopPropagation();
+    if (!id) {
+      return;
+    }
+    this.notificationDelete.emit(id);
   }
 
   logout(): void {

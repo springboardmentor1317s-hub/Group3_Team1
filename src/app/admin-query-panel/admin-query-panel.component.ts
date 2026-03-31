@@ -162,13 +162,12 @@ export class AdminQueryPanelComponent implements OnChanges {
     if (this.savingQueryId) {
       return;
     }
-
-    draft.status = 'RESOLVED';
+    const selectedStatus = draft.status || 'OPEN';
 
     this.submitReply.emit({
       queryId: query.id,
       adminResponse: String(draft.adminResponse || '').trim(),
-      status: 'RESOLVED',
+      status: selectedStatus,
       progressNote: String(draft.progressNote || '').trim()
     });
   }

@@ -3,7 +3,6 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subscription, catchError, finalize, forkJoin, map, of, switchMap, throwError, timeout } from 'rxjs';
-import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
 import {
   StudentDashboardService,
@@ -18,11 +17,12 @@ import {
   PROGRAM_OPTIONS,
   SEMESTER_OPTIONS
 } from '../student-profile-page/profile-form-options';
+import { PaymentService, PaymentStatus } from '../services/payment.service';
 
 @Component({
   selector: 'app-student-event-registration-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, StudentHeaderComponent],
+  imports: [CommonModule, FormsModule, RouterModule, StudentHeaderComponent],
   templateUrl: './student-event-registration-page.component.html',
   styleUrls: ['./student-event-registration-page.component.scss']
 })
@@ -34,10 +34,14 @@ export class StudentEventRegistrationPageComponent implements OnInit, OnDestroy 
   successPopupOpen = false;
   popupTitle = 'Registration Submitted';
   popupMessage = '';
+  popupRedirectUrl = '';
+  popupRedirectState: Record<string, unknown> | null = null;
   event: StudentEventCard | null = null;
   profile: StudentProfile | null = null;
   registration: StudentRegistrationRecord | null = null;
   confirmChecked = false;
+  paymentProcessing = false;
+  latestPaymentStatus: PaymentStatus | null = null;
 
   readonly stateOptions = INDIA_STATES;
   readonly programOptions = PROGRAM_OPTIONS;
@@ -78,7 +82,8 @@ export class StudentEventRegistrationPageComponent implements OnInit, OnDestroy 
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly studentDashboardService: StudentDashboardService,
-    private readonly cdr: ChangeDetectorRef
+    private readonly cdr: ChangeDetectorRef,
+    private readonly paymentService: PaymentService
   ) {}
 
   ngOnInit(): void {
@@ -156,7 +161,9 @@ export class StudentEventRegistrationPageComponent implements OnInit, OnDestroy 
   }
 
   get submitLabel(): string {
+    if (this.paymentProcessing) return 'Opening Payment...';
     if (this.saving) return this.isRejected ? 'Resubmitting...' : 'Submitting...';
+    if (this.isPaidEvent) return 'Proceed To Pay';
     return this.isRejected ? 'Resubmit To Admin' : 'Submit Registration';
   }
 
@@ -165,11 +172,15 @@ export class StudentEventRegistrationPageComponent implements OnInit, OnDestroy 
   }
 
   get canSubmit(): boolean {
-    if (!this.event || this.saving || !this.canEditForm || !this.confirmChecked) {
+    if (!this.event || this.saving || this.paymentProcessing || !this.canEditForm || !this.confirmChecked) {
       return false;
     }
 
     return true;
+  }
+
+  get isPaidEvent(): boolean {
+    return Boolean(this.event?.isPaid) && Number(this.event?.amount || 0) > 0;
   }
 
   goBack(): void {
@@ -208,6 +219,14 @@ export class StudentEventRegistrationPageComponent implements OnInit, OnDestroy 
 
   closeSuccessPopup(): void {
     this.successPopupOpen = false;
+    if (this.popupRedirectUrl) {
+      const redirectUrl = this.popupRedirectUrl;
+      const redirectState = this.popupRedirectState || undefined;
+      this.popupRedirectUrl = '';
+      this.popupRedirectState = null;
+      this.router.navigate([redirectUrl], { state: redirectState });
+      return;
+    }
     if (this.event?.id) {
       this.router.navigate(['/student-event', this.event.id], {
         queryParams: { registrationUpdated: '1' }
@@ -248,6 +267,11 @@ export class StudentEventRegistrationPageComponent implements OnInit, OnDestroy 
       error: () => void 0
     });
 
+    if (this.isPaidEvent) {
+      this.launchPaidRegistrationFlow(wasRejected, previousRegistration);
+      return;
+    }
+
     const submitRequest$ = wasRejected
       ? this.studentDashboardService.resubmitRegistration(this.event.id).pipe(
           timeout(10000),
@@ -284,6 +308,98 @@ export class StudentEventRegistrationPageComponent implements OnInit, OnDestroy 
           error: () => void 0
         });
         this.errorMessage = error?.error?.error || error?.error?.message || 'Unable to submit registration right now.';
+      }
+    });
+  }
+
+  private launchPaidRegistrationFlow(wasRejected: boolean, previousRegistration: StudentRegistrationRecord | null): void {
+    if (!this.event) {
+      this.setSaving(false);
+      return;
+    }
+
+    this.paymentProcessing = true;
+    this.submitRequestSubscription?.unsubscribe();
+    this.submitRequestSubscription = this.paymentService.openCheckout({
+      eventId: this.event.id,
+      eventName: this.event.title,
+      amount: Number(this.event.amount || 0),
+      studentName: this.form.name.trim(),
+      studentEmail: this.form.email.trim(),
+      contact: this.form.phone.trim()
+    }).pipe(
+      switchMap((checkout) => {
+        if (checkout.signature) {
+          return this.paymentService.verifyPayment({
+            eventId: this.event!.id,
+            orderId: checkout.orderId,
+            paymentId: checkout.paymentId,
+            signature: checkout.signature
+          }).pipe(
+            switchMap((verifyResponse) => this.paymentService.savePayment({
+              eventId: this.event!.id,
+              orderId: checkout.orderId,
+              paymentId: checkout.paymentId
+            }).pipe(
+              map(() => verifyResponse.payment)
+            ))
+          );
+        }
+
+        return this.paymentService.getPaymentStatus(this.event!.id).pipe(
+          map((status) => {
+            if (!status.verified) {
+              throw new Error('Payment verification is still pending.');
+            }
+            return status;
+          })
+        );
+      }),
+      switchMap((payment) => {
+        this.latestPaymentStatus = payment;
+        const submitRequest$ = wasRejected
+          ? this.studentDashboardService.resubmitRegistration(this.event!.id)
+          : this.studentDashboardService.registerForEvent(this.event!.id);
+
+        return submitRequest$.pipe(map((registration) => ({ registration, payment })));
+      }),
+      finalize(() => {
+        this.paymentProcessing = false;
+        this.setSaving(false);
+      })
+    ).subscribe({
+      next: ({ registration, payment }) => {
+        this.latestPaymentStatus = payment;
+        this.completeSubmissionUI(registration, wasRejected);
+        this.popupTitle = 'Payment Successful';
+        this.popupMessage = 'Your payment was verified and your registration was sent for admin review.';
+        this.popupRedirectUrl = '/student-payment-success';
+        this.popupRedirectState = {
+          event: this.event,
+          registration,
+          payment
+        };
+        this.successPopupOpen = true;
+      },
+      error: (error) => {
+        this.successMessage = '';
+        this.registration = previousRegistration;
+        if (previousRegistration && this.event) {
+          this.studentDashboardService.applyRegistrationUpdate(previousRegistration, this.event);
+        }
+        this.studentDashboardService.refreshDashboardSnapshot().subscribe({
+          next: () => void 0,
+          error: () => void 0
+        });
+        this.errorMessage = error?.error?.error || error?.error?.message || error?.message || 'Payment failed. Please try again after some time.';
+        this.popupTitle = 'Payment Failed';
+        this.popupMessage = this.errorMessage;
+        this.popupRedirectUrl = '/student-payment-failure';
+        this.popupRedirectState = {
+          event: this.event,
+          message: this.errorMessage
+        };
+        this.successPopupOpen = true;
       }
     });
   }

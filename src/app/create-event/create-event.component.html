@@ -99,7 +99,7 @@
           </div>
         </div>
 
-        <div class="field-group">
+        <div class="field-group field-group--triple">
           <div class="field date-group">
             <label for="eventStartDate">
               <span class="field-icon material-icons" aria-hidden="true">calendar_month</span>
@@ -115,6 +115,23 @@
             />
             <div class="error" *ngIf="startDateModel.invalid && (startDateModel.touched || createEventForm.submitted)">
               Start date is required.
+            </div>
+          </div>
+          <div class="field">
+            <label for="eventStartTime">
+              <span class="field-icon material-icons" aria-hidden="true">schedule</span>
+              Event Start Time <span class="req">*</span>
+            </label>
+            <input
+              id="eventStartTime"
+              type="time"
+              name="startTime"
+              #startTimeModel="ngModel"
+              [(ngModel)]="createForm.startTime"
+              required
+            />
+            <div class="error" *ngIf="startTimeModel.invalid && (startTimeModel.touched || createEventForm.submitted)">
+              Start time is required.
             </div>
           </div>
           <div class="field">
@@ -209,6 +226,35 @@
             </label>
             <input id="eventCapacity" type="number" name="maxAttendees" [(ngModel)]="createForm.maxAttendees" placeholder="Leave blank for unlimited participation" min="1" />
             <div class="hint">If left empty, the event will be treated as having unlimited seats.</div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field">
+            <label for="eventPaymentType">
+              <span class="field-icon material-icons" aria-hidden="true">payments</span>
+              Payment Type
+            </label>
+            <select id="eventPaymentType" name="isPaid" [(ngModel)]="createForm.isPaid">
+              <option [ngValue]="false">Free Event</option>
+              <option [ngValue]="true">Paid Event</option>
+            </select>
+          </div>
+          <div class="field" *ngIf="createForm.isPaid">
+            <label for="eventAmount">
+              <span class="field-icon material-icons" aria-hidden="true">currency_rupee</span>
+              Amount <span class="req">*</span>
+            </label>
+            <input
+              id="eventAmount"
+              type="number"
+              name="amount"
+              [(ngModel)]="createForm.amount"
+              placeholder="Enter event fee"
+              min="1"
+              required
+            />
+            <div class="hint">Shown on student and admin event cards.</div>
           </div>
         </div>
 

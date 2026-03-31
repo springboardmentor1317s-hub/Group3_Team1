@@ -43,6 +43,13 @@ export class AdminAttendanceManagementComponent implements AfterViewInit, OnDest
   showEvents = true;
   showAttendanceScreen = false;
   distributionActionInProgress = false;
+  certificateGenerationEventId = '';
+  certificateSignatureUploading = false;
+  certificateOrganizationName = 'Campus Event Hub';
+  certificateSignerName = '';
+  certificateSignerTitle = 'Authorized Signature';
+  certificateSignatureFileName = '';
+  private certificateSignatureDataUrl = '';
 
   private mediaStream: MediaStream | null = null;
   private scanTimer: ReturnType<typeof setInterval> | null = null;
@@ -160,6 +167,65 @@ export class AdminAttendanceManagementComponent implements AfterViewInit, OnDest
       return;
     }
     this.generateAdmitCards(this.selectedEvent);
+  }
+
+  async onCertificateSignatureSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0] || null;
+    if (!file || !this.selectedEvent) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      this.showNotification('Please upload a PNG, JPG, or image signature file.', 'error');
+      return;
+    }
+
+    try {
+      this.certificateSignatureDataUrl = await this.prepareSignatureDataUrl(file);
+      this.certificateSignatureFileName = file.name;
+      this.showNotification('Signature selected. Click Save Certificate Template to upload it.', 'info');
+    } catch {
+      this.showNotification('Unable to read the selected signature file.', 'error');
+    }
+  }
+
+  generateCertificatesForSelectedEvent(): void {
+    if (!this.selectedEvent || this.certificateGenerationEventId) {
+      return;
+    }
+
+    if (!this.roster?.certificateTemplate?.hasSignature && !this.certificateSignatureDataUrl) {
+      this.showNotification('Upload the authorized signature first, then generate certificates.', 'error');
+      return;
+    }
+
+    const eventId = this.selectedEvent.eventId;
+    this.certificateGenerationEventId = eventId;
+    this.errorMessage = '';
+
+    this.attendanceService.generateCertificates(eventId).pipe(
+      timeout(18000),
+      finalize(() => {
+        this.certificateGenerationEventId = '';
+      })
+    ).subscribe({
+      next: (response) => {
+        const failed = Number(response.failed || 0);
+        this.showNotification(
+          failed > 0
+            ? `Certificates generated with partial issues. Created: ${Number(response.created || 0)}, Updated: ${Number(response.refreshed || 0)}, Failed: ${failed}.`
+            : `Certificates ready for attended students. Created: ${Number(response.created || 0)}, Updated: ${Number(response.refreshed || 0)}, Present: ${Number(response.totalAttended || 0)}.`,
+          failed > 0 ? 'info' : 'success'
+        );
+        this.loadRoster(eventId);
+        this.loadTodayEvents();
+      },
+      error: async (error: HttpErrorResponse) => {
+        const message = await this.getApiErrorMessage(error, 'Failed to generate certificates.');
+        this.showNotification(message, 'error');
+      }
+    });
   }
 
   previewForSelectedEvent(): void {
@@ -382,7 +448,8 @@ export class AdminAttendanceManagementComponent implements AfterViewInit, OnDest
           return;
         }
         if (this.selectedEvent) {
-          const refreshed = this.events.find((item) => item.eventId === this.selectedEvent?.eventId);
+          const selectedEventId = this.selectedEvent.eventId;
+          const refreshed = this.events.find((item) => item.eventId === selectedEventId);
           if (refreshed) {
             this.selectedEvent = refreshed;
             if (this.showAttendanceScreen) {
@@ -414,6 +481,12 @@ export class AdminAttendanceManagementComponent implements AfterViewInit, OnDest
     ).subscribe({
       next: (roster) => {
         this.roster = roster;
+        this.certificateOrganizationName = String(roster.certificateTemplate?.organizationName || 'Campus Event Hub').trim() || 'Campus Event Hub';
+        this.certificateSignerName = String(roster.certificateTemplate?.signerName || '').trim();
+        this.certificateSignerTitle = String(roster.certificateTemplate?.signerTitle || 'Authorized Signature').trim() || 'Authorized Signature';
+        if (!roster.certificateTemplate?.hasSignature) {
+          this.certificateSignatureFileName = '';
+        }
       },
       error: (error) => {
         this.roster = null;
@@ -578,6 +651,108 @@ export class AdminAttendanceManagementComponent implements AfterViewInit, OnDest
     }, 3200);
   }
 
+  private uploadCertificateSignature(): void {
+    if (!this.selectedEvent || !this.certificateSignatureDataUrl || this.certificateSignatureUploading) {
+      return;
+    }
+
+    this.certificateSignatureUploading = true;
+    this.attendanceService.saveCertificateTemplate(this.selectedEvent.eventId, {
+      signatureDataUrl: this.certificateSignatureDataUrl,
+      organizationName: this.certificateOrganizationName,
+      signerName: this.certificateSignerName,
+      signerTitle: this.certificateSignerTitle
+    }).pipe(
+      timeout(18000),
+      finalize(() => {
+        this.certificateSignatureUploading = false;
+      })
+    ).subscribe({
+      next: () => {
+        this.showNotification('Certificate signature uploaded successfully.', 'success');
+        this.loadRoster(this.selectedEvent!.eventId);
+      },
+      error: async (error: HttpErrorResponse) => {
+        const message = await this.getApiErrorMessage(error, 'Failed to upload certificate signature.');
+        this.showNotification(message, 'error');
+      }
+    });
+  }
+
+  private prepareSignatureDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const rawDataUrl = String(reader.result || '');
+        const image = new Image();
+        image.onload = () => {
+          const maxWidth = 900;
+          const maxHeight = 280;
+          const widthRatio = maxWidth / Math.max(1, image.width);
+          const heightRatio = maxHeight / Math.max(1, image.height);
+          const ratio = Math.min(1, widthRatio, heightRatio);
+          const targetWidth = Math.max(1, Math.round(image.width * ratio));
+          const targetHeight = Math.max(1, Math.round(image.height * ratio));
+
+          const canvas = document.createElement('canvas');
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Canvas context unavailable.'));
+            return;
+          }
+
+          ctx.clearRect(0, 0, targetWidth, targetHeight);
+          ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+          resolve(canvas.toDataURL('image/png'));
+        };
+        image.onerror = () => reject(new Error('Image load failed.'));
+        image.src = rawDataUrl;
+      };
+      reader.onerror = () => reject(new Error('File read failed.'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  saveCertificateTemplateDetails(): void {
+    if (!this.selectedEvent || this.certificateSignatureUploading) {
+      return;
+    }
+
+    if (!this.certificateSignatureDataUrl && !this.roster?.certificateTemplate?.hasSignature) {
+      this.showNotification('Please upload a signature image first.', 'error');
+      return;
+    }
+
+    if (this.certificateSignatureDataUrl) {
+      this.uploadCertificateSignature();
+      return;
+    }
+
+    this.certificateSignatureUploading = true;
+    this.attendanceService.saveCertificateTemplate(this.selectedEvent.eventId, {
+      signatureDataUrl: '',
+      organizationName: this.certificateOrganizationName,
+      signerName: this.certificateSignerName,
+      signerTitle: this.certificateSignerTitle
+    }).pipe(
+      timeout(18000),
+      finalize(() => {
+        this.certificateSignatureUploading = false;
+      })
+    ).subscribe({
+      next: () => {
+        this.showNotification('Certificate template saved successfully.', 'success');
+        this.loadRoster(this.selectedEvent!.eventId);
+      },
+      error: async (error: HttpErrorResponse) => {
+        const message = await this.getApiErrorMessage(error, 'Failed to save certificate template.');
+        this.showNotification(message, 'error');
+      }
+    });
+  }
+
   private clearGenerateFallbackTimer(): void {
     if (this.generateFallbackTimer) {
       clearTimeout(this.generateFallbackTimer);
@@ -648,7 +823,8 @@ export class AdminAttendanceManagementComponent implements AfterViewInit, OnDest
         this.events = events || [];
         if (!this.selectedEvent) return;
 
-        const refreshed = this.events.find((item) => item.eventId === this.selectedEvent?.eventId) || null;
+        const selectedEventId = this.selectedEvent.eventId;
+        const refreshed = this.events.find((item) => item.eventId === selectedEventId) || null;
         this.selectedEvent = refreshed;
         if (!refreshed || !this.showAttendanceScreen) return;
 

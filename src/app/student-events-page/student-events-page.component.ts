@@ -4,7 +4,6 @@ import { ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit }
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
-import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 import { EventCardComponent } from '../shared/event-card/event-card.component';
 import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
 import { timeout } from 'rxjs';
@@ -15,16 +14,18 @@ import {
   StudentEventReview,
   StudentRegistrationRecord
 } from '../services/student-dashboard.service';
+import { NotificationService } from '../services/notification.service';
 
 
 @Component({
   selector: 'app-student-events-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, EventCardComponent, StudentHeaderComponent],
+  imports: [CommonModule, FormsModule, RouterModule, EventCardComponent, StudentHeaderComponent],
   templateUrl: './student-events-page.component.html',
   styleUrls: ['./student-events-page.component.scss']
 })
 export class StudentEventsPageComponent implements OnInit, OnDestroy {
+  private static readonly DROPDOWN_NOTIFICATION_LIMIT = 7;
   events: StudentEventCard[] = [];
   filteredEvents: StudentEventCard[] = [];
   registrations: StudentRegistrationRecord[] = [];
@@ -38,6 +39,8 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
   loading = true;
   notificationsLoading = true;
   notificationsDropdownOpen = false;
+  unseenNotificationCount = 0;
+  showNotificationViewMore = true;
   errorMessage = '';
   eventRatingSummaryByEventId: Record<string, { average: number; count: number }> = {};
   expandedEventIds = new Set<string>();
@@ -53,7 +56,8 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
     private router: Router,
     private route: ActivatedRoute,
     private cdr: ChangeDetectorRef,
-    private zone: NgZone
+    private zone: NgZone,
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -194,6 +198,26 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
     this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
   }
 
+  openNotificationsPage(): void {
+    this.notificationsDropdownOpen = false;
+    this.router.navigate(['/student-notifications']);
+  }
+
+  deleteNotificationFromDropdown(id: string): void {
+    if (!id) {
+      return;
+    }
+
+    this.notificationService.deleteNotification(id).subscribe({
+      next: () => {
+        this.notifications = this.notifications.filter((item) => item.id !== id);
+        this.unseenNotificationCount = this.notifications.length;
+        this.flushView();
+      },
+      error: () => void 0
+    });
+  }
+
   logout(): void {
     this.auth.logout();
     this.router.navigate(['/login']);
@@ -292,6 +316,7 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
     const cachedEvents = this.studentDashboardService.getCachedEvents();
     const cachedRegistrations = this.studentDashboardService.getCachedRegistrations();
     const cachedNotifications = this.studentDashboardService.getCachedNotifications();
+    const cachedDropdownState = this.notificationService.getCachedDropdownState();
 
     if (cachedEvents.length) {
       this.setEvents(cachedEvents);
@@ -302,10 +327,10 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
       this.registrations = cachedRegistrations;
     }
 
-    if (cachedNotifications.length) {
-      this.notifications = cachedNotifications;
-      this.notificationsLoading = false;
-    }
+    this.notifications = (cachedDropdownState.items.length ? cachedDropdownState.items : cachedNotifications) as StudentNotificationItem[];
+    this.unseenNotificationCount = cachedDropdownState.unseenCount;
+    this.showNotificationViewMore = true;
+    this.notificationsLoading = this.notifications.length === 0;
 
     this.flushView();
   }
@@ -413,14 +438,19 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
   private loadNotifications(): void {
     this.notificationsLoading = true;
 
-    this.studentDashboardService.refreshDashboardSnapshot().subscribe({
-      next: (snapshot) => {
-        this.notifications = snapshot.notifications || [];
+    this.notificationService.getDropdownNotifications(StudentEventsPageComponent.DROPDOWN_NOTIFICATION_LIMIT).subscribe({
+      next: (state) => {
+        this.notifications = state.items as StudentNotificationItem[];
+        this.unseenNotificationCount = state.unseenCount;
+        this.showNotificationViewMore = true;
         this.notificationsLoading = false;
         this.flushView();
       },
       error: () => {
-        this.notifications = this.studentDashboardService.getCachedNotifications();
+        const cached = this.notificationService.getCachedDropdownState();
+        this.notifications = cached.items as StudentNotificationItem[];
+        this.unseenNotificationCount = cached.unseenCount;
+        this.showNotificationViewMore = true;
         this.notificationsLoading = false;
         this.flushView();
       }
@@ -449,9 +479,11 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
 
   private startNotificationsRefresh(): void {
     this.notificationsRefreshTimer = setInterval(() => {
-      this.studentDashboardService.refreshDashboardSnapshot().subscribe({
-        next: (snapshot) => {
-          this.notifications = snapshot.notifications || [];
+      this.notificationService.getDropdownNotifications(StudentEventsPageComponent.DROPDOWN_NOTIFICATION_LIMIT).subscribe({
+        next: (state) => {
+          this.notifications = state.items as StudentNotificationItem[];
+          this.unseenNotificationCount = state.unseenCount;
+          this.showNotificationViewMore = true;
           this.notificationsLoading = false;
           this.flushView();
         },

@@ -6,7 +6,11 @@
     [notifications]="notifications"
     [notificationsLoading]="notificationsLoading"
     [notificationsOpen]="notificationsDropdownOpen"
+    [unseenNotificationCount]="unseenNotificationCount"
+    [showViewMore]="showNotificationViewMore"
     (notificationToggle)="openNotifications($event)"
+    (viewMoreNotifications)="openNotificationsPage()"
+    (notificationDelete)="deleteNotificationFromDropdown($event)"
   />
 
   <main class="feedback-main">
@@ -62,5 +66,4 @@
     </section>
   </main>
 
-  <app-site-footer></app-site-footer>
 </div>

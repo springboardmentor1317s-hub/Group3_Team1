@@ -30,6 +30,27 @@ const registrationSchema = new mongoose.Schema({
     enum: ['PENDING', 'APPROVED', 'REJECTED'],
     default: 'PENDING'
   },
+  paymentRequired: {
+    type: Boolean,
+    default: false
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['NOT_REQUIRED', 'PENDING', 'SUCCESS', 'FAILED'],
+    default: 'NOT_REQUIRED'
+  },
+  paymentVerified: {
+    type: Boolean,
+    default: false
+  },
+  paymentId: {
+    type: String,
+    default: ''
+  },
+  orderId: {
+    type: String,
+    default: ''
+  },
   rejectionReason: {
     type: String,
     default: ''

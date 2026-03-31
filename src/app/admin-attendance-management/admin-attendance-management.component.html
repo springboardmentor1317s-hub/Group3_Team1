@@ -77,6 +77,58 @@
         >
           {{ distributionActionInProgress ? 'Updating...' : 'Distributed All Approved Student' }}
         </button>
+        <button
+          type="button"
+          class="list-action-btn accent"
+          [disabled]="!selectedEvent || certificateGenerationEventId === selectedEvent.eventId || !roster?.certificateTemplate?.hasSignature"
+          (click)="generateCertificatesForSelectedEvent()"
+        >
+          {{ certificateGenerationEventId === selectedEvent.eventId ? 'Generating...' : 'Generate Certificate For Present Students' }}
+        </button>
+      </div>
+
+      <div class="certificate-template-card" *ngIf="selectedEvent">
+        <div class="certificate-template-head">
+          <div>
+            <h4>Certificate Signature & Branding</h4>
+            <p>Upload the authorized signature first. Certificates will be generated only for students marked present.</p>
+          </div>
+          <span class="template-status" [class.ready]="roster?.certificateTemplate?.hasSignature">
+            {{ roster?.certificateTemplate?.hasSignature ? 'Signature Ready' : 'Signature Missing' }}
+          </span>
+        </div>
+
+        <div class="certificate-template-grid">
+          <label>
+            <span>Organization Name</span>
+            <input type="text" [(ngModel)]="certificateOrganizationName" placeholder="Campus Event Hub">
+          </label>
+          <label>
+            <span>Signer Name</span>
+            <input type="text" [(ngModel)]="certificateSignerName" placeholder="Authorized person">
+          </label>
+          <label>
+            <span>Signer Title</span>
+            <input type="text" [(ngModel)]="certificateSignerTitle" placeholder="Authorized Signature">
+          </label>
+          <label class="signature-upload-field">
+            <span>Upload Signature</span>
+            <input type="file" accept="image/*" (change)="onCertificateSignatureSelected($event)">
+          </label>
+        </div>
+
+        <p class="signature-file-name" *ngIf="certificateSignatureFileName || roster?.certificateTemplate?.hasSignature">
+          {{ certificateSignatureUploading ? 'Uploading signature...' : (certificateSignatureFileName || 'Signature already uploaded for this event.') }}
+        </p>
+
+        <button
+          type="button"
+          class="list-action-btn accent template-save-btn"
+          [disabled]="certificateSignatureUploading"
+          (click)="saveCertificateTemplateDetails()"
+        >
+          {{ certificateSignatureUploading ? 'Saving Template...' : 'Save Certificate Template' }}
+        </button>
       </div>
 
       <div class="loading-card" *ngIf="loadingRoster">Loading approved students...</div>
@@ -92,13 +144,16 @@
             <span class="student-status" [class]="getStudentStatusClass(student.status)">
               {{ student.status === 'PRESENT' ? 'Present' : 'Pending' }}
             </span>
+            <span class="student-certificate-chip" [class.ready]="student.certificateGenerated">
+              {{ student.certificateGenerated ? 'Certificate Ready' : 'No Certificate' }}
+            </span>
             <button
               type="button"
               class="student-card-btn"
-              [disabled]="previewingStudentCardKey === ((selectedEvent?.eventId || '') + ':' + student.studentId)"
+              [disabled]="previewingStudentCardKey === ((selectedEvent.eventId || '') + ':' + student.studentId)"
               (click)="previewStudentCard(student.studentId, student.studentName)"
             >
-              {{ previewingStudentCardKey === ((selectedEvent?.eventId || '') + ':' + student.studentId) ? 'Opening...' : 'View ID Card' }}
+              {{ previewingStudentCardKey === ((selectedEvent.eventId || '') + ':' + student.studentId) ? 'Opening...' : 'View ID Card' }}
             </button>
           </div>
         </article>
