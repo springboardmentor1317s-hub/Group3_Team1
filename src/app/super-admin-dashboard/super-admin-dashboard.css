@@ -290,6 +290,13 @@
   color: #0f172a;
 }
 
+.reports-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
 .events {
   list-style: none;
   margin: 1rem 0 0;
