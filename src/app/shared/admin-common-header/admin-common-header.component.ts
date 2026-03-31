@@ -123,4 +123,9 @@ export class AdminCommonHeaderComponent {
     }
     this.notificationDelete.emit(id);
   }
+
+  onViewMore(event?: Event): void {
+    event?.stopPropagation();
+    this.viewMoreNotifications.emit();
+  }
 }

@@ -28,7 +28,7 @@ export class NotificationInboxPageComponent implements OnInit, OnDestroy {
   userPhotoUrl = '';
   deletingIds = new Set<string>();
   markingSeenIds = new Set<string>();
-  private readonly inboxCacheKey = 'notification-inbox-cache';
+  private inboxCacheKey = 'notification-inbox-cache';
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
@@ -49,6 +49,7 @@ export class NotificationInboxPageComponent implements OnInit, OnDestroy {
       || currentUser?.photoUrl
       || ''
     ).trim();
+    this.inboxCacheKey = this.buildInboxCacheKey(currentUser, role);
 
     this.prefillInboxFromCache();
     this.loadHeaderNotifications();
@@ -241,8 +242,12 @@ export class NotificationInboxPageComponent implements OnInit, OnDestroy {
       next: (response) => {
         this.notifications = response.items;
         this.unseenNotificationCount = response.unseenCount;
+        this.syncHeaderAndCounts();
         this.persistInboxCache();
         this.loading = false;
+        if (response.hasMore) {
+          this.fetchRemainingNotifications(response.page + 1, response.limit);
+        }
       },
       error: () => {
         this.loading = false;
@@ -261,20 +266,26 @@ export class NotificationInboxPageComponent implements OnInit, OnDestroy {
   private prefillInboxFromCache(): void {
     try {
       const raw = localStorage.getItem(this.inboxCacheKey);
-      if (!raw) {
-        return;
+      if (raw) {
+        const parsed = JSON.parse(raw) as { items?: AppNotification[]; unseenCount?: number };
+        if (Array.isArray(parsed?.items)) {
+          this.notifications = parsed.items;
+          this.unseenNotificationCount = Number(parsed?.unseenCount || 0);
+          this.syncHeaderAndCounts();
+          this.loading = false;
+          return;
+        }
       }
-
-      const parsed = JSON.parse(raw) as { items?: AppNotification[]; unseenCount?: number };
-      if (!Array.isArray(parsed?.items)) {
-        return;
-      }
-
-      this.notifications = parsed.items;
-      this.unseenNotificationCount = Number(parsed?.unseenCount || 0);
-      this.loading = false;
     } catch {
-      return;
+      // Fall back to the warm dropdown cache so the inbox opens instantly.
+    }
+
+    const dropdownState = this.notificationService.getCachedDropdownState();
+    if (dropdownState.items.length > 0) {
+      this.notifications = dropdownState.items;
+      this.unseenNotificationCount = Number(dropdownState.unseenCount || 0);
+      this.syncHeaderAndCounts();
+      this.loading = false;
     }
   }
 
@@ -292,7 +303,38 @@ export class NotificationInboxPageComponent implements OnInit, OnDestroy {
   private syncHeaderAndCounts(): void {
     const unseenItems = this.notifications.filter((item) => !item.isSeen);
     this.unseenNotificationCount = unseenItems.length;
-    this.headerNotifications = unseenItems.slice(0, 10);
+    this.headerNotifications = this.notifications.slice(0, 7);
     this.persistInboxCache();
+  }
+
+  private fetchRemainingNotifications(page: number, limit: number): void {
+    this.notificationService.getNotifications({ page, limit }).subscribe({
+      next: (response) => {
+        const existingIds = new Set(this.notifications.map((item) => item.id));
+        const nextItems = (response.items || []).filter((item) => !existingIds.has(item.id));
+        if (nextItems.length > 0) {
+          this.notifications = [...this.notifications, ...nextItems];
+          this.syncHeaderAndCounts();
+        }
+
+        if (response.hasMore) {
+          this.fetchRemainingNotifications(response.page + 1, response.limit);
+        }
+      },
+      error: () => void 0
+    });
+  }
+
+  private buildInboxCacheKey(currentUser: Record<string, unknown>, role: string): string {
+    const userKey = String(
+      currentUser?.['userId']
+      || currentUser?.['id']
+      || currentUser?.['_id']
+      || currentUser?.['email']
+      || role
+      || 'default'
+    ).trim();
+
+    return `notification-inbox-cache:${userKey}`;
   }
 }
