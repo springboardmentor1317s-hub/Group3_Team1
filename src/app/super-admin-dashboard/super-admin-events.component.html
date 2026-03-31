@@ -17,9 +17,9 @@
       </nav>
 
       <div class="header-actions">
-        <button class="action-btn export-btn" type="button">
+        <button class="action-btn export-btn" type="button" (click)="exportEventsReport()" [disabled]="isExporting">
           <i class="fa-solid fa-download"></i>
-          Export Reports
+          {{ isExporting ? 'Exporting...' : 'Export Reports' }}
         </button>
         <button class="action-btn logout-btn" type="button" (click)="logout()">
           <i class="fa-solid fa-right-from-bracket"></i>

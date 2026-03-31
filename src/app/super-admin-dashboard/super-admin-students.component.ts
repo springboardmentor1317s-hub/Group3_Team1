@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Auth } from '../auth/auth';
 import { StudentRegistrationSummary, SuperAdminService, SuperAdminStudent } from './super-admin-service';
+import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-super-admin-students',
@@ -26,6 +27,7 @@ export class SuperAdminStudentsComponent implements OnInit {
   selectedStudentEvents: StudentRegistrationSummary[] = [];
   isLoadingEvents = false;
   eventsError = '';
+  isExporting = false;
 
   constructor(
     private auth: Auth,
@@ -169,6 +171,36 @@ export class SuperAdminStudentsComponent implements OnInit {
 
   getStudentAddress(student: SuperAdminStudent): string {
     return (student.currentAddressLine || student.permanentAddressLine || '').trim() || 'Not provided';
+  }
+
+  exportStudentsReport(): void {
+    if (this.isExporting) {
+      return;
+    }
+
+    this.isExporting = true;
+    this.superAdminService.exportStudentsCsv().pipe(
+      finalize(() => {
+        this.isExporting = false;
+        this.cdr.detectChanges();
+      })
+    ).subscribe({
+      next: (fileBlob) => {
+        const blob = new Blob([fileBlob], { type: 'text/csv;charset=utf-8;' });
+        const objectUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = 'Students.csv';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => window.URL.revokeObjectURL(objectUrl), 3000);
+      },
+      error: () => {
+        alert('Failed to export students report. Please try again.');
+      }
+    });
   }
 
   logout(): void {

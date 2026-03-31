@@ -2,6 +2,53 @@ const User = require("../models/User");
 const Event = require("../models/Event");
 const Registration = require("../models/Registration");
 
+function escapeCsvCell(value) {
+  const text = String(value ?? '');
+  if (/[",\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+function getExportEventStatus(event) {
+  const rawStatus = String(event?.status || '').trim();
+  if (rawStatus.toLowerCase() === 'draft') {
+    return 'Draft';
+  }
+
+  const dateValue = String(event?.dateTime || '').trim();
+  const parsed = new Date(dateValue);
+  if (!Number.isNaN(parsed.getTime())) {
+    const today = new Date();
+    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const eventDateOnly = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    return todayOnly <= eventDateOnly ? 'Active' : 'Completed';
+  }
+
+  if (rawStatus.toLowerCase() === 'past') {
+    return 'Completed';
+  }
+
+  return rawStatus || 'Active';
+}
+
+function getExportAdminStatus(user) {
+  if (Boolean(user?.isBlocked)) {
+    return 'Blocked';
+  }
+
+  const approvalStatus = String(user?.adminApprovalStatus || '').trim().toLowerCase();
+  if (approvalStatus === 'approved') {
+    return 'Active and Approved';
+  }
+
+  return 'Pending';
+}
+
+function getExportStudentStatus(user) {
+  return Boolean(user?.isBlocked) ? 'Blocked' : 'Active';
+}
+
 // ================= SUPER ADMIN DASHBOARD =================
 exports.getDashboardStats = async (req, res) => {
   try {
@@ -365,5 +412,112 @@ exports.updateUserBlockStatus = async (req, res) => {
   } catch (error) {
     console.error('Update user block status error:', error);
     res.status(500).json({ message: 'Failed to update user block status' });
+  }
+};
+
+// ================= EXPORT EVENTS CSV =================
+// GET /api/superadmin/events/export
+exports.exportEventsCsv = async (req, res) => {
+  try {
+    const events = await Event.find({})
+      .select('name status collegeName category dateTime location organizer contact')
+      .sort({ createdAt: -1 });
+
+    const header = [
+      'Event Name',
+      'Status',
+      'College',
+      'Category',
+      'Date',
+      'Location',
+      'Organizer',
+      'Contact'
+    ];
+
+    const rows = events.map((event) => [
+      event.name || '',
+      getExportEventStatus(event),
+      event.collegeName || '',
+      event.category || '',
+      event.dateTime || '',
+      event.location || '',
+      event.organizer || '',
+      event.contact || ''
+    ]);
+
+    const csv = [header, ...rows]
+      .map((row) => row.map(escapeCsvCell).join(','))
+      .join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="Events.csv"');
+    res.status(200).send(csv);
+  } catch (error) {
+    console.error('Export events csv error:', error);
+    res.status(500).json({ message: 'Failed to export events report' });
+  }
+};
+
+// ================= EXPORT ADMINS CSV =================
+// GET /api/superadmin/admins/export
+exports.exportAdminsCsv = async (req, res) => {
+  try {
+    const admins = await User.find({
+      role: { $in: ['college_admin', 'admin'] }
+    })
+      .select('name college adminApprovalStatus isBlocked createdAt')
+      .sort({ createdAt: -1 });
+
+    const header = ['Admin Name', 'Status', 'College'];
+
+    const rows = admins.map((admin) => [
+      admin.name || '',
+      getExportAdminStatus(admin),
+      admin.college || ''
+    ]);
+
+    const csv = [header, ...rows]
+      .map((row) => row.map(escapeCsvCell).join(','))
+      .join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="Admins.csv"');
+    res.status(200).send(csv);
+  } catch (error) {
+    console.error('Export admins csv error:', error);
+    res.status(500).json({ message: 'Failed to export admins report' });
+  }
+};
+
+// ================= EXPORT STUDENTS CSV =================
+// GET /api/superadmin/students/export
+exports.exportStudentsCsv = async (req, res) => {
+  try {
+    const students = await User.find({
+      role: { $regex: /^student$/i }
+    })
+      .select('name college isBlocked department phone createdAt')
+      .sort({ createdAt: -1 });
+
+    const header = ['Name', 'College', 'Status', 'Department', 'Phone'];
+
+    const rows = students.map((student) => [
+      student.name || '',
+      student.college || '',
+      getExportStudentStatus(student),
+      student.department || '',
+      student.phone || ''
+    ]);
+
+    const csv = [header, ...rows]
+      .map((row) => row.map(escapeCsvCell).join(','))
+      .join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="Students.csv"');
+    res.status(200).send(csv);
+  } catch (error) {
+    console.error('Export students csv error:', error);
+    res.status(500).json({ message: 'Failed to export students report' });
   }
 };
