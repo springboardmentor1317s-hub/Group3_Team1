@@ -8,6 +8,7 @@ export interface CreateEventForm {
   name: string;
   collegeName: string;
   dateTime: string;
+  startTime: string;
   endDate: string;
   registrationDeadline: string;
   location: string;
@@ -113,11 +114,18 @@ export class CreateEventComponent implements OnInit, OnChanges {
 
     const name = this.createForm.name.trim();
     const category = this.createForm.category.trim();
-    const dateTime = this.createForm.dateTime.trim();
+    const startDate = this.createForm.dateTime.trim();
+    const startTime = this.createForm.startTime.trim();
     const location = this.createForm.location.trim();
 
-    if (!name || !category || !dateTime || !location || form?.invalid) {
+    if (!name || !category || !startDate || !startTime || !location || form?.invalid) {
       alert('Please fill all required fields before saving the event.');
+      return;
+    }
+
+    const dateTime = this.combineDateAndTime(startDate, startTime);
+    if (!dateTime) {
+      alert('Please enter a valid event start date and time.');
       return;
     }
 
@@ -226,7 +234,8 @@ export class CreateEventComponent implements OnInit, OnChanges {
     return {
       name: event.name ?? '',
       collegeName: this.adminCollegeName || event.collegeName || '',
-      dateTime: this.normalizeDateInputValue(event.dateTime),
+      dateTime: this.extractDateInputValue(event.dateTime),
+      startTime: this.extractTimeInputValue(event.dateTime),
       endDate: this.normalizeDateInputValue(event.endDate),
       registrationDeadline: this.normalizeDateInputValue(event.registrationDeadline),
       location: event.location ?? '',
@@ -265,11 +274,53 @@ export class CreateEventComponent implements OnInit, OnChanges {
     return `${yyyy}-${mm}-${dd}`;
   }
 
+  private extractDateInputValue(value: string | null | undefined): string {
+    return this.normalizeDateInputValue(value);
+  }
+
+  private extractTimeInputValue(value: string | null | undefined): string {
+    const raw = String(value || '').trim();
+    if (!raw) {
+      return '';
+    }
+
+    const timeMatch = /T(\d{2}):(\d{2})/.exec(raw);
+    if (timeMatch) {
+      return `${timeMatch[1]}:${timeMatch[2]}`;
+    }
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) {
+      return '';
+    }
+
+    const hours = String(parsed.getHours()).padStart(2, '0');
+    const minutes = String(parsed.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+
+  private combineDateAndTime(dateValue: string, timeValue: string): string {
+    const normalizedDate = String(dateValue || '').trim();
+    const normalizedTime = String(timeValue || '').trim();
+    if (!normalizedDate || !normalizedTime) {
+      return '';
+    }
+
+    const combined = `${normalizedDate}T${normalizedTime}`;
+    const parsed = new Date(combined);
+    if (Number.isNaN(parsed.getTime())) {
+      return '';
+    }
+
+    return combined;
+  }
+
   private getEmptyCreateForm(): CreateEventForm {
     return {
       name: '',
       collegeName: '',
       dateTime: '',
+      startTime: '',
       endDate: '',
       registrationDeadline: '',
       location: '',

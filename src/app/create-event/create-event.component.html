@@ -99,7 +99,7 @@
           </div>
         </div>
 
-        <div class="field-group">
+        <div class="field-group field-group--triple">
           <div class="field date-group">
             <label for="eventStartDate">
               <span class="field-icon material-icons" aria-hidden="true">calendar_month</span>
@@ -115,6 +115,23 @@
             />
             <div class="error" *ngIf="startDateModel.invalid && (startDateModel.touched || createEventForm.submitted)">
               Start date is required.
+            </div>
+          </div>
+          <div class="field">
+            <label for="eventStartTime">
+              <span class="field-icon material-icons" aria-hidden="true">schedule</span>
+              Event Start Time <span class="req">*</span>
+            </label>
+            <input
+              id="eventStartTime"
+              type="time"
+              name="startTime"
+              #startTimeModel="ngModel"
+              [(ngModel)]="createForm.startTime"
+              required
+            />
+            <div class="error" *ngIf="startTimeModel.invalid && (startTimeModel.touched || createEventForm.submitted)">
+              Start time is required.
             </div>
           </div>
           <div class="field">
