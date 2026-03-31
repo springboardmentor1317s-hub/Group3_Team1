@@ -73,6 +73,10 @@ export class StudentHeaderComponent {
     return this.notifications.slice(1);
   }
 
+  get shouldShowViewAllButton(): boolean {
+    return this.showViewMore && !this.notificationsLoading;
+  }
+
   navigate(tab: 'dashboard' | 'events' | 'registrations' | 'feedback' | 'query'): void {
     if (tab === 'dashboard') {
       if (this.activeTab === 'dashboard') {

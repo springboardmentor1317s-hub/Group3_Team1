@@ -90,7 +90,7 @@
           <button
             type="button"
             class="notification-view-more-btn"
-            *ngIf="showViewMore && !notificationsLoading"
+            *ngIf="shouldShowViewAllButton"
             (click)="onViewMore()"
           >
             View All

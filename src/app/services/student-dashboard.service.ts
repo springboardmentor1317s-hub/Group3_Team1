@@ -579,9 +579,17 @@ export class StudentDashboardService {
       const registrationDeadlineLabel = deadlineDate && !Number.isNaN(deadlineDate.getTime())
         ? deadlineDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
         : event.registrationDeadlineLabel || 'Not specified';
+      const eventDate = dbEvent.dateTime ? new Date(dbEvent.dateTime) : null;
 
       return {
         ...event,
+        dateTime: dbEvent.dateTime || event.dateTime,
+        dateLabel: eventDate && !Number.isNaN(eventDate.getTime())
+          ? eventDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+          : event.dateLabel,
+        timeLabel: eventDate && !Number.isNaN(eventDate.getTime())
+          ? eventDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+          : event.timeLabel,
         registrationDeadline,
         registrationDeadlineLabel,
         isPaid: dbEvent.isPaid === true,
@@ -1000,11 +1008,18 @@ export class StudentDashboardService {
       || (registrationDeadlineDate && !Number.isNaN(registrationDeadlineDate.getTime())
         ? registrationDeadlineDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
         : 'Not specified');
+    const eventDate = event.dateTime ? new Date(event.dateTime) : null;
     const normalizedStatus: StudentEventCard['status'] = this.isEventExpired(event) ? 'Closed' : event.status;
     const isPaid = event.isPaid === true && Number(event.amount || 0) > 0;
 
     return {
       ...event,
+      dateLabel: eventDate && !Number.isNaN(eventDate.getTime())
+        ? eventDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : event.dateLabel,
+      timeLabel: eventDate && !Number.isNaN(eventDate.getTime())
+        ? eventDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+        : (event.timeLabel || 'Time TBA'),
       registrationDeadlineLabel,
       status: normalizedStatus,
       isPaid,

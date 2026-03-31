@@ -112,7 +112,6 @@ export class AdminCreateEventPageComponent implements OnInit {
   private normalizeEditingEvent(event: BackendEvent): BackendEvent {
     return {
       ...event,
-      dateTime: this.normalizeDateValue(event.dateTime),
       endDate: this.normalizeDateValue(event.endDate),
       registrationDeadline: this.normalizeDateValue(event.registrationDeadline)
     };

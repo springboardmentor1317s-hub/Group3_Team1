@@ -404,6 +404,11 @@ export class StudentDashboardPageComponent implements OnInit {
   openNotifications(event?: Event): void {
     event?.stopPropagation();
     this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
+    if (this.notificationsDropdownOpen) {
+      this.notificationsLoading = this.notifications.length === 0;
+      this.flushView();
+      this.loadNotificationDropdown();
+    }
   }
 
   openNotificationsPage(): void {
