@@ -6,9 +6,13 @@
     [showSearch]="false"
     [showNotifications]="true"
     [showExport]="false"
+    [unreadNotificationCount]="unreadNotificationCount"
+    [notificationsOpen]="showNotifications"
+    [notifications]="notifications"
     (brandClick)="goToDashboard()"
     (activeTabChange)="handleTabChange($event)"
-    (notificationsTriggered)="handleTabChange('registrations')"
+    (notificationsTriggered)="toggleNotifications()"
+    (clearNotifications)="clearAllNotifications()"
     (logoutTriggered)="logout()"
   ></app-admin-common-header>
 
@@ -111,8 +115,13 @@
             <img class="avatar-img" [src]="item.avatarUrl" [alt]="item.name">
             <div class="comment-body">
               <div class="comment-head" [class.admin-head]="isAdminEntry(item)">
-                <strong>{{ item.name }}</strong>
-                <span class="admin-author-badge" *ngIf="isAdminEntry(item)">Admin Reply</span>
+                <div class="author-stack">
+                  <strong>{{ getCommentAuthorDisplayName(item) }}</strong>
+                  <div class="author-meta" *ngIf="isAdminEntry(item)">
+                    <span class="admin-author-badge">Official Admin</span>
+                    <span class="admin-identity">{{ getAdminIdentityLabel(item) }}</span>
+                  </div>
+                </div>
                 <span>{{ formatTime(item.createdAt) }}</span>
               </div>
               <p *ngIf="!item.isEditing">{{ item.text }}</p>
@@ -170,8 +179,13 @@
         <img class="reply-avatar-img" [src]="reply.avatarUrl" [alt]="reply.name">
         <div class="reply-body">
           <div class="comment-head" [class.admin-head]="isAdminEntry(reply)">
-            <strong>{{ reply.name }}</strong>
-            <span class="admin-author-badge" *ngIf="isAdminEntry(reply)">Admin Reply</span>
+            <div class="author-stack">
+              <strong>{{ getCommentAuthorDisplayName(reply) }}</strong>
+              <div class="author-meta" *ngIf="isAdminEntry(reply)">
+                <span class="admin-author-badge">Official Admin</span>
+                <span class="admin-identity">{{ getAdminIdentityLabel(reply) }}</span>
+              </div>
+            </div>
             <span>{{ formatTime(reply.createdAt) }}</span>
           </div>
           <p *ngIf="!reply.isEditing">{{ reply.text }}</p>

@@ -3,7 +3,6 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subscription, catchError, finalize, forkJoin, map, of, switchMap, throwError, timeout } from 'rxjs';
-import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
 import {
   StudentDashboardService,
@@ -23,7 +22,7 @@ import { PaymentService, PaymentStatus } from '../services/payment.service';
 @Component({
   selector: 'app-student-event-registration-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, StudentHeaderComponent],
+  imports: [CommonModule, FormsModule, RouterModule, StudentHeaderComponent],
   templateUrl: './student-event-registration-page.component.html',
   styleUrls: ['./student-event-registration-page.component.scss']
 })

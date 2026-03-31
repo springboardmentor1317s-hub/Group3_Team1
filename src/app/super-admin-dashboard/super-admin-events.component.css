@@ -168,3 +168,17 @@
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 560px) {
+  .events-wrap {
+    width: min(100%, calc(100% - 1rem));
+  }
+
+  .event-actions {
+    width: 100%;
+  }
+
+  .event-btn {
+    width: 100%;
+  }
+}

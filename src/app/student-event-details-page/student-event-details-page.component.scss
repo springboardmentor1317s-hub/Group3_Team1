@@ -748,6 +748,13 @@
   gap: 0.18rem;
 }
 
+.author-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
 .comment-head strong {
   color: #0f172a;
 }
@@ -777,10 +784,19 @@
   font-size: 0.66rem;
   font-weight: 800;
   letter-spacing: 0.03em;
-  color: #ffffff;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff;
+  text-shadow: 0 1px 0 rgba(15, 23, 42, 0.12);
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
-  box-shadow: 0 8px 14px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 8px 14px rgba(255, 255, 255, 0.2);
   width: fit-content;
+}
+
+.admin-identity {
+  color: #ffffff;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .comment-rating {
@@ -959,5 +975,132 @@ app-site-footer {
   .logout-btn {
     width: 100%;
     justify-content: center;
+  }
+
+  .comments-card,
+  .feedback-card,
+  .detail-card,
+  .registration-status-card {
+    padding: 1rem;
+  }
+
+  .composer textarea {
+    min-height: 96px;
+  }
+
+  .comment-item,
+  .reply-item {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+    padding: 0.78rem;
+  }
+
+  .avatar-img,
+  .reply-avatar-img {
+    width: 36px;
+    height: 36px;
+  }
+
+  .reply-list {
+    padding-left: 0;
+  }
+
+  .reply-item {
+    padding-left: 0.7rem;
+    border-left-width: 3px;
+  }
+
+  .comment-body,
+  .reply-body {
+    min-width: 0;
+  }
+
+  .comment-head,
+  .reply-head {
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  .comment-head > span:last-child,
+  .reply-head > span:last-child {
+    width: 100%;
+    margin-left: 0;
+    font-size: 0.72rem;
+  }
+
+  .author-stack {
+    width: 100%;
+    gap: 0.28rem;
+  }
+
+  .author-meta {
+    gap: 0.32rem;
+  }
+
+  .admin-author-badge {
+    padding: 0.18rem 0.5rem;
+    font-size: 0.64rem;
+  }
+
+  .admin-identity {
+    font-size: 0.7rem;
+    line-height: 1.35;
+  }
+
+  .comment-body p,
+  .reply-body p {
+    font-size: 0.84rem;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+  }
+
+  .comment-actions,
+  .comment-actions.compact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.45rem;
+  }
+
+  .action-btn,
+  .reply-submit-btn {
+    min-height: 36px;
+    padding: 0.42rem 0.68rem;
+    font-size: 0.78rem;
+  }
+
+  .reply-box textarea {
+    min-height: 64px;
+    font-size: 0.84rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .comments-card {
+    border-radius: 20px;
+  }
+
+  .comment-item,
+  .reply-item {
+    padding: 0.72rem;
+    border-radius: 12px;
+  }
+
+  .comment-actions,
+  .comment-actions.compact {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .action-btn,
+  .reply-submit-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .author-meta {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

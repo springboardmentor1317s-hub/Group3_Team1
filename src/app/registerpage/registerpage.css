@@ -938,9 +938,9 @@ h3 {
 @media (max-width: 700px) {
   .header-row {
     min-height: auto;
-    flex-direction: column;
+    grid-template-columns: 1fr;
     justify-content: center;
-    align-items: center;
+    align-items: stretch;
     gap: 12px;
     padding: 12px 14px;
     border-radius: 16px;
@@ -949,6 +949,14 @@ h3 {
   .brand-block,
   .nav-actions {
     justify-content: center;
+  }
+
+  .brand-block {
+    width: 100%;
+  }
+
+  .brand-copy {
+    text-align: center;
   }
 
   .nav-actions {
@@ -984,6 +992,15 @@ h3 {
 }
 
 @media (max-width: 520px) {
+  .auth-header {
+    position: sticky;
+  }
+
+  .auth-header::before {
+    inset: 6px 8px 8px;
+    border-radius: 16px;
+  }
+
   .header-row {
     padding: 10px 10px;
   }
@@ -1007,6 +1024,11 @@ h3 {
 
   .card {
     padding: 20px 14px;
+  }
+
+  .nav-actions,
+  .header-btn {
+    width: 100%;
   }
 
   .header-btn,

@@ -7,7 +7,10 @@
     [notifications]="notifications"
     [notificationsLoading]="notificationsLoading"
     [notificationsOpen]="notificationsDropdownOpen"
+    [unseenNotificationCount]="unseenNotificationCount"
+    [showViewMore]="showNotificationViewMore"
     (notificationToggle)="openNotifications($event)"
+    (viewMoreNotifications)="openNotificationsPage()"
   />
 
   <main class="dashboard-main">
@@ -221,11 +224,15 @@
             <div>
               <h3>Current Query Status</h3>
               <p *ngIf="supportQuery">Live database-backed status for your latest active query.</p>
-              <p *ngIf="!supportQuery && latestResolvedSupportQuery">No active query right now. Your last resolved query is shown below.</p>
+              <p *ngIf="!supportQuery && latestResolvedSupportQuery">No active query right now. Your latest query is marked as solved below.</p>
               <p *ngIf="!supportQuery && !latestResolvedSupportQuery">No query submitted yet. Your first query will appear here after you send it.</p>
             </div>
-            <span class="status-pill-table" *ngIf="supportQuery" [attr.data-tone]="supportQuery.status === 'RESOLVED' ? 'approved' : supportQuery.status === 'IN_PROGRESS' ? 'pending' : 'pending'">
-              {{ getSupportQueryStatusLabel(supportQuery.status) }}
+            <span
+              class="status-pill-table"
+              *ngIf="supportQuery || latestResolvedSupportQuery"
+              [attr.data-tone]="getSupportQueryStatusTone((supportQuery || latestResolvedSupportQuery)!.status)"
+            >
+              {{ getSupportQueryStatusLabel((supportQuery || latestResolvedSupportQuery)!.status) }}
             </span>
           </div>
 
@@ -272,14 +279,19 @@
           <ng-template #resolvedQueryPreview>
             <div class="query-thread" *ngIf="latestResolvedSupportQuery as resolvedQuery">
               <article class="query-bubble student">
-                <span class="query-bubble-label">Last Resolved Query</span>
+                <span class="query-bubble-label">Last Query</span>
                 <strong>{{ resolvedQuery.subject }}</strong>
                 <p>{{ resolvedQuery.message }}</p>
               </article>
-              <article class="query-bubble admin">
-                <span class="query-bubble-label">Resolution</span>
-                <p>{{ resolvedQuery.adminResponse || resolvedQuery.progressNote || 'Marked as resolved.' }}</p>
+              <article class="query-bubble system">
+                <span class="query-bubble-label">System Status</span>
+                <strong>{{ getSupportQueryStatusLabel(resolvedQuery.status) }}</strong>
+                <p>{{ resolvedQuery.progressNote || 'Your query was resolved successfully.' }}</p>
                 <small>Updated {{ resolvedQuery.updatedAt | date:'medium' }}</small>
+              </article>
+              <article class="query-bubble admin">
+                <span class="query-bubble-label">Admin Reply</span>
+                <p>{{ resolvedQuery.adminResponse || resolvedQuery.progressNote || 'Marked as resolved.' }}</p>
               </article>
             </div>
           </ng-template>
@@ -287,5 +299,4 @@
       </div>
     </section>
   </main>
-  <app-site-footer></app-site-footer>
 </div>

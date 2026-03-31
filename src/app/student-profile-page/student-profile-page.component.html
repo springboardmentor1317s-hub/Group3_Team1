@@ -7,7 +7,10 @@
     [notifications]="notifications"
     [notificationsLoading]="notificationsLoading"
     [notificationsOpen]="notificationsDropdownOpen"
+    [unseenNotificationCount]="unseenNotificationCount"
+    [showViewMore]="showNotificationViewMore"
     (notificationToggle)="openNotifications($event)"
+    (viewMoreNotifications)="openNotificationsPage()"
   />
 
   <main class="profile-main">
@@ -203,12 +206,12 @@
             <div class="journey-tile full">
               <span class="material-icons">workspace_premium</span>
               <div>
-                <strong>{{ registrations.length === 0 ? 'Start exploring events' : 'Your profile is synced' }}</strong>
+                <strong>{{ registrations.length === 0 ? 'Start exploring events' : 'Your activity is up to date' }}</strong>
                 <p>
                   {{
                     registrations.length === 0
                       ? 'Once you register for events, your activity and approvals will appear here automatically.'
-                      : 'Your dashboard is tracking real registration history from the backend in a cleaner premium view.'
+                      : 'Your latest registrations and approval updates are shown here automatically.'
                   }}
                 </p>
               </div>
@@ -222,7 +225,17 @@
               <p class="card-kicker">Recent Activity</p>
               <h2>Registration Timeline</h2>
             </div>
-            <span class="card-icon material-icons">history</span>
+            <button
+              type="button"
+              class="card-icon refresh-history-btn"
+              [class.loading]="timelineRefreshing"
+              [disabled]="timelineRefreshing"
+              (click)="refreshTimeline()"
+              aria-label="Refresh registration timeline"
+              title="Refresh registration timeline"
+            >
+              <span class="material-icons">{{ timelineRefreshing ? 'autorenew' : 'history' }}</span>
+            </button>
           </div>
           <div class="recent-scroll" *ngIf="timelineRegistrations.length > 0; else noRegistrations">
             <div class="recent-list">
@@ -467,5 +480,4 @@
       </section>
     </ng-container>
   </main>
-  <app-site-footer></app-site-footer>
 </div>

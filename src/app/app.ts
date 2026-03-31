@@ -3,6 +3,7 @@ import { Component, ElementRef, OnDestroy, OnInit, ViewChild, signal } from '@an
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { SiteFooterComponent } from './shared/site-footer/site-footer.component';
 
 type ChatRole = 'guest' | 'student' | 'admin' | 'super_admin';
 
@@ -19,7 +20,7 @@ interface QuickQuestion {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, CommonModule, FormsModule],
+  imports: [RouterOutlet, CommonModule, FormsModule, SiteFooterComponent],
   templateUrl: './app.html',
   styleUrls: ['./app.css']
 })

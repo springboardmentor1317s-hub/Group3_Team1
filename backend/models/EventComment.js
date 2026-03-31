@@ -22,6 +22,21 @@ const eventCommentSchema = new mongoose.Schema(
       required: true,
       trim: true
     },
+    authorRole: {
+      type: String,
+      default: "student",
+      trim: true
+    },
+    authorUserCode: {
+      type: String,
+      default: "",
+      trim: true
+    },
+    adminBadgeLabel: {
+      type: String,
+      default: "",
+      trim: true
+    },
     profilePhotoUrl: {
       type: String,
       default: "",

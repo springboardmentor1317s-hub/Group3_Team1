@@ -962,9 +962,9 @@ form > .link { animation-delay: 0.56s; }
 @media (max-width: 700px) {
   .header-row {
     min-height: auto;
-    flex-direction: column;
+    grid-template-columns: 1fr;
     justify-content: center;
-    align-items: center;
+    align-items: stretch;
     gap: 12px;
     padding: 12px 14px;
     border-radius: 16px;
@@ -973,6 +973,14 @@ form > .link { animation-delay: 0.56s; }
   .brand-block,
   .nav-actions {
     justify-content: center;
+  }
+
+  .brand-block {
+    width: 100%;
+  }
+
+  .brand-copy {
+    text-align: center;
   }
 
   .nav-actions {
@@ -1011,6 +1019,15 @@ form > .link { animation-delay: 0.56s; }
 }
 
 @media (max-width: 520px) {
+  .auth-header {
+    position: sticky;
+  }
+
+  .auth-header::before {
+    inset: 6px 8px 8px;
+    border-radius: 16px;
+  }
+
   .header-row {
     padding: 10px 10px;
   }
@@ -1034,6 +1051,11 @@ form > .link { animation-delay: 0.56s; }
 
   .card {
     padding: 20px 14px;
+  }
+
+  .nav-actions,
+  .header-btn {
+    width: 100%;
   }
 
   .header-btn,

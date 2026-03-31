@@ -1,3 +1,5 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
@@ -14,6 +16,7 @@ const eventCommentRoutes = require('./routes/eventCommentRoutes');
 const studentQueryRoutes = require('./routes/studentQueryRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 const app = express();
 
 app.use(cors());
@@ -30,6 +33,7 @@ app.use('/api/event-comments', eventCommentRoutes);
 app.use('/api/student-queries', studentQueryRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/attendance', attendanceRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.get('/', (req, res) => {
   res.send('Backend Running Successfully');

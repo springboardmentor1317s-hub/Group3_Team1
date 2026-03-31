@@ -22,7 +22,7 @@ type PaymentEventSummary = {
   templateUrl: './admin-payment-details.component.html',
   styleUrl: './admin-payment-details.component.css'
 })
-export class AdminPaymentDetailsComponent implements OnChanges {
+export class AdminPaymentDetailsComponent implements OnChanges, OnDestroy {
   @Input() events: PaymentEventSummary[] = [];
 
   selectedEventId = '';
@@ -32,6 +32,8 @@ export class AdminPaymentDetailsComponent implements OnChanges {
   errorMessage = '';
   payments: PaymentRecord[] = [];
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly paymentCache = new Map<string, PaymentRecord[]>();
+  private preloadingAllPayments = false;
 
   constructor(private readonly paymentService: PaymentService) {}
 
@@ -57,8 +59,10 @@ export class AdminPaymentDetailsComponent implements OnChanges {
   }
 
   ngOnChanges(): void {
+    this.preloadAllPaidEventPayments();
+
     if (!this.selectedEventId && this.paidEvents.length > 0) {
-      this.openEventDetails(this.paidEvents[0]);
+      this.primeAndOpenDefaultEvent(this.paidEvents[0]);
       return;
     }
 
@@ -71,7 +75,7 @@ export class AdminPaymentDetailsComponent implements OnChanges {
       }
       this.selectedEvent = matchedEvent;
       if (this.showEventModal) {
-        this.loadPayments();
+        this.loadPayments(true);
       }
     }
   }
@@ -84,7 +88,15 @@ export class AdminPaymentDetailsComponent implements OnChanges {
     this.selectedEventId = event.id;
     this.selectedEvent = event;
     this.showEventModal = true;
-    this.loadPayments();
+    const cached = this.paymentCache.get(event.id);
+    if (cached) {
+      this.payments = cached;
+      this.loading = false;
+      this.errorMessage = '';
+      this.loadPayments(true);
+    } else {
+      this.loadPayments();
+    }
     this.startAutoRefresh();
   }
 
@@ -140,17 +152,20 @@ export class AdminPaymentDetailsComponent implements OnChanges {
     }
   }
 
-  private loadPayments(): void {
+  private loadPayments(silent = false): void {
     if (!this.selectedEventId) {
       this.payments = [];
       return;
     }
 
-    this.loading = true;
-    this.errorMessage = '';
+    if (!silent) {
+      this.loading = true;
+      this.errorMessage = '';
+    }
     this.paymentService.getAdminEventPayments(this.selectedEventId).subscribe({
       next: (payments) => {
         this.payments = payments || [];
+        this.paymentCache.set(this.selectedEventId, this.payments);
         this.loading = false;
       },
       error: (error) => {
@@ -166,7 +181,7 @@ export class AdminPaymentDetailsComponent implements OnChanges {
       if (!this.showEventModal || !this.selectedEventId || this.loading) {
         return;
       }
-      this.loadPayments();
+      this.loadPayments(true);
     }, 5000);
   }
 
@@ -174,5 +189,72 @@ export class AdminPaymentDetailsComponent implements OnChanges {
     if (!this.refreshTimer) return;
     clearInterval(this.refreshTimer);
     this.refreshTimer = null;
+  }
+
+  private primeAndOpenDefaultEvent(event: PaymentEventSummary): void {
+    this.selectedEventId = event.id;
+    this.selectedEvent = event;
+    this.errorMessage = '';
+    const cached = this.paymentCache.get(event.id);
+    if (cached) {
+      this.payments = cached;
+      this.showEventModal = true;
+      this.loading = false;
+      this.startAutoRefresh();
+      this.loadPayments(true);
+      return;
+    }
+
+    this.loading = true;
+    this.paymentService.getAdminEventPayments(event.id).subscribe({
+      next: (payments) => {
+        const resolvedPayments = payments || [];
+        this.paymentCache.set(event.id, resolvedPayments);
+        this.payments = resolvedPayments;
+        this.showEventModal = true;
+        this.loading = false;
+        this.startAutoRefresh();
+      },
+      error: (error) => {
+        this.showEventModal = true;
+        this.payments = [];
+        this.errorMessage = error?.error?.error || error?.error?.message || 'Unable to load payment details right now.';
+        this.loading = false;
+        this.startAutoRefresh();
+      }
+    });
+  }
+
+  private preloadAllPaidEventPayments(): void {
+    if (this.preloadingAllPayments || this.paidEvents.length === 0) {
+      return;
+    }
+
+    const missingEventIds = this.paidEvents
+      .map((event) => event.id)
+      .filter((eventId) => !this.paymentCache.has(eventId));
+
+    if (!missingEventIds.length) {
+      return;
+    }
+
+    this.preloadingAllPayments = true;
+    missingEventIds.forEach((eventId, index) => {
+      setTimeout(() => {
+        this.paymentService.getAdminEventPayments(eventId).subscribe({
+          next: (payments) => {
+            this.paymentCache.set(eventId, payments || []);
+            if (index === missingEventIds.length - 1) {
+              this.preloadingAllPayments = false;
+            }
+          },
+          error: () => {
+            if (index === missingEventIds.length - 1) {
+              this.preloadingAllPayments = false;
+            }
+          }
+        });
+      }, index * 120);
+    });
   }
 }

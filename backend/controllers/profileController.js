@@ -62,6 +62,9 @@ exports.updateMyProfile = async (req, res) => {
       permanentAddressLine,
       profileImageUrl
     } = req.body || {};
+    const normalizedProfileImageUrl = profileImageUrl === undefined
+      ? undefined
+      : String(profileImageUrl || "").trim();
 
     if (email) {
       const existing = await User.findOne({ email, _id: { $ne: userId } });
@@ -79,7 +82,7 @@ exports.updateMyProfile = async (req, res) => {
       if (email !== undefined) user.email = email;
       if (college !== undefined) user.college = college;
     }
-    if (profileImageUrl !== undefined) user.profileImageUrl = profileImageUrl;
+    if (normalizedProfileImageUrl !== undefined) user.profileImageUrl = normalizedProfileImageUrl;
 
     if (isAdminRole(user.role)) {
       if (phone !== undefined) user.phone = phone;

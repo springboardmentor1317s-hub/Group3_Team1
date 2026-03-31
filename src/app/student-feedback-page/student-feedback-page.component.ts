@@ -9,8 +9,8 @@ import {
   StudentNotificationItem,
   StudentRegistrationRecord
 } from '../services/student-dashboard.service';
-import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
+import { NotificationService } from '../services/notification.service';
 
 interface EventRatingRow {
   eventId: string;
@@ -23,7 +23,7 @@ interface EventRatingRow {
 @Component({
   selector: 'app-student-feedback-page',
   standalone: true,
-  imports: [CommonModule, RouterModule, StudentHeaderComponent, SiteFooterComponent],
+  imports: [CommonModule, RouterModule, StudentHeaderComponent],
   templateUrl: './student-feedback-page.component.html',
   styleUrls: ['./student-feedback-page.component.scss']
 })
@@ -37,6 +37,8 @@ export class StudentFeedbackPageComponent implements OnInit, OnDestroy {
   notifications: StudentNotificationItem[] = [];
   notificationsLoading = true;
   notificationsDropdownOpen = false;
+  unseenNotificationCount = 0;
+  showNotificationViewMore = false;
   private feedbackRefreshTimer: ReturnType<typeof setInterval> | null = null;
   private focusedEventId = '';
   private hasLoadedOnce = false;
@@ -46,7 +48,8 @@ export class StudentFeedbackPageComponent implements OnInit, OnDestroy {
     private auth: Auth,
     private router: Router,
     private route: ActivatedRoute,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -85,6 +88,14 @@ export class StudentFeedbackPageComponent implements OnInit, OnDestroy {
   openNotifications(event?: Event): void {
     event?.stopPropagation();
     this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
+    if (this.notificationsDropdownOpen) {
+      this.markAllNotificationsSeen();
+    }
+  }
+
+  openNotificationsPage(): void {
+    this.notificationsDropdownOpen = false;
+    this.router.navigate(['/student-notifications']);
   }
 
   logout(): void {
@@ -124,8 +135,7 @@ export class StudentFeedbackPageComponent implements OnInit, OnDestroy {
 
     this.studentDashboardService.refreshDashboardSnapshot().subscribe({
       next: (snapshot) => {
-        this.notifications = snapshot.notifications || [];
-        this.notificationsLoading = false;
+        this.loadNotifications();
 
         const events = snapshot.events || [];
         const attendedIds = this.buildAttendedEventIds(snapshot.registrations || []);
@@ -221,8 +231,11 @@ export class StudentFeedbackPageComponent implements OnInit, OnDestroy {
     const snapshot = this.studentDashboardService.getCachedSnapshot();
     if (!snapshot) return;
 
-    this.notifications = snapshot.notifications || [];
-    this.notificationsLoading = false;
+    const cached = this.notificationService.getCachedDropdownState();
+    this.notifications = (cached.items.length ? cached.items : snapshot.notifications || []) as StudentNotificationItem[];
+    this.unseenNotificationCount = cached.unseenCount;
+    this.showNotificationViewMore = cached.hasMore;
+    this.notificationsLoading = this.notifications.length === 0;
 
     const events = snapshot.events || [];
     const attendedIds = this.buildAttendedEventIds(snapshot.registrations || []);
@@ -283,6 +296,30 @@ export class StudentFeedbackPageComponent implements OnInit, OnDestroy {
     this.feedbackRefreshTimer = setInterval(() => {
       this.refreshFeedback(!this.hasLoadedOnce);
     }, 12000);
+  }
+
+  private loadNotifications(): void {
+    this.notificationService.getDropdownNotifications(15).subscribe({
+      next: (state) => {
+        this.notifications = state.items as StudentNotificationItem[];
+        this.unseenNotificationCount = state.unseenCount;
+        this.showNotificationViewMore = state.hasMore;
+        this.notificationsLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => void 0
+    });
+  }
+
+  private markAllNotificationsSeen(): void {
+    this.notificationService.markAllSeen().subscribe({
+      next: () => {
+        this.unseenNotificationCount = 0;
+        this.notifications = this.notifications.map((item) => ({ ...item, isSeen: true } as StudentNotificationItem));
+        this.cdr.detectChanges();
+      },
+      error: () => void 0
+    });
   }
 
   private reorderRowsByFocus(): void {

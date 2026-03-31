@@ -31,8 +31,11 @@ export class StudentHeaderComponent {
   @Input() notifications: StudentHeaderNotification[] = [];
   @Input() notificationsLoading = false;
   @Input() notificationsOpen = false;
+  @Input() unseenNotificationCount = 0;
+  @Input() showViewMore = false;
 
   @Output() notificationToggle = new EventEmitter<Event | undefined>();
+  @Output() viewMoreNotifications = new EventEmitter<void>();
 
   constructor(
     private router: Router,
@@ -41,6 +44,10 @@ export class StudentHeaderComponent {
 
   get notificationCount(): number {
     return this.notifications.length;
+  }
+
+  get badgeCount(): number {
+    return Math.max(0, Number(this.unseenNotificationCount || 0));
   }
 
   get headerInitials(): string {
@@ -108,6 +115,10 @@ export class StudentHeaderComponent {
     }
 
     this.router.navigate(['/new-student-dashboard'], { fragment: 'notifications-section' });
+  }
+
+  onViewMore(): void {
+    this.viewMoreNotifications.emit();
   }
 
   logout(): void {

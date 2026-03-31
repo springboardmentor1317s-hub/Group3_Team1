@@ -3,6 +3,14 @@
     activeTab="events"
     [studentName]="studentName"
     [studentPhotoUrl]="profilePhotoUrl"
+    notificationMode="dropdown"
+    [notifications]="notifications"
+    [notificationsLoading]="notificationsLoading"
+    [notificationsOpen]="notificationsDropdownOpen"
+    [unseenNotificationCount]="unseenNotificationCount"
+    [showViewMore]="showNotificationViewMore"
+    (notificationToggle)="openNotifications($event)"
+    (viewMoreNotifications)="openNotificationsPage()"
   />
 
   <main class="event-details-main">
@@ -262,7 +270,10 @@
               <div class="comment-head" [class.admin-head]="isAdminEntry(item)">
                 <div class="author-stack">
                   <strong>{{ getCommentAuthorDisplayName(item) }}</strong>
-                  <span class="admin-author-badge" *ngIf="isAdminEntry(item)">Admin Reply</span>
+                  <div class="author-meta" *ngIf="isAdminEntry(item)">
+                    <span class="admin-author-badge">Official Admin</span>
+                    <span class="admin-identity">{{ getAdminIdentityLabel(item) }}</span>
+                  </div>
                 </div>
                 <span>{{ formatTime(item.createdAt) }}</span>
               </div>
@@ -318,7 +329,10 @@
           <div class="reply-head" [class.admin-head]="isAdminEntry(reply)">
             <div class="author-stack">
               <strong>{{ getCommentAuthorDisplayName(reply) }}</strong>
-              <span class="admin-author-badge" *ngIf="isAdminEntry(reply)">Admin Reply</span>
+              <div class="author-meta" *ngIf="isAdminEntry(reply)">
+                <span class="admin-author-badge">Official Admin</span>
+                <span class="admin-identity">{{ getAdminIdentityLabel(reply) }}</span>
+              </div>
             </div>
             <span>{{ formatTime(reply.createdAt) }}</span>
           </div>
@@ -359,5 +373,4 @@
     </div>
   </ng-template>
 
-  <app-site-footer></app-site-footer>
 </div>

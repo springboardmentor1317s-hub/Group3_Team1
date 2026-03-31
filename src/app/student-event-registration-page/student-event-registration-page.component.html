@@ -21,7 +21,6 @@
         <div class="hero-side">
           <div class="hero-chip">{{ details.category || 'Campus Event' }}</div>
           <div class="hero-chip">{{ isPaidEvent ? (details.priceLabel || 'Paid Event') : 'Free Event' }}</div>
-          <button type="button" class="back-btn" (click)="goBack()">Back To Event</button>
         </div>
       </section>
 
@@ -51,10 +50,10 @@
 
       <form class="registration-form-card" (ngSubmit)="submitRegistration()">
         <div class="form-head">
-          <div>
+          <div class="form-head-copy">
             <p class="eyebrow">Profile Review</p>
             <h2>Your Registration Details</h2>
-            <p>These details come from your student profile and can be updated here before submission.</p>
+            <p class="form-head-description">These details come from your student profile and can be updated here before submission.</p>
           </div>
           <button type="button" class="back-btn subtle-back" (click)="goBack()">Back</button>
         </div>
@@ -233,7 +232,10 @@
         <section class="submit-card">
           <label class="check-row" *ngIf="canEditForm">
             <input type="checkbox" [(ngModel)]="confirmChecked" name="confirmChecked">
-            <span>I checked every detail carefully. I understand that incorrect details are my responsibility, paid registrations are non-refundable, and final payment confirmation depends on backend verification.</span>
+            <span class="check-copy">
+              <strong>I checked every detail carefully.</strong>
+              <small>I understand that incorrect details are my responsibility, paid registrations are non-refundable, and final payment confirmation depends on backend verification.</small>
+            </span>
           </label>
 
           <div class="submit-actions">
@@ -255,5 +257,4 @@
     </div>
   </div>
 
-  <app-site-footer></app-site-footer>
 </div>

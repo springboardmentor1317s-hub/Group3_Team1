@@ -139,6 +139,16 @@ export const routes: Routes = [
     path: 'student-feedback',
     loadComponent: () => import('./student-feedback-page/student-feedback-page.component').then(m => m.StudentFeedbackPageComponent),
     canActivate: [roleGuard('student')]
+  },
+  {
+    path: 'student-notifications',
+    loadComponent: () => import('./notifications-page/notifications-page.component').then(m => m.NotificationsPageComponent),
+    canActivate: [roleGuard('student')]
+  },
+  {
+    path: 'admin-notifications',
+    loadComponent: () => import('./notifications-page/notifications-page.component').then(m => m.NotificationsPageComponent),
+    canActivate: [roleGuard('college_admin')]
   }
 ];
 

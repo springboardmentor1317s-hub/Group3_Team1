@@ -2,18 +2,22 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { finalize, forkJoin, of, timeout } from 'rxjs';
-import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
+import { catchError, finalize, forkJoin, map, of, timeout } from 'rxjs';
 import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
-import { StudentDashboardService, StudentEventCard, StudentEventComment, StudentRegistrationRecord } from '../services/student-dashboard.service';
+import { EventCommentReplyNotification, StudentDashboardService, StudentEventCard, StudentEventComment, StudentNotificationItem, StudentRegistrationRecord } from '../services/student-dashboard.service';
 import { EventService } from '../services/event.service';
 import { PaymentService, PaymentStatus } from '../services/payment.service';
 import { AttendanceService, CertificateStatusResponse } from '../services/attendance.service';
+import { NotificationService } from '../services/notification.service';
 
 interface ReplyThreadNode {
   id: string;
   authorId: string;
   name: string;
+  authorRole: string;
+  authorUserCode: string;
+  adminBadgeLabel: string;
+  isAdminAuthor: boolean;
   avatarUrl: string;
   text: string;
   createdAt: string;
@@ -28,6 +32,10 @@ interface PublicCommentView {
   id: string;
   authorId: string;
   name: string;
+  authorRole: string;
+  authorUserCode: string;
+  adminBadgeLabel: string;
+  isAdminAuthor: boolean;
   avatarUrl: string;
   text: string;
   createdAt: string;
@@ -42,7 +50,7 @@ interface PublicCommentView {
 @Component({
   selector: 'app-student-event-details-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, StudentHeaderComponent],
+  imports: [CommonModule, FormsModule, RouterModule, StudentHeaderComponent],
   templateUrl: './student-event-details-page.component.html',
   styleUrls: ['./student-event-details-page.component.scss']
 })
@@ -53,6 +61,10 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
   loading = true;
   registrationStateLoading = true;
   commentsLoading = true;
+  notificationsLoading = true;
+  notificationsDropdownOpen = false;
+  unseenNotificationCount = 0;
+  showNotificationViewMore = false;
   actionEventId = '';
   errorMessage = '';
   submitError = '';
@@ -76,10 +88,12 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
   publicCommentDraft = '';
   publicCommentActionInProgress = false;
   publicComments: PublicCommentView[] = [];
+  notifications: StudentNotificationItem[] = [];
 
   private eventId = '';
   private commentsRetryTimer: ReturnType<typeof setTimeout> | null = null;
   private commentsAutoRefreshTimer: ReturnType<typeof setInterval> | null = null;
+  private notificationsRefreshTimer: ReturnType<typeof setInterval> | null = null;
   private commentsLoadedOnce = false;
 
   constructor(
@@ -89,7 +103,8 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     private eventService: EventService,
     private paymentService: PaymentService,
-    private attendanceService: AttendanceService
+    private attendanceService: AttendanceService,
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -107,6 +122,8 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       this.loadMyFeedback(this.eventId);
       this.loadPublicComments(this.eventId);
       this.startCommentsAutoRefresh(this.eventId);
+      this.loadNotifications();
+      this.startNotificationsRefresh();
     });
   }
 
@@ -118,6 +135,10 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     if (this.commentsAutoRefreshTimer) {
       clearInterval(this.commentsAutoRefreshTimer);
       this.commentsAutoRefreshTimer = null;
+    }
+    if (this.notificationsRefreshTimer) {
+      clearInterval(this.notificationsRefreshTimer);
+      this.notificationsRefreshTimer = null;
     }
   }
 
@@ -279,6 +300,19 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       return false;
     }
     return this.currentRegistration.status === 'APPROVED';
+  }
+
+  openNotifications(event?: Event): void {
+    event?.stopPropagation();
+    this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
+    if (this.notificationsDropdownOpen) {
+      this.markAllNotificationsSeen();
+    }
+  }
+
+  openNotificationsPage(): void {
+    this.notificationsDropdownOpen = false;
+    this.router.navigate(['/student-notifications']);
   }
 
   canDownloadCertificate(): boolean {
@@ -489,6 +523,10 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       id: this.generateTempId(),
       authorId: this.getCurrentUserIdentifier(),
       name: this.studentName,
+      authorRole: 'student',
+      authorUserCode: this.getCurrentUserCode(),
+      adminBadgeLabel: '',
+      isAdminAuthor: false,
       avatarUrl: this.getCurrentUserAvatarUrl(),
       text: draftBackup,
       createdAt: new Date().toISOString(),
@@ -547,6 +585,10 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       id: this.generateTempId(),
       authorId: this.getCurrentUserIdentifier(),
       name: this.studentName,
+      authorRole: 'student',
+      authorUserCode: this.getCurrentUserCode(),
+      adminBadgeLabel: '',
+      isAdminAuthor: false,
       avatarUrl: this.getCurrentUserAvatarUrl(),
       text,
       createdAt: new Date().toISOString(),
@@ -576,6 +618,15 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
   }
 
   isAdminEntry(target: PublicCommentView | ReplyThreadNode): boolean {
+    if (target.isAdminAuthor === true) {
+      return true;
+    }
+
+    const role = String(target.authorRole || '').trim().toLowerCase();
+    if (role === 'admin' || role === 'college_admin') {
+      return true;
+    }
+
     const name = String(target.name || '').trim().toLowerCase();
     if (!name) return false;
     return name.startsWith('admin') || name.includes('admin -') || name.includes('admin');
@@ -602,6 +653,16 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     }
 
     return normalized;
+  }
+
+  getAdminIdentityLabel(target: PublicCommentView | ReplyThreadNode): string {
+    if (!this.isAdminEntry(target)) {
+      return '';
+    }
+
+    const badgeLabel = String(target.adminBadgeLabel || '').trim() || 'College Admin';
+    const authorCode = String(target.authorUserCode || '').trim();
+    return authorCode ? `${badgeLabel} • ${authorCode}` : badgeLabel;
   }
 
   startEditEntry(target: PublicCommentView | ReplyThreadNode): void {
@@ -871,6 +932,27 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     });
   }
 
+  private loadNotifications(): void {
+    this.notificationsLoading = this.notifications.length === 0;
+    this.notificationService.getDropdownNotifications(15).subscribe({
+      next: (state) => {
+        this.notifications = state.items as StudentNotificationItem[];
+        this.unseenNotificationCount = state.unseenCount;
+        this.showNotificationViewMore = state.hasMore;
+        this.notificationsLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        const cached = this.notificationService.getCachedDropdownState();
+        this.notifications = (cached.items.length ? cached.items : this.studentDashboardService.getCachedNotifications()) as StudentNotificationItem[];
+        this.unseenNotificationCount = cached.unseenCount;
+        this.showNotificationViewMore = cached.hasMore;
+        this.notificationsLoading = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
   private startCommentsAutoRefresh(eventId: string): void {
     if (this.commentsAutoRefreshTimer) {
       clearInterval(this.commentsAutoRefreshTimer);
@@ -882,6 +964,37 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       if (this.hasActiveCommentDrafts()) return;
       this.loadPublicComments(eventId, true);
     }, 5000);
+  }
+
+  private startNotificationsRefresh(): void {
+    if (this.notificationsRefreshTimer) {
+      clearInterval(this.notificationsRefreshTimer);
+      this.notificationsRefreshTimer = null;
+    }
+
+    this.notificationsRefreshTimer = setInterval(() => {
+      this.notificationService.getDropdownNotifications(15).subscribe({
+        next: (state) => {
+          this.notifications = state.items as StudentNotificationItem[];
+          this.unseenNotificationCount = state.unseenCount;
+          this.showNotificationViewMore = state.hasMore;
+          this.notificationsLoading = false;
+          this.cdr.detectChanges();
+        },
+        error: () => void 0
+      });
+    }, 8000);
+  }
+
+  private markAllNotificationsSeen(): void {
+    this.notificationService.markAllSeen().subscribe({
+      next: () => {
+        this.unseenNotificationCount = 0;
+        this.notifications = this.notifications.map((item) => ({ ...item, isSeen: true } as StudentNotificationItem));
+        this.cdr.detectChanges();
+      },
+      error: () => void 0
+    });
   }
 
   private hasActiveCommentDrafts(): boolean {
@@ -916,6 +1029,10 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       id: String(item.id),
       authorId: String(item.authorId || '').toLowerCase(),
       name: String(item.name || 'Student'),
+      authorRole: String(item.authorRole || 'student').trim().toLowerCase(),
+      authorUserCode: String(item.authorUserCode || '').trim(),
+      adminBadgeLabel: String(item.adminBadgeLabel || '').trim(),
+      isAdminAuthor: item.isAdminAuthor === true,
       avatarUrl: item.avatarUrl || this.getDefaultAvatarUrl(item.name || 'Student'),
       text: String(item.text || ''),
       createdAt: String(item.createdAt || new Date().toISOString()),
@@ -943,6 +1060,10 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
         id: String(reply.id),
         authorId: String(reply.authorId || '').toLowerCase(),
         name: String(reply.name || 'Student'),
+        authorRole: String(reply.authorRole || 'student').trim().toLowerCase(),
+        authorUserCode: String(reply.authorUserCode || '').trim(),
+        adminBadgeLabel: String(reply.adminBadgeLabel || '').trim(),
+        isAdminAuthor: reply.isAdminAuthor === true,
         avatarUrl: reply.avatarUrl || this.getDefaultAvatarUrl(reply.name || 'Student'),
         text: String(reply.text || ''),
         createdAt: String(reply.createdAt || new Date().toISOString()),
@@ -1012,6 +1133,11 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       || currentUser.name
       || 'student'
     ).toLowerCase();
+  }
+
+  private getCurrentUserCode(): string {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    return String(currentUser.userId || currentUser.email || '').trim();
   }
 
   private applyEventFromNavigationState(eventId: string): void {

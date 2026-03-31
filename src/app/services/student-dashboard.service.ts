@@ -109,7 +109,7 @@ export interface StudentNotificationItem {
   tone: 'info' | 'success' | 'warning';
   createdAt: string;
   icon: string;
-  category: 'overview' | 'registration' | 'approval' | 'event';
+  category: 'overview' | 'registration' | 'approval' | 'event' | 'comment';
 }
 
 export interface StudentSupportQuery {
@@ -162,12 +162,25 @@ export interface StudentEventComment {
   parentCommentId: string | null;
   authorId: string;
   name: string;
+  authorRole?: string;
+  authorUserCode?: string;
+  adminBadgeLabel?: string;
+  isAdminAuthor?: boolean;
   avatarUrl: string;
   text: string;
   likes: string[];
   createdAt: string;
   updatedAt: string;
   replies?: StudentEventComment[];
+}
+
+export interface EventCommentReplyNotification extends StudentNotificationItem {
+  eventId: string;
+  commentId: string;
+  parentCommentId: string;
+  actorName: string;
+  actorRole: string;
+  isAdminReply: boolean;
 }
 
 export interface StudentDashboardSnapshot {
@@ -224,6 +237,7 @@ export class StudentDashboardService {
       this.snapshotRequest$ = this.http.get<StudentDashboardSnapshot>(`${this.apiUrl}/student/dashboard`, { headers }).pipe(
         timeout(this.snapshotTimeoutMs),
         switchMap((snapshot) => this.enrichSnapshotFromDatabaseEvents(snapshot)),
+        switchMap((snapshot) => this.enrichSnapshotWithCommentNotifications(snapshot)),
         catchError(() => this.buildFallbackSnapshot()),
         tap((snapshot) => {
           this.setSnapshotCache(snapshot);
@@ -528,6 +542,13 @@ export class StudentDashboardService {
   toggleEventCommentLike(commentId: string): Observable<StudentEventComment> {
     const headers = this.authService.getAuthHeaders();
     return this.http.post<StudentEventComment>(`${this.apiUrl}/event-comments/${encodeURIComponent(commentId)}/like`, {}, { headers });
+  }
+
+  getMyCommentReplyNotifications(): Observable<EventCommentReplyNotification[]> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.get<EventCommentReplyNotification[]>(`${this.apiUrl}/event-comments/notifications/me`, { headers }).pipe(
+      catchError(() => of([]))
+    );
   }
 
   private enrichSnapshotFromDatabaseEvents(snapshot: StudentDashboardSnapshot): Observable<StudentDashboardSnapshot> {
@@ -1114,6 +1135,7 @@ export class StudentDashboardService {
           notifications: this.buildNotifications(safeProfile, safeRegistrations, safeEvents, stats)
         };
       }),
+      switchMap((snapshot) => this.enrichSnapshotWithCommentNotifications(snapshot)),
       catchError(() => {
         const fallbackProfile = this.cachedProfile || this.buildProfileFromCurrentUser();
         const fallbackEvents = this.cachedEvents || [];
@@ -1135,6 +1157,35 @@ export class StudentDashboardService {
         });
       })
     );
+  }
+
+  private enrichSnapshotWithCommentNotifications(snapshot: StudentDashboardSnapshot): Observable<StudentDashboardSnapshot> {
+    return this.getMyCommentReplyNotifications().pipe(
+      map((commentNotifications) => ({
+        ...snapshot,
+        notifications: this.mergeNotifications(snapshot.notifications || [], commentNotifications || [])
+      })),
+      catchError(() => of(snapshot))
+    );
+  }
+
+  private mergeNotifications(
+    baseNotifications: StudentNotificationItem[],
+    extraNotifications: StudentNotificationItem[]
+  ): StudentNotificationItem[] {
+    const mergedById = new Map<string, StudentNotificationItem>();
+
+    [...(extraNotifications || []), ...(baseNotifications || [])].forEach((item) => {
+      const id = String(item?.id || '').trim();
+      if (!id || mergedById.has(id)) {
+        return;
+      }
+      mergedById.set(id, item);
+    });
+
+    return Array.from(mergedById.values())
+      .sort((a, b) => new Date(String(b.createdAt || '')).getTime() - new Date(String(a.createdAt || '')).getTime())
+      .slice(0, 12);
   }
 
   private buildProfileFromCurrentUser(): StudentProfile {
