@@ -74,6 +74,7 @@ export class AdminProfilePageComponent implements OnInit {
   isLoading = false;
   isStatsLoading = false;
   isChangingPassword = false;
+  isPhotoSaving = false;
   passwordPanelOpen = false;
 
   totalEvents = 0;
@@ -284,8 +285,10 @@ export class AdminProfilePageComponent implements OnInit {
 
     const reader = new FileReader();
     reader.onload = () => {
-      this.profileImageUrl = typeof reader.result === 'string' ? reader.result : null;
+      const nextImage = typeof reader.result === 'string' ? reader.result : null;
+      this.profileImageUrl = nextImage;
       this.cdr.detectChanges();
+      this.saveProfileImage(nextImage, input);
     };
     reader.onerror = () => {
       this.saveError = 'Could not read the selected image.';
@@ -343,6 +346,44 @@ export class AdminProfilePageComponent implements OnInit {
       },
       error: () => {
         this.isStatsLoading = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  private saveProfileImage(nextImage: string | null, input?: HTMLInputElement | null): void {
+    if (this.isPhotoSaving) {
+      return;
+    }
+
+    this.isPhotoSaving = true;
+    this.saveError = '';
+    this.saveSuccess = '';
+
+    this.http.put<AdminProfileResponse>(
+      this.PROFILE_API,
+      { profileImageUrl: nextImage || '' },
+      { headers: this.getAuthHeaders() }
+    ).pipe(
+      timeout(8000),
+      finalize(() => {
+        this.isPhotoSaving = false;
+        if (input) {
+          input.value = '';
+        }
+        this.cdr.detectChanges();
+      })
+    ).subscribe({
+      next: (profile) => {
+        this.applyProfile(profile);
+        this.persistToLocalStorage(profile);
+        this.saveSuccess = 'Profile photo updated successfully.';
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.saveError = err?.name === 'TimeoutError'
+          ? 'Profile photo save took too long. Please try again.'
+          : err?.error?.message || 'Could not save profile photo right now.';
         this.cdr.detectChanges();
       }
     });

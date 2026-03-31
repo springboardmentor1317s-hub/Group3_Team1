@@ -6,8 +6,10 @@ const jwt = require("jsonwebtoken");
 const Event = require("../models/Event");
 const Registration = require("../models/Registration");
 const StudentQuery = require("../models/StudentQuery");
+const { buildReplyNotificationsForUser } = require("./eventCommentController");
 const { buildMergedStudentProfile } = require("../utils/studentProfile");
 const { buildMergedAdminProfile, ensureAdminProfileDetails } = require("../utils/adminProfile");
+const { getNotificationsForUser } = require("../services/notificationService");
 
 function normalizeText(value) {
   return String(value || "").trim().toLowerCase();
@@ -133,7 +135,7 @@ function mapRegistration(registration, event) {
   };
 }
 
-function buildStudentNotifications(user, registrations, events, eventMap, approvedCount, pendingCount, supportQueries = []) {
+function buildStudentNotifications(user, registrations, events, eventMap, approvedCount, pendingCount, supportQueries = [], commentReplyNotifications = []) {
   const notifications = [];
   const userCollege = normalizeText(user.college);
   const now = Date.now();
@@ -264,18 +266,19 @@ function buildStudentNotifications(user, registrations, events, eventMap, approv
       }
     });
 
-  return notifications
+  return [...notifications, ...(commentReplyNotifications || [])]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 12);
 }
 
 async function buildStudentDashboardPayload(userId) {
-  const [user, details, events, registrations, supportQueries] = await Promise.all([
+  const [user, details, events, registrations, supportQueries, commentReplyNotifications] = await Promise.all([
     User.findById(userId).select("-password"),
     StudentProfileDetails.findOne({ user: userId }).lean(),
     Event.find().sort({ createdAt: -1 }),
     Registration.find({ studentId: String(userId) }).sort({ createdAt: -1 }),
-    StudentQuery.find({ student: userId, deletedAt: null }).sort({ updatedAt: -1 }).limit(10).lean()
+    StudentQuery.find({ student: userId, deletedAt: null }).sort({ updatedAt: -1 }).limit(10).lean(),
+    buildReplyNotificationsForUser(userId, 12)
   ]);
 
   if (!user) {
@@ -316,15 +319,7 @@ async function buildStudentDashboardPayload(userId) {
   const approvedCount = registrations.filter((item) => normalizeRegistrationStatus(item.status) === "APPROVED").length;
   const pendingCount = registrations.filter((item) => normalizeRegistrationStatus(item.status) === "PENDING").length;
 
-  const notifications = buildStudentNotifications(
-    user,
-    registrations,
-    enrichedEvents,
-    eventMap,
-    approvedCount,
-    pendingCount,
-    supportQueries
-  );
+  const notificationsResponse = await getNotificationsForUser(userId, { page: 1, limit: 15 });
 
   return {
     profile: buildMergedStudentProfile(user, details),
@@ -335,7 +330,7 @@ async function buildStudentDashboardPayload(userId) {
       myRegistrations: registrations.length,
       approvedEntries: approvedCount
     },
-    notifications
+    notifications: notificationsResponse.items
   };
 }
 

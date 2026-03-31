@@ -1,0 +1,122 @@
+<section class="panel payments-panel">
+  <div class="panel-head">
+    <div>
+      <p class="section-kicker">Payment Details</p>
+      <h2>Event-wise Student Payments</h2>
+      <p class="panel-subcopy">Open any paid event to view a live student payment history popup for that event.</p>
+    </div>
+  </div>
+
+  <p *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</p>
+
+  <div class="payment-event-grid" *ngIf="paidEvents.length > 0; else noPaidEvents">
+    <button
+      *ngFor="let event of paidEvents"
+      type="button"
+      class="payment-event-card"
+      [class.active]="selectedEventId === event.id"
+      (click)="openEventDetails(event)"
+    >
+      <div class="event-card-topline">
+        <span class="event-tag">Paid Event</span>
+        <span class="event-amount">{{ formatCompactAmount(event.amount, event.currency || 'INR') }}</span>
+      </div>
+
+      <h3>{{ event.name }}</h3>
+      <p>{{ getShortDescription(event) }}</p>
+
+      <div class="event-meta">
+        <span><span class="material-icons">event</span>{{ formatDate(event.dateTime || '') }}</span>
+        <span><span class="material-icons">location_on</span>{{ event.location || 'Venue not specified' }}</span>
+        <span><span class="material-icons">groups</span>{{ event.registrations || 0 }} registrations</span>
+      </div>
+
+      <div class="event-card-action">
+        <span>Open payment history</span>
+        <span class="material-icons">open_in_new</span>
+      </div>
+    </button>
+  </div>
+
+  <ng-template #noPaidEvents>
+    <div class="state-card">No paid events are available for this college admin yet.</div>
+  </ng-template>
+</section>
+
+<div class="payment-modal-backdrop" *ngIf="showEventModal && selectedEvent" (click)="closeEventModal()">
+  <section class="payment-modal" (click)="$event.stopPropagation()">
+    <div class="payment-modal-head">
+      <div>
+        <p class="section-kicker">Live Payment History</p>
+        <h2>{{ selectedEvent.name }}</h2>
+        <p class="modal-subcopy">
+          {{ formatCompactAmount(selectedEvent.amount, selectedEvent.currency || 'INR') }}
+          •
+          {{ selectedEvent.location || 'Venue not specified' }}
+          •
+          {{ formatDate(selectedEvent.dateTime || '') }}
+        </p>
+      </div>
+
+      <button type="button" class="modal-close-btn" (click)="closeEventModal()">
+        <span class="material-icons">close</span>
+      </button>
+    </div>
+
+    <div class="payment-stat-grid">
+      <article class="payment-stat-card">
+        <span>Total Records</span>
+        <strong>{{ payments.length }}</strong>
+      </article>
+      <article class="payment-stat-card">
+        <span>Successful Payments</span>
+        <strong>{{ successfulPaymentsCount }}</strong>
+      </article>
+      <article class="payment-stat-card">
+        <span>Pending Payments</span>
+        <strong>{{ pendingPaymentsCount }}</strong>
+      </article>
+      <article class="payment-stat-card">
+        <span>Collected Amount</span>
+        <strong>{{ formatAmount(totalCollectedAmount, selectedEvent.currency || 'INR') }}</strong>
+      </article>
+    </div>
+
+    <div class="payment-table-shell modal-table-shell">
+      <div *ngIf="loading" class="state-card">Loading payment records...</div>
+      <div *ngIf="!loading && payments.length === 0" class="state-card">No payment records found for this event yet.</div>
+
+      <table *ngIf="!loading && payments.length > 0" class="payment-table">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Payment ID</th>
+            <th>Order ID</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Verified</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let payment of payments">
+            <td>
+              <strong>{{ payment.userName || 'Student' }}</strong>
+              <div>{{ payment.userEmail || 'Email not available' }}</div>
+            </td>
+            <td>{{ payment.paymentId || 'Not available' }}</td>
+            <td>{{ payment.orderId || 'Not available' }}</td>
+            <td>{{ formatAmount(payment.amount, payment.currency || selectedEvent.currency || 'INR') }}</td>
+            <td>
+              <span class="payment-status-badge" [attr.data-status]="(payment.status || '').toLowerCase()">
+                {{ payment.status | uppercase }}
+              </span>
+            </td>
+            <td>{{ payment.verified ? 'Yes' : 'No' }}</td>
+            <td>{{ getPaymentDate(payment) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

@@ -10,6 +10,7 @@
     <span class="category-pill">{{ event.category || 'General' }}</span>
     <div class="title-row">
       <h3>{{ event.title }}</h3>
+      <span class="category-pill">{{ event.isPaid ? (event.priceLabel || 'Paid') : 'Free' }}</span>
       <div class="title-rating" *ngIf="shouldShowRatingSummary">
         <ng-container *ngIf="ratingSummaryLoading; else ratingLoadedState">
           <span class="title-rating-loading">Loading rating...</span>

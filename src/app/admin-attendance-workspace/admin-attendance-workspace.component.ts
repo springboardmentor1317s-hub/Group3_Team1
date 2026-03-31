@@ -3,8 +3,6 @@ import { Component, ElementRef, OnDestroy, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { finalize } from 'rxjs';
-import { BrowserQRCodeReader } from '@zxing/browser';
-import { NotFoundException } from '@zxing/library';
 import {
   AdminAttendanceEventItem,
   AdminAttendanceRosterResponse,
@@ -44,8 +42,6 @@ export class AdminAttendanceWorkspaceComponent implements OnDestroy {
   private mediaStream: MediaStream | null = null;
   private scanTimer: ReturnType<typeof setInterval> | null = null;
   private detector: { detect: (source: CanvasImageSource) => Promise<Array<{ rawValue?: string }>> } | null = null;
-  private zxingReader: BrowserQRCodeReader | null = null;
-  private zxingControls: { stop: () => void } | null = null;
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private lastScannedRawValue = '';
   private lastScannedAt = 0;
@@ -112,7 +108,8 @@ export class AdminAttendanceWorkspaceComponent implements OnDestroy {
           return;
         }
         if (this.selectedEvent) {
-          const refreshed = this.events.find((event) => event.eventId === this.selectedEvent?.eventId) || null;
+          const selectedEventId = this.selectedEvent.eventId;
+          const refreshed = this.events.find((event) => event.eventId === selectedEventId) || null;
           this.selectedEvent = refreshed;
           if (refreshed && this.showAttendanceScreen) {
             this.loadRoster(refreshed.eventId);
@@ -238,7 +235,8 @@ export class AdminAttendanceWorkspaceComponent implements OnDestroy {
         this.startScanLoop();
       } else {
         this.detector = null;
-        await this.startZxingLoop(video);
+        this.scannerWarning = 'Live QR scanning is not supported in this browser. Use manual scan input.';
+        return;
       }
 
       this.cameraStarted = true;
@@ -359,13 +357,6 @@ export class AdminAttendanceWorkspaceComponent implements OnDestroy {
       clearInterval(this.scanTimer);
       this.scanTimer = null;
     }
-    if (this.zxingReader) {
-      this.zxingReader = null;
-    }
-    if (this.zxingControls) {
-      this.zxingControls.stop();
-      this.zxingControls = null;
-    }
 
     const tracks = this.mediaStream?.getTracks() || [];
     tracks.forEach((track) => track.stop());
@@ -398,7 +389,8 @@ export class AdminAttendanceWorkspaceComponent implements OnDestroy {
         this.persistAttendanceCache();
         if (!this.selectedEvent) return;
 
-        const refreshedSelected = this.events.find((event) => event.eventId === this.selectedEvent?.eventId) || null;
+        const selectedEventId = this.selectedEvent.eventId;
+        const refreshedSelected = this.events.find((event) => event.eventId === selectedEventId) || null;
         this.selectedEvent = refreshedSelected;
         if (!refreshedSelected || !this.showAttendanceScreen) {
           this.persistAttendanceCache();
@@ -534,56 +526,6 @@ export class AdminAttendanceWorkspaceComponent implements OnDestroy {
       token: 'MANUAL_OVERRIDE'
     };
   }
-
-  private async startZxingLoop(video: HTMLVideoElement): Promise<void> {
-    if (this.zxingReader) {
-      this.zxingReader = null;
-    }
-    if (this.zxingControls) {
-      this.zxingControls.stop();
-      this.zxingControls = null;
-    }
-
-    const reader = new BrowserQRCodeReader();
-    this.zxingReader = reader;
-    try {
-      const controls = await reader.decodeFromConstraints({
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        }
-      }, video, (result, error) => {
-        if (!this.showAttendanceScreen || this.scanBusy) {
-          return;
-        }
-        if (result) {
-          const rawValue = String(result.getText?.() || '').trim();
-          if (!rawValue) return;
-          const parsedPayload = this.normalizeAutoScanPayload(rawValue);
-          if (!parsedPayload) {
-            return;
-          }
-          const now = Date.now();
-          if (rawValue === this.lastScannedRawValue && now - this.lastScannedAt < 1500) {
-            return;
-          }
-          this.lastScannedRawValue = rawValue;
-          this.lastScannedAt = now;
-          this.processScan(parsedPayload);
-          return;
-        }
-
-        if (error && !(error instanceof NotFoundException)) {
-          this.scannerWarning = 'QR decode issue detected. Keep QR steady in frame.';
-        }
-      });
-      this.zxingControls = controls;
-    } catch {
-      this.scannerWarning = 'Unable to start QR scanner in this browser. Use manual scan input.';
-    }
-  }
-
   private normalizeAutoScanPayload(rawValue: string): string | { studentId: string; eventId: string; token: string } | null {
     const raw = String(rawValue || '').trim();
     if (!raw) return null;

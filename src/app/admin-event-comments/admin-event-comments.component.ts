@@ -1,9 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { StudentDashboardService, StudentEventComment } from '../services/student-dashboard.service';
+import { EventCommentReplyNotification, StudentDashboardService, StudentEventComment } from '../services/student-dashboard.service';
 import { EventService, BackendEvent } from '../services/event.service';
 import { AdminCommonHeaderComponent } from '../shared/admin-common-header/admin-common-header.component';
 import { Auth } from '../auth/auth';
@@ -14,6 +14,10 @@ interface AdminCommentView {
   id: string;
   authorId: string;
   name: string;
+  authorRole: string;
+  authorUserCode: string;
+  adminBadgeLabel: string;
+  isAdminAuthor: boolean;
   avatarUrl: string;
   text: string;
   createdAt: string;
@@ -40,6 +44,9 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
   comments: AdminCommentView[] = [];
   userName = 'College Admin';
   userAvatarUrl: string | null = null;
+  notifications: Array<{ id: string; message: string; timeLabel: string; createdAt: string }> = [];
+  unreadNotificationCount = 0;
+  showNotifications = false;
   publicCommentDraft = '';
   publicCommentActionInProgress = false;
   commentActionError = '';
@@ -47,8 +54,11 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
 
   private eventId = '';
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
+  private notificationRefreshTimer: ReturnType<typeof setInterval> | null = null;
   private currentUserIdentifiers = new Set<string>();
   private readonly profileApiUrl = '/api/profile/me';
+  private readonly notificationPollIntervalMs = 8000;
+  private notificationSeenStorageKey = 'admin-comment-reply-notifications-last-seen';
 
   constructor(
     private readonly route: ActivatedRoute,
@@ -58,13 +68,22 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
     private readonly auth: Auth,
     private readonly cdr: ChangeDetectorRef,
     private readonly http: HttpClient,
-    private readonly authService: AuthService
+    private readonly authService: AuthService,
+    private readonly elementRef: ElementRef<HTMLElement>
   ) {}
 
   ngOnInit(): void {
     const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
     this.userName = currentUser?.name || this.userName;
     this.userAvatarUrl = currentUser?.profileImageUrl || null;
+    const notificationUserKey = String(
+      currentUser?.id
+      || currentUser?._id
+      || currentUser?.userId
+      || currentUser?.email
+      || 'admin'
+    ).trim();
+    this.notificationSeenStorageKey = `admin-comment-reply-notifications-last-seen-${notificationUserKey}`;
     this.currentUserIdentifiers = new Set(
       [
         currentUser?.id,
@@ -88,6 +107,8 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
 
       this.loadEventAndComments();
       this.startAutoRefresh();
+      this.loadNotifications();
+      this.startNotificationRefresh();
     });
   }
 
@@ -95,6 +116,20 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
     if (this.refreshTimer) {
       clearInterval(this.refreshTimer);
       this.refreshTimer = null;
+    }
+    if (this.notificationRefreshTimer) {
+      clearInterval(this.notificationRefreshTimer);
+      this.notificationRefreshTimer = null;
+    }
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: Event): void {
+    if (!this.showNotifications) return;
+    const target = event.target as Node | null;
+    const wrapper = this.elementRef.nativeElement.querySelector('.notification-wrapper');
+    if (target && wrapper && !wrapper.contains(target)) {
+      this.showNotifications = false;
     }
   }
 
@@ -181,6 +216,10 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
       id: this.generateTempId(),
       authorId: this.getCurrentUserIdentifier(),
       name: this.getAdminDisplayName(),
+      authorRole: 'college_admin',
+      authorUserCode: this.getCurrentUserCode(),
+      adminBadgeLabel: 'College Admin',
+      isAdminAuthor: true,
       avatarUrl: this.getCurrentUserAvatarUrl(),
       text,
       createdAt: new Date().toISOString(),
@@ -230,6 +269,10 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
       id: this.generateTempId(),
       authorId: this.getCurrentUserIdentifier(),
       name: this.getAdminDisplayName(),
+      authorRole: 'college_admin',
+      authorUserCode: this.getCurrentUserCode(),
+      adminBadgeLabel: 'College Admin',
+      isAdminAuthor: true,
       avatarUrl: this.getCurrentUserAvatarUrl(),
       text,
       createdAt: new Date().toISOString(),
@@ -262,6 +305,15 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
   }
 
   isAdminEntry(target: AdminCommentView): boolean {
+    if (target.isAdminAuthor === true) {
+      return true;
+    }
+
+    const role = String(target.authorRole || '').trim().toLowerCase();
+    if (role === 'admin' || role === 'college_admin') {
+      return true;
+    }
+
     const authorId = String(target.authorId || '').trim().toLowerCase();
     if (authorId && this.currentUserIdentifiers.has(authorId)) {
       return true;
@@ -270,6 +322,44 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
     const normalizedName = String(target.name || '').trim().toLowerCase();
     const currentAdminName = String(this.userName || '').trim().toLowerCase();
     return normalizedName.includes('admin') || (!!currentAdminName && normalizedName === currentAdminName);
+  }
+
+  getCommentAuthorDisplayName(target: AdminCommentView): string {
+    const rawName = String(target.name || '').trim();
+    if (!rawName) {
+      return 'Student';
+    }
+
+    if (!this.isAdminEntry(target)) {
+      return rawName;
+    }
+
+    return rawName
+      .replace(/^college\s+admin\s*[-:(]?\s*/i, '')
+      .replace(/^admin\s*[-:]\s*/i, '')
+      .trim() || 'Admin';
+  }
+
+  getAdminIdentityLabel(target: AdminCommentView): string {
+    if (!this.isAdminEntry(target)) {
+      return '';
+    }
+
+    const badgeLabel = String(target.adminBadgeLabel || '').trim() || 'College Admin';
+    const authorCode = String(target.authorUserCode || '').trim();
+    return authorCode ? `${badgeLabel} | ${authorCode}` : badgeLabel;
+  }
+
+  toggleNotifications(): void {
+    this.showNotifications = !this.showNotifications;
+    if (this.showNotifications) {
+      this.markNotificationsAsRead();
+    }
+  }
+
+  clearAllNotifications(): void {
+    this.notifications = [];
+    this.markNotificationsAsRead();
   }
 
   canManageEntry(target: AdminCommentView): boolean {
@@ -385,6 +475,70 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
     }, 6000);
   }
 
+  private startNotificationRefresh(): void {
+    if (this.notificationRefreshTimer) {
+      clearInterval(this.notificationRefreshTimer);
+      this.notificationRefreshTimer = null;
+    }
+
+    this.notificationRefreshTimer = setInterval(() => {
+      this.loadNotifications(true);
+    }, this.notificationPollIntervalMs);
+  }
+
+  private loadNotifications(silent = false): void {
+    this.studentDashboardService.getMyCommentReplyNotifications().subscribe({
+      next: (items) => {
+        this.applyNotifications(items || []);
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        if (!silent) {
+          this.notifications = [];
+          this.unreadNotificationCount = 0;
+          this.cdr.detectChanges();
+        }
+      }
+    });
+  }
+
+  private applyNotifications(items: EventCommentReplyNotification[]): void {
+    this.notifications = (items || [])
+      .slice()
+      .sort((a, b) => new Date(String(b.createdAt || '')).getTime() - new Date(String(a.createdAt || '')).getTime())
+      .map((item) => ({
+        id: item.id,
+        message: item.message,
+        timeLabel: this.formatTime(item.createdAt),
+        createdAt: item.createdAt
+      }))
+      .slice(0, 20);
+
+    this.unreadNotificationCount = this.calculateUnreadNotifications(this.notifications);
+  }
+
+  private calculateUnreadNotifications(items: Array<{ createdAt: string }>): number {
+    const lastSeenAt = localStorage.getItem(this.notificationSeenStorageKey) || '';
+    if (!lastSeenAt) {
+      return items.length;
+    }
+
+    const lastSeenTime = new Date(lastSeenAt).getTime();
+    return items.filter((item) => new Date(String(item.createdAt || '')).getTime() > lastSeenTime).length;
+  }
+
+  private markNotificationsAsRead(): void {
+    this.unreadNotificationCount = 0;
+    const latest = this.notifications
+      .map((item) => String(item.createdAt || '').trim())
+      .filter(Boolean)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+
+    if (latest) {
+      localStorage.setItem(this.notificationSeenStorageKey, latest);
+    }
+  }
+
   private hasActiveDrafts(): boolean {
     if (this.publicCommentActionInProgress || this.publicCommentDraft.trim().length > 0) {
       return true;
@@ -407,6 +561,10 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
       id: String(item.id),
       authorId: String(item.authorId || '').trim().toLowerCase(),
       name: String(item.name || 'Student'),
+      authorRole: String(item.authorRole || 'student').trim().toLowerCase(),
+      authorUserCode: String(item.authorUserCode || '').trim(),
+      adminBadgeLabel: String(item.adminBadgeLabel || '').trim(),
+      isAdminAuthor: item.isAdminAuthor === true,
       avatarUrl: item.avatarUrl || this.getDefaultAvatarUrl(item.name || 'Student'),
       text: String(item.text || ''),
       createdAt: String(item.createdAt || ''),
@@ -421,6 +579,11 @@ export class AdminEventCommentsComponent implements OnInit, OnDestroy {
 
   private getCurrentUserIdentifier(): string {
     return Array.from(this.currentUserIdentifiers)[0] || '';
+  }
+
+  private getCurrentUserCode(): string {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    return String(currentUser.userId || currentUser.email || '').trim();
   }
 
   private hydrateCurrentUserIdentifiersFromProfile(): void {

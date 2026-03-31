@@ -53,6 +53,7 @@
                 <span><strong>Email:</strong> {{ registration.email }}</span>
                 <span><strong>Submitted:</strong> {{ formatTime(registration.createdAt) }}</span>
                 <span><strong>Status:</strong> {{ formatStatus(registration.status) }}</span>
+                <span *ngIf="registration.paymentRequired"><strong>Payment:</strong> {{ registration.paymentStatus || 'PENDING' }}</span>
                 <span *ngIf="registration.rejectionReason"><strong>Reason:</strong> {{ registration.rejectionReason }}</span>
               </div>
 
@@ -126,9 +127,12 @@
                   <div class="detail-card"><span>Student Name</span><strong>{{ selectedRegistration.studentName }}</strong></div>
                   <div class="detail-card"><span>Event Name</span><strong>{{ selectedRegistration.eventName }}</strong></div>
                   <div class="detail-card"><span>Registration Status</span><strong>{{ formatStatus(selectedRegistration.status) }}</strong></div>
+                  <div class="detail-card"><span>Payment Status</span><strong>{{ selectedRegistration.paymentRequired ? (selectedRegistration.paymentStatus || 'PENDING') : 'Not Required' }}</strong></div>
                   <div class="detail-card"><span>Submitted On</span><strong>{{ formatTime(selectedRegistration.createdAt) }}</strong></div>
                   <div class="detail-card"><span>College</span><strong>{{ selectedRegistration.college || 'Not available' }}</strong></div>
                   <div class="detail-card"><span>Student Email</span><strong>{{ selectedRegistration.email }}</strong></div>
+                  <div class="detail-card" *ngIf="selectedRegistration.paymentId"><span>Transaction ID</span><strong>{{ selectedRegistration.paymentId }}</strong></div>
+                  <div class="detail-card" *ngIf="selectedRegistration.orderId"><span>Order ID</span><strong>{{ selectedRegistration.orderId }}</strong></div>
                 </div>
               </section>
 

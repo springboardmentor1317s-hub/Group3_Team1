@@ -2,17 +2,22 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { finalize, forkJoin, of, timeout } from 'rxjs';
-import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
+import { catchError, finalize, forkJoin, map, of, timeout } from 'rxjs';
 import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
-import { StudentDashboardService, StudentEventCard, StudentEventComment, StudentRegistrationRecord } from '../services/student-dashboard.service';
+import { EventCommentReplyNotification, StudentDashboardService, StudentEventCard, StudentEventComment, StudentNotificationItem, StudentRegistrationRecord } from '../services/student-dashboard.service';
 import { EventService } from '../services/event.service';
-import { AttendanceService } from '../services/attendance.service';
+import { PaymentService, PaymentStatus } from '../services/payment.service';
+import { AttendanceService, CertificateStatusResponse } from '../services/attendance.service';
+import { NotificationService } from '../services/notification.service';
 
 interface ReplyThreadNode {
   id: string;
   authorId: string;
   name: string;
+  authorRole: string;
+  authorUserCode: string;
+  adminBadgeLabel: string;
+  isAdminAuthor: boolean;
   avatarUrl: string;
   text: string;
   createdAt: string;
@@ -27,6 +32,10 @@ interface PublicCommentView {
   id: string;
   authorId: string;
   name: string;
+  authorRole: string;
+  authorUserCode: string;
+  adminBadgeLabel: string;
+  isAdminAuthor: boolean;
   avatarUrl: string;
   text: string;
   createdAt: string;
@@ -41,7 +50,7 @@ interface PublicCommentView {
 @Component({
   selector: 'app-student-event-details-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, StudentHeaderComponent],
+  imports: [CommonModule, FormsModule, RouterModule, StudentHeaderComponent],
   templateUrl: './student-event-details-page.component.html',
   styleUrls: ['./student-event-details-page.component.scss']
 })
@@ -52,11 +61,22 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
   loading = true;
   registrationStateLoading = true;
   commentsLoading = true;
+  notificationsLoading = true;
+  notificationsDropdownOpen = false;
+  unseenNotificationCount = 0;
+  showNotificationViewMore = false;
   actionEventId = '';
   errorMessage = '';
   submitError = '';
+  paymentStatus: PaymentStatus | null = null;
+  paymentStatusLoading = false;
+  receiptDownloading = false;
   admitCardActionInProgress = false;
   admitCardError = '';
+  certificateStatus: CertificateStatusResponse | null = null;
+  certificateStatusLoading = false;
+  certificateActionInProgress = false;
+  certificateError = '';
 
   feedbackDraftText = '';
   feedbackDraftRating = 0;
@@ -68,10 +88,12 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
   publicCommentDraft = '';
   publicCommentActionInProgress = false;
   publicComments: PublicCommentView[] = [];
+  notifications: StudentNotificationItem[] = [];
 
   private eventId = '';
   private commentsRetryTimer: ReturnType<typeof setTimeout> | null = null;
   private commentsAutoRefreshTimer: ReturnType<typeof setInterval> | null = null;
+  private notificationsRefreshTimer: ReturnType<typeof setInterval> | null = null;
   private commentsLoadedOnce = false;
 
   constructor(
@@ -80,7 +102,9 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     private studentDashboardService: StudentDashboardService,
     private cdr: ChangeDetectorRef,
     private eventService: EventService,
-    private attendanceService: AttendanceService
+    private paymentService: PaymentService,
+    private attendanceService: AttendanceService,
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -98,6 +122,8 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       this.loadMyFeedback(this.eventId);
       this.loadPublicComments(this.eventId);
       this.startCommentsAutoRefresh(this.eventId);
+      this.loadNotifications();
+      this.startNotificationsRefresh();
     });
   }
 
@@ -109,6 +135,10 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     if (this.commentsAutoRefreshTimer) {
       clearInterval(this.commentsAutoRefreshTimer);
       this.commentsAutoRefreshTimer = null;
+    }
+    if (this.notificationsRefreshTimer) {
+      clearInterval(this.notificationsRefreshTimer);
+      this.notificationsRefreshTimer = null;
     }
   }
 
@@ -201,6 +231,12 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     return this.isEventCompleted();
   }
 
+  get paymentStatusLabel(): string {
+    if (!this.event?.isPaid) return 'Not Required';
+    if (this.paymentStatusLoading) return 'Checking...';
+    return this.paymentStatus?.status || 'PENDING';
+  }
+
   get canSubmitFeedback(): boolean {
     if (!this.canShowFeedbackPanel) return false;
     if (this.feedbackActionInProgress) return false;
@@ -266,6 +302,26 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     return this.currentRegistration.status === 'APPROVED';
   }
 
+  openNotifications(event?: Event): void {
+    event?.stopPropagation();
+    this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
+    if (this.notificationsDropdownOpen) {
+      this.markAllNotificationsSeen();
+    }
+  }
+
+  openNotificationsPage(): void {
+    this.notificationsDropdownOpen = false;
+    this.router.navigate(['/student-notifications']);
+  }
+
+  canDownloadCertificate(): boolean {
+    if (this.registrationStateLoading || !this.currentRegistration || !this.event) {
+      return false;
+    }
+    return this.currentRegistration.status === 'APPROVED' && Boolean(this.certificateStatus?.canDownload);
+  }
+
   downloadAdmitCard(): void {
     const eventId = this.event?.id || '';
     if (!eventId || !this.canDownloadAdmitCard() || this.admitCardActionInProgress) {
@@ -293,6 +349,37 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         this.admitCardError = error?.error?.message || 'Admit card is not generated yet by admin.';
+      }
+    });
+  }
+
+  downloadCertificate(): void {
+    const eventId = this.event?.id || '';
+    if (!eventId || !this.canDownloadCertificate() || this.certificateActionInProgress) {
+      return;
+    }
+
+    this.certificateActionInProgress = true;
+    this.certificateError = '';
+
+    this.attendanceService.downloadCertificate(eventId).pipe(
+      finalize(() => {
+        this.certificateActionInProgress = false;
+      })
+    ).subscribe({
+      next: (blob) => {
+        const safeName = String(this.event?.title || 'event').replace(/[^a-z0-9]+/gi, '_');
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `certificate_${safeName}.pdf`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(url);
+      },
+      error: (error) => {
+        this.certificateError = error?.error?.message || 'Certificate is available only for students marked present.';
       }
     });
   }
@@ -436,6 +523,10 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       id: this.generateTempId(),
       authorId: this.getCurrentUserIdentifier(),
       name: this.studentName,
+      authorRole: 'student',
+      authorUserCode: this.getCurrentUserCode(),
+      adminBadgeLabel: '',
+      isAdminAuthor: false,
       avatarUrl: this.getCurrentUserAvatarUrl(),
       text: draftBackup,
       createdAt: new Date().toISOString(),
@@ -494,6 +585,10 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       id: this.generateTempId(),
       authorId: this.getCurrentUserIdentifier(),
       name: this.studentName,
+      authorRole: 'student',
+      authorUserCode: this.getCurrentUserCode(),
+      adminBadgeLabel: '',
+      isAdminAuthor: false,
       avatarUrl: this.getCurrentUserAvatarUrl(),
       text,
       createdAt: new Date().toISOString(),
@@ -523,6 +618,15 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
   }
 
   isAdminEntry(target: PublicCommentView | ReplyThreadNode): boolean {
+    if (target.isAdminAuthor === true) {
+      return true;
+    }
+
+    const role = String(target.authorRole || '').trim().toLowerCase();
+    if (role === 'admin' || role === 'college_admin') {
+      return true;
+    }
+
     const name = String(target.name || '').trim().toLowerCase();
     if (!name) return false;
     return name.startsWith('admin') || name.includes('admin -') || name.includes('admin');
@@ -549,6 +653,16 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     }
 
     return normalized;
+  }
+
+  getAdminIdentityLabel(target: PublicCommentView | ReplyThreadNode): string {
+    if (!this.isAdminEntry(target)) {
+      return '';
+    }
+
+    const badgeLabel = String(target.adminBadgeLabel || '').trim() || 'College Admin';
+    const authorCode = String(target.authorUserCode || '').trim();
+    return authorCode ? `${badgeLabel} • ${authorCode}` : badgeLabel;
   }
 
   startEditEntry(target: PublicCommentView | ReplyThreadNode): void {
@@ -597,6 +711,40 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     });
   }
 
+  refreshPaymentStatus(): void {
+    if (!this.event?.id) {
+      return;
+    }
+    this.loadPaymentStatus(this.event.id);
+  }
+
+  downloadReceipt(): void {
+    if (!this.paymentStatus?.id || this.receiptDownloading) {
+      return;
+    }
+
+    this.receiptDownloading = true;
+    this.paymentService.downloadReceipt(this.paymentStatus.id).pipe(
+      finalize(() => {
+        this.receiptDownloading = false;
+      })
+    ).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `receipt-${this.paymentStatus?.paymentId || 'payment'}.pdf`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        window.URL.revokeObjectURL(url);
+      },
+      error: (error) => {
+        this.errorMessage = error?.error?.error || error?.error?.message || 'Unable to download the receipt right now.';
+      }
+    });
+  }
+
   private loadEvent(eventId: string): void {
     this.loading = true;
     this.registrationStateLoading = true;
@@ -619,11 +767,15 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       next: (registrations) => {
         this.currentRegistration = registrations.find((item) => item.eventId === eventId) || null;
         this.registrationStateLoading = false;
+        this.loadPaymentStatus(eventId);
+        this.loadCertificateStatus(eventId);
         this.cdr.detectChanges();
       },
       error: () => {
         this.currentRegistration = this.studentDashboardService.getCachedRegistrations().find((item) => item.eventId === eventId) || null;
         this.registrationStateLoading = false;
+        this.loadPaymentStatus(eventId);
+        this.loadCertificateStatus(eventId);
         this.cdr.detectChanges();
       }
     });
@@ -671,6 +823,52 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
           this.errorMessage = error?.error?.message || 'Unable to load event details right now.';
         }
         this.cdr.detectChanges();
+      }
+    });
+  }
+
+  private loadPaymentStatus(eventId: string): void {
+    const targetEvent = this.event || this.studentDashboardService.getCachedEvents().find((item) => item.id === eventId) || null;
+    if (!targetEvent?.isPaid) {
+      this.paymentStatus = null;
+      this.paymentStatusLoading = false;
+      return;
+    }
+
+    this.paymentStatusLoading = true;
+    this.paymentService.getPaymentStatus(eventId).pipe(
+      finalize(() => {
+        this.paymentStatusLoading = false;
+      })
+    ).subscribe({
+      next: (status) => {
+        this.paymentStatus = status;
+      },
+      error: () => {
+        this.paymentStatus = null;
+      }
+    });
+  }
+
+  private loadCertificateStatus(eventId: string): void {
+    const registration = this.currentRegistration;
+    if (!registration || registration.status !== 'APPROVED') {
+      this.certificateStatus = null;
+      this.certificateStatusLoading = false;
+      return;
+    }
+
+    this.certificateStatusLoading = true;
+    this.attendanceService.getMyCertificateStatus(eventId).pipe(
+      finalize(() => {
+        this.certificateStatusLoading = false;
+      })
+    ).subscribe({
+      next: (status) => {
+        this.certificateStatus = status;
+      },
+      error: () => {
+        this.certificateStatus = null;
       }
     });
   }
@@ -734,6 +932,27 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     });
   }
 
+  private loadNotifications(): void {
+    this.notificationsLoading = this.notifications.length === 0;
+    this.notificationService.getDropdownNotifications(15).subscribe({
+      next: (state) => {
+        this.notifications = state.items as StudentNotificationItem[];
+        this.unseenNotificationCount = state.unseenCount;
+        this.showNotificationViewMore = state.hasMore;
+        this.notificationsLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        const cached = this.notificationService.getCachedDropdownState();
+        this.notifications = (cached.items.length ? cached.items : this.studentDashboardService.getCachedNotifications()) as StudentNotificationItem[];
+        this.unseenNotificationCount = cached.unseenCount;
+        this.showNotificationViewMore = cached.hasMore;
+        this.notificationsLoading = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
   private startCommentsAutoRefresh(eventId: string): void {
     if (this.commentsAutoRefreshTimer) {
       clearInterval(this.commentsAutoRefreshTimer);
@@ -745,6 +964,37 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       if (this.hasActiveCommentDrafts()) return;
       this.loadPublicComments(eventId, true);
     }, 5000);
+  }
+
+  private startNotificationsRefresh(): void {
+    if (this.notificationsRefreshTimer) {
+      clearInterval(this.notificationsRefreshTimer);
+      this.notificationsRefreshTimer = null;
+    }
+
+    this.notificationsRefreshTimer = setInterval(() => {
+      this.notificationService.getDropdownNotifications(15).subscribe({
+        next: (state) => {
+          this.notifications = state.items as StudentNotificationItem[];
+          this.unseenNotificationCount = state.unseenCount;
+          this.showNotificationViewMore = state.hasMore;
+          this.notificationsLoading = false;
+          this.cdr.detectChanges();
+        },
+        error: () => void 0
+      });
+    }, 8000);
+  }
+
+  private markAllNotificationsSeen(): void {
+    this.notificationService.markAllSeen().subscribe({
+      next: () => {
+        this.unseenNotificationCount = 0;
+        this.notifications = this.notifications.map((item) => ({ ...item, isSeen: true } as StudentNotificationItem));
+        this.cdr.detectChanges();
+      },
+      error: () => void 0
+    });
   }
 
   private hasActiveCommentDrafts(): boolean {
@@ -779,6 +1029,10 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       id: String(item.id),
       authorId: String(item.authorId || '').toLowerCase(),
       name: String(item.name || 'Student'),
+      authorRole: String(item.authorRole || 'student').trim().toLowerCase(),
+      authorUserCode: String(item.authorUserCode || '').trim(),
+      adminBadgeLabel: String(item.adminBadgeLabel || '').trim(),
+      isAdminAuthor: item.isAdminAuthor === true,
       avatarUrl: item.avatarUrl || this.getDefaultAvatarUrl(item.name || 'Student'),
       text: String(item.text || ''),
       createdAt: String(item.createdAt || new Date().toISOString()),
@@ -806,6 +1060,10 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
         id: String(reply.id),
         authorId: String(reply.authorId || '').toLowerCase(),
         name: String(reply.name || 'Student'),
+        authorRole: String(reply.authorRole || 'student').trim().toLowerCase(),
+        authorUserCode: String(reply.authorUserCode || '').trim(),
+        adminBadgeLabel: String(reply.adminBadgeLabel || '').trim(),
+        isAdminAuthor: reply.isAdminAuthor === true,
         avatarUrl: reply.avatarUrl || this.getDefaultAvatarUrl(reply.name || 'Student'),
         text: String(reply.text || ''),
         createdAt: String(reply.createdAt || new Date().toISOString()),
@@ -875,6 +1133,11 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
       || currentUser.name
       || 'student'
     ).toLowerCase();
+  }
+
+  private getCurrentUserCode(): string {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    return String(currentUser.userId || currentUser.email || '').trim();
   }
 
   private applyEventFromNavigationState(eventId: string): void {

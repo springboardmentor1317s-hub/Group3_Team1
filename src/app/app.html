@@ -1,4 +1,9 @@
-<router-outlet></router-outlet>
+<div class="app-shell">
+  <div class="app-content">
+    <router-outlet></router-outlet>
+  </div>
+  <app-site-footer></app-site-footer>
+</div>
 
 <div class="ai-bot-container">
   <div class="ai-chat-window" *ngIf="isChatOpen()">

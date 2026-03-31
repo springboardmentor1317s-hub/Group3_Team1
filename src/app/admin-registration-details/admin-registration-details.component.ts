@@ -21,6 +21,11 @@ interface Registration {
   createdAt: string;
   updatedAt?: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  paymentRequired?: boolean;
+  paymentStatus?: string;
+  paymentVerified?: boolean;
+  paymentId?: string;
+  orderId?: string;
   rejectionReason?: string;
   approvedAt?: string | null;
   rejectedAt?: string | null;
@@ -197,7 +202,7 @@ export class AdminRegistrationDetailsComponent implements OnInit {
     this.router.navigate(['/admin-my-events']);
   }
 
-  handleTabChange(tab: 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries' | 'attendance'): void {
+  handleTabChange(tab: 'overview' | 'events' | 'payments' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries' | 'attendance'): void {
     this.router.navigate(['/admin-dashboard'], { queryParams: { tab } });
   }
 

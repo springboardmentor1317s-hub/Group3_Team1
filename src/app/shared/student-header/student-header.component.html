@@ -30,7 +30,7 @@
       <div class="notification-wrapper" (click)="$event.stopPropagation()">
         <button type="button" class="notification-btn" (click)="onNotificationClick($event)" aria-label="Notifications">
           <span class="material-icons">notifications</span>
-          <span class="notification-badge" *ngIf="notificationCount > 0">{{ notificationCount }}</span>
+          <span class="notification-badge" *ngIf="badgeCount > 0">{{ badgeCount > 99 ? '99+' : badgeCount }}</span>
         </button>
 
         <div class="notification-dropdown" *ngIf="notificationMode === 'dropdown' && notificationsOpen">
@@ -70,6 +70,15 @@
               </div>
             </article>
           </div>
+
+          <button
+            type="button"
+            class="notification-view-more-btn"
+            *ngIf="showViewMore && !notificationsLoading && notificationCount > 0"
+            (click)="onViewMore()"
+          >
+            View More
+          </button>
 
           <div class="notification-dropdown-state" *ngIf="!notificationsLoading && notificationCount === 0">
             No notifications right now.

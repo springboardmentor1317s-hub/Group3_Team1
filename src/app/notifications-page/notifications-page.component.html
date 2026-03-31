@@ -1,0 +1,105 @@
+<div class="notifications-shell" [class.admin-mode]="!isStudent">
+  <app-student-header
+    *ngIf="isStudent"
+    activeTab="dashboard"
+    [studentName]="userName"
+    [studentPhotoUrl]="userPhotoUrl"
+    notificationMode="dropdown"
+    [notifications]="headerNotifications"
+    [notificationsLoading]="headerLoading"
+    [notificationsOpen]="notificationsOpen"
+    [unseenNotificationCount]="unseenNotificationCount"
+    [showViewMore]="false"
+    (notificationToggle)="toggleHeaderNotifications($event)"
+    (viewMoreNotifications)="onViewMoreFromHeader()"
+  />
+
+  <app-admin-common-header
+    *ngIf="!isStudent"
+    activeTab="none"
+    [userName]="userName"
+    [userAvatarUrl]="userPhotoUrl || null"
+    [showSearch]="false"
+    [showExport]="false"
+    [notifications]="headerNotifications"
+    [notificationsLoading]="headerLoading"
+    [notificationsOpen]="notificationsOpen"
+    [unreadNotificationCount]="unseenNotificationCount"
+    [showViewMore]="false"
+    (notificationsTriggered)="toggleHeaderNotifications()"
+    (viewMoreNotifications)="onViewMoreFromHeader()"
+    (brandClick)="goBackHome()"
+    (logoutTriggered)="logout()"
+  />
+
+  <main class="notifications-main">
+    <section class="notifications-hero">
+      <div>
+        <p class="page-kicker">Notification Center</p>
+        <h1>All notifications in one place</h1>
+        <p class="page-copy">Review every alert, mark items read or unread, and clean up old notifications without affecting the rest of the dashboard.</p>
+      </div>
+      <div class="hero-metrics">
+        <article>
+          <span>Total</span>
+          <strong>{{ total }}</strong>
+        </article>
+        <article>
+          <span>Unseen</span>
+          <strong>{{ unseenNotificationCount }}</strong>
+        </article>
+      </div>
+    </section>
+
+    <p class="error-banner" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+    <section class="toolbar-card">
+      <label class="select-all">
+        <input type="checkbox" [checked]="allVisibleSelected" (change)="toggleSelectAll()">
+        <span>Select visible notifications</span>
+      </label>
+
+      <div class="toolbar-actions">
+        <button type="button" class="ghost-btn" [disabled]="selectedCount === 0 || actionInProgress" (click)="markSelected(true)">Mark Read</button>
+        <button type="button" class="ghost-btn" [disabled]="selectedCount === 0 || actionInProgress" (click)="markSelected(false)">Mark Unread</button>
+        <button type="button" class="ghost-btn danger" [disabled]="selectedCount === 0 || actionInProgress" (click)="deleteSelected()">Delete Selected</button>
+        <button type="button" class="solid-btn danger" [disabled]="total === 0 || actionInProgress" (click)="deleteAll()">Delete All</button>
+      </div>
+    </section>
+
+    <section class="state-card" *ngIf="loading && notifications.length === 0">Loading notifications...</section>
+
+    <section class="notifications-list" *ngIf="notifications.length > 0">
+      <article class="notification-row" *ngFor="let item of notifications; trackBy: trackByNotification" [class.unseen]="!item.isSeen">
+        <label class="select-box">
+          <input type="checkbox" [checked]="selectedIds.has(item.id)" (change)="toggleSelection(item.id)">
+        </label>
+
+        <div class="notification-icon-wrap">
+          <span class="material-icons">{{ item.icon || 'notifications' }}</span>
+        </div>
+
+        <div class="notification-content">
+          <div class="notification-meta">
+            <span class="notification-category">{{ item.category || 'general' }}</span>
+            <span class="notification-time">{{ formatTime(item.createdAt) }}</span>
+          </div>
+          <h3>{{ item.title || 'Notification' }}</h3>
+          <p>{{ item.message }}</p>
+        </div>
+
+        <div class="row-actions">
+          <button type="button" class="ghost-btn" [disabled]="actionInProgress" (click)="toggleSingleSeen(item)">
+            {{ item.isSeen ? 'Unread' : 'Read' }}
+          </button>
+          <button type="button" class="ghost-btn danger" [disabled]="actionInProgress" (click)="deleteNotification(item.id)">Delete</button>
+        </div>
+      </article>
+    </section>
+
+    <section class="state-card" *ngIf="!loading && notifications.length === 0">
+      No notifications available right now.
+    </section>
+
+  </main>
+</div>

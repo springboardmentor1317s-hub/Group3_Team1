@@ -1,17 +1,19 @@
 ﻿<div class="app student-shell admin-shell" [class.dark]="isDarkMode">
   <app-admin-common-header
-    [activeTab]="activeTab === 'events' ? 'events' : activeTab === 'registrations' || activeTab === 'queries' || activeTab === 'attendance' ? 'registrations' : 'overview'"
+    [activeTab]="activeTab === 'events' ? 'events' : activeTab === 'registrations' || activeTab === 'payments' || activeTab === 'queries' || activeTab === 'attendance' ? 'registrations' : 'overview'"
     [userName]="userName"
     [userAvatarUrl]="userAvatarUrl"
     [(searchQuery)]="dashboardSearchQuery"
     [unreadNotificationCount]="unreadNotificationCount"
+    [notificationsLoading]="notificationsLoading"
     [notificationsOpen]="showNotifications"
     [notifications]="notifications"
+    [showViewMore]="showNotificationViewMore"
     (brandClick)="setTab('overview')"
     (activeTabChange)="setTab($event)"
     (searchTriggered)="onDashboardSearchClick()"
     (notificationsTriggered)="toggleNotifications()"
-    (clearNotifications)="clearAllNotifications()"
+    (viewMoreNotifications)="openNotificationsPage()"
     (exportTriggered)="exportEvents()"
     (logoutTriggered)="logout()"
   ></app-admin-common-header>
@@ -67,6 +69,29 @@
         </div>
         <button type="button" class="view-all-btn" (click)="setTab('events')">View All</button>
       </div>
+
+      <section class="admin-filters-card">
+        <label>
+          <span>Search</span>
+          <input type="text" placeholder="Search event name, details, or location" [(ngModel)]="overviewEventSearchQuery">
+        </label>
+
+        <label>
+          <span>Category</span>
+          <select [(ngModel)]="overviewEventCategory">
+            <option *ngFor="let category of eventFilterCategories" [value]="category">{{ category }}</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Date</span>
+          <input type="date" [(ngModel)]="overviewEventDate">
+        </label>
+
+        <div class="filter-actions">
+          <button type="button" class="clear-filter-btn" (click)="clearOverviewEventFilters()">Clear Filters</button>
+        </div>
+      </section>
 
       <div class="event-grid" *ngIf="recentAdminEventCards.length > 0; else noOverviewEvents">
         <div class="event-card-stack" *ngFor="let event of recentAdminEventCards">
@@ -138,6 +163,11 @@
       [isLoading]="isLoading"
     />
 
+    <app-admin-payment-details
+      *ngIf="activeTab === 'payments'"
+      [events]="events"
+    />
+
     <section class="panel events-panel" *ngIf="activeTab === 'events'">
       <div class="panel-head">
         <div class="signature-heading">
@@ -145,6 +175,29 @@
         </div>
         <button type="button" class="view-all-btn" (click)="openCreateModal()">Create Event</button>
       </div>
+
+      <section class="admin-filters-card">
+        <label>
+          <span>Search</span>
+          <input type="text" placeholder="Search event name, details, or location" [(ngModel)]="manageEventSearchQuery">
+        </label>
+
+        <label>
+          <span>Category</span>
+          <select [(ngModel)]="manageEventCategory">
+            <option *ngFor="let category of eventFilterCategories" [value]="category">{{ category }}</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Date</span>
+          <input type="date" [(ngModel)]="manageEventDate">
+        </label>
+
+        <div class="filter-actions">
+          <button type="button" class="clear-filter-btn" (click)="clearManageEventFilters()">Clear Filters</button>
+        </div>
+      </section>
 
       <div class="event-grid" *ngIf="adminEventCards.length > 0; else noAdminEvents">
         <div class="event-card-stack" *ngFor="let event of adminEventCards; let idx = index">

@@ -7,6 +7,7 @@
   <div class="event-content">
     <span class="category-pill">{{ event.category || 'General' }}</span>
     <h3>{{ event.title }}</h3>
+    <span class="category-pill">{{ event.isPaid ? (event.priceLabel || 'Paid') : 'Free' }}</span>
     <p>{{ safeDescription }}</p>
 
     <div class="meta-list">

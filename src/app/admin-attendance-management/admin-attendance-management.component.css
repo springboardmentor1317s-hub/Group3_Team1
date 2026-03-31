@@ -193,6 +193,92 @@
   font-size: 0.84rem;
 }
 
+.certificate-template-card {
+  border: 1px solid rgba(191, 219, 254, 0.82);
+  border-radius: 16px;
+  padding: 0.9rem;
+  background: linear-gradient(145deg, #f8fbff, #eef6ff);
+  display: grid;
+  gap: 0.8rem;
+}
+
+.certificate-template-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.certificate-template-head h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 0.96rem;
+}
+
+.certificate-template-head p {
+  margin: 0.3rem 0 0;
+  color: #475569;
+  font-size: 0.82rem;
+}
+
+.template-status,
+.student-certificate-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.24rem 0.58rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: rgba(248, 113, 113, 0.12);
+  color: #b91c1c;
+}
+
+.template-status.ready,
+.student-certificate-chip.ready {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+}
+
+.certificate-template-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.certificate-template-grid label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.certificate-template-grid span {
+  color: #334155;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.certificate-template-grid input[type='text'],
+.certificate-template-grid input[type='file'] {
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 12px;
+  min-height: 42px;
+  padding: 0.64rem 0.78rem;
+  background: rgba(255, 255, 255, 0.98);
+  color: #0f172a;
+}
+
+.signature-file-name {
+  margin: 0;
+  color: #475569;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.template-save-btn {
+  width: fit-content;
+  min-width: 240px;
+}
+
 .list-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(220px, 1fr));
@@ -296,6 +382,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
+  flex-wrap: wrap;
 }
 
 .student-status {
@@ -360,6 +447,10 @@
   .list-actions {
     grid-template-columns: 1fr;
   }
+
+  .certificate-template-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 @media (max-width: 760px) {
@@ -372,6 +463,10 @@
   }
 
   .attendance-top-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .certificate-template-grid {
     grid-template-columns: 1fr;
   }
 }

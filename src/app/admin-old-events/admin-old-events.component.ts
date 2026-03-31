@@ -9,6 +9,8 @@ import { isEventClosedByDate, parseEventLocalDay, resolveEventDateCandidate } fr
 import { AdminCommonHeaderComponent } from '../shared/admin-common-header/admin-common-header.component';
 import { Auth } from '../auth/auth';
 
+type DashboardTab = 'overview' | 'events' | 'payments' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries' | 'attendance';
+
 @Component({
   selector: 'app-admin-old-events',
   standalone: true,
@@ -64,7 +66,7 @@ export class AdminOldEventsComponent implements OnInit {
     this.router.navigate(['/admin-my-events']);
   }
 
-  handleTabChange(tab: 'overview' | 'events' | 'analytics' | 'registrations' | 'feedback' | 'approvedStudents' | 'queries' | 'attendance'): void {
+  handleTabChange(tab: DashboardTab): void {
     this.router.navigate(['/admin-dashboard'], { queryParams: { tab } });
   }
 
@@ -106,6 +108,10 @@ export class AdminOldEventsComponent implements OnInit {
       organizer: event.organizer || 'Campus Event Hub',
       contact: event.contact || 'Contact admin',
       status: 'Closed',
+      isPaid: event.isPaid === true,
+      amount: Number(event.amount || 0),
+      currency: event.currency || 'INR',
+      priceLabel: event.isPaid ? `${event.currency || 'INR'} ${Number(event.amount || 0).toFixed(2)}` : 'Free',
       registrations: event.registrations || 0,
       maxAttendees: event.maxAttendees ?? null,
       collegeName: event.collegeName || 'Campus Event Hub',

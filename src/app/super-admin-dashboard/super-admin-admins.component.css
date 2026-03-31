@@ -259,3 +259,25 @@
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 560px) {
+  .admins-wrap {
+    width: min(100%, calc(100% - 1rem));
+  }
+
+  .admins-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admins-search,
+  .college-filter,
+  .admin-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-actions {
+    width: 100%;
+  }
+}
