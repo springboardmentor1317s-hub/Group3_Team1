@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Auth } from '../auth/auth';
 import { AdminCreatedEvent, ReviewableUser, SuperAdminService } from './super-admin-service';
+import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-super-admin-admins',
@@ -26,6 +27,7 @@ export class SuperAdminAdminsComponent implements OnInit {
   selectedAdminEvents: AdminCreatedEvent[] = [];
   isLoadingAdminEvents = false;
   adminEventsError = '';
+  isExporting = false;
 
   constructor(
     private auth: Auth,
@@ -173,6 +175,36 @@ export class SuperAdminAdminsComponent implements OnInit {
     }
 
     return 'Pending';
+  }
+
+  exportAdminsReport(): void {
+    if (this.isExporting) {
+      return;
+    }
+
+    this.isExporting = true;
+    this.superAdminService.exportAdminsCsv().pipe(
+      finalize(() => {
+        this.isExporting = false;
+        this.cdr.detectChanges();
+      })
+    ).subscribe({
+      next: (fileBlob) => {
+        const blob = new Blob([fileBlob], { type: 'text/csv;charset=utf-8;' });
+        const objectUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = 'Admins.csv';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => window.URL.revokeObjectURL(objectUrl), 3000);
+      },
+      error: () => {
+        alert('Failed to export admins report. Please try again.');
+      }
+    });
   }
 
   logout(): void {

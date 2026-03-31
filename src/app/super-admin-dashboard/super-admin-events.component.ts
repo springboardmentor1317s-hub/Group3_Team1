@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { Auth } from '../auth/auth';
 import { SuperAdminEvent, SuperAdminService } from './super-admin-service';
+import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-super-admin-events',
@@ -20,6 +21,7 @@ export class SuperAdminEventsComponent implements OnInit {
   deletingError = '';
   showDetailsModal = false;
   selectedEvent: SuperAdminEvent | null = null;
+  isExporting = false;
 
   constructor(
     private auth: Auth,
@@ -126,6 +128,36 @@ export class SuperAdminEventsComponent implements OnInit {
     }
 
     return date.toLocaleString();
+  }
+
+  exportEventsReport(): void {
+    if (this.isExporting) {
+      return;
+    }
+
+    this.isExporting = true;
+    this.superAdminService.exportEventsCsv().pipe(
+      finalize(() => {
+        this.isExporting = false;
+        this.cdr.detectChanges();
+      })
+    ).subscribe({
+      next: (fileBlob) => {
+        const blob = new Blob([fileBlob], { type: 'text/csv;charset=utf-8;' });
+        const objectUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = objectUrl;
+        link.download = 'Events.csv';
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => window.URL.revokeObjectURL(objectUrl), 3000);
+      },
+      error: () => {
+        alert('Failed to export events report. Please try again.');
+      }
+    });
   }
 
   logout(): void {
