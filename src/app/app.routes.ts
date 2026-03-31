@@ -142,12 +142,12 @@ export const routes: Routes = [
   },
   {
     path: 'student-notifications',
-    loadComponent: () => import('./notifications-page/notifications-page.component').then(m => m.NotificationsPageComponent),
+    loadComponent: () => import('./notification-inbox-page/notification-inbox-page.component').then(m => m.NotificationInboxPageComponent),
     canActivate: [roleGuard('student')]
   },
   {
     path: 'admin-notifications',
-    loadComponent: () => import('./notifications-page/notifications-page.component').then(m => m.NotificationsPageComponent),
+    loadComponent: () => import('./notification-inbox-page/notification-inbox-page.component').then(m => m.NotificationInboxPageComponent),
     canActivate: [roleGuard('college_admin')]
   }
 ];

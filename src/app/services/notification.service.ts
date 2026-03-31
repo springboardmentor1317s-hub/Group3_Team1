@@ -31,6 +31,12 @@ export interface DropdownNotificationState {
   hasMore: boolean;
 }
 
+export interface NotificationQueryOptions {
+  page?: number;
+  limit?: number;
+  unseenOnly?: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -55,7 +61,7 @@ export class NotificationService {
     };
   }
 
-  getDropdownNotifications(limit = 15): Observable<DropdownNotificationState> {
+  getDropdownNotifications(limit = 7): Observable<DropdownNotificationState> {
     return this.getNotifications({ page: 1, limit }).pipe(
       map((response) => ({
         items: response.items || [],
@@ -73,11 +79,15 @@ export class NotificationService {
     );
   }
 
-  getNotifications(options: { page?: number; limit?: number } = {}): Observable<NotificationListResponse> {
+  getNotifications(options: NotificationQueryOptions = {}): Observable<NotificationListResponse> {
     const headers = this.authService.getAuthHeaders();
     const page = Math.max(1, Number(options.page || 1));
     const limit = Math.max(1, Number(options.limit || 15));
-    return this.http.get<NotificationListResponse>(`${this.apiUrl}?page=${page}&limit=${limit}`, { headers }).pipe(
+    const unseenOnly = options.unseenOnly === true;
+    return this.http.get<NotificationListResponse>(
+      `${this.apiUrl}?page=${page}&limit=${limit}&unseenOnly=${unseenOnly}`,
+      { headers }
+    ).pipe(
       map((response) => ({
         items: Array.isArray(response?.items) ? response.items : [],
         total: Number(response?.total || 0),
@@ -149,11 +159,11 @@ export class NotificationService {
     );
   }
 
-  deleteAllNotifications(): Observable<void> {
+  deleteAllNotifications(unseenOnly = false): Observable<void> {
     const headers = this.authService.getAuthHeaders();
     return this.http.delete<{ deleted: number }>(`${this.apiUrl}`, {
       headers,
-      body: { deleteAll: true }
+      body: { deleteAll: true, unseenOnly }
     }).pipe(
       tap(() => {
         this.cachedDropdownState = {

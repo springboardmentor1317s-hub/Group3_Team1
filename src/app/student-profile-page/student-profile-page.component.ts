@@ -75,7 +75,7 @@ export class StudentProfilePageComponent implements OnInit, OnDestroy {
   notificationsLoading = true;
   notificationsDropdownOpen = false;
   unseenNotificationCount = 0;
-  showNotificationViewMore = false;
+  showNotificationViewMore = true;
   photoUploadInProgress = false;
   photoUploadFeedbackActive = false;
   timelineRefreshing = false;
@@ -284,14 +284,26 @@ export class StudentProfilePageComponent implements OnInit, OnDestroy {
   openNotifications(event?: Event): void {
     event?.stopPropagation();
     this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
-    if (this.notificationsDropdownOpen) {
-      this.markAllNotificationsSeen();
-    }
   }
 
   openNotificationsPage(): void {
     this.notificationsDropdownOpen = false;
     this.router.navigate(['/student-notifications']);
+  }
+
+  deleteNotificationFromDropdown(id: string): void {
+    if (!id) {
+      return;
+    }
+
+    this.notificationService.deleteNotification(id).subscribe({
+      next: () => {
+        this.notifications = this.notifications.filter((item) => item.id !== id);
+        this.unseenNotificationCount = this.notifications.length;
+        this.cdr.detectChanges();
+      },
+      error: () => void 0
+    });
   }
 
   logout(): void {
@@ -800,16 +812,6 @@ export class StudentProfilePageComponent implements OnInit, OnDestroy {
     }, 8000);
   }
 
-  private markAllNotificationsSeen(): void {
-    this.notificationService.markAllSeen().subscribe({
-      next: () => {
-        this.unseenNotificationCount = 0;
-        this.notifications = this.notifications.map((item) => ({ ...item, isSeen: true } as StudentNotificationItem));
-        this.cdr.detectChanges();
-      },
-      error: () => void 0
-    });
-  }
 
   private showSuccessMessage(message: string): void {
     this.successMessage = message;

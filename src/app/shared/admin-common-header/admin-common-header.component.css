@@ -330,7 +330,7 @@
 
 .notification-dropdown-card {
   display: grid;
-  grid-template-columns: auto auto 1fr;
+  grid-template-columns: auto auto 1fr auto;
   gap: 0.7rem;
   padding: 0.82rem 0.84rem;
   border-radius: 16px;
@@ -342,7 +342,7 @@
 }
 
 .notification-dropdown-card.featured {
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   padding: 0.95rem 0.95rem;
   background: linear-gradient(135deg, rgba(244, 248, 255, 0.99), rgba(252, 245, 233, 0.99));
   border-color: rgba(203, 173, 112, 0.9);
@@ -384,6 +384,25 @@
   color: #4b5876;
   line-height: 1.45;
   font-size: 0.86rem;
+}
+
+.notification-delete-btn {
+  width: 34px;
+  height: 34px;
+  align-self: start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(222, 187, 187, 0.78);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255, 250, 250, 0.98), rgba(253, 239, 239, 0.96));
+  color: #b42318;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.notification-delete-btn .material-icons {
+  font-size: 1rem;
 }
 
 .notification-dropdown-state {

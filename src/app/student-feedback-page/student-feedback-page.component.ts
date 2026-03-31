@@ -38,7 +38,7 @@ export class StudentFeedbackPageComponent implements OnInit, OnDestroy {
   notificationsLoading = true;
   notificationsDropdownOpen = false;
   unseenNotificationCount = 0;
-  showNotificationViewMore = false;
+  showNotificationViewMore = true;
   private feedbackRefreshTimer: ReturnType<typeof setInterval> | null = null;
   private focusedEventId = '';
   private hasLoadedOnce = false;
@@ -88,14 +88,26 @@ export class StudentFeedbackPageComponent implements OnInit, OnDestroy {
   openNotifications(event?: Event): void {
     event?.stopPropagation();
     this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
-    if (this.notificationsDropdownOpen) {
-      this.markAllNotificationsSeen();
-    }
   }
 
   openNotificationsPage(): void {
     this.notificationsDropdownOpen = false;
     this.router.navigate(['/student-notifications']);
+  }
+
+  deleteNotificationFromDropdown(id: string): void {
+    if (!id) {
+      return;
+    }
+
+    this.notificationService.deleteNotification(id).subscribe({
+      next: () => {
+        this.notifications = this.notifications.filter((item) => item.id !== id);
+        this.unseenNotificationCount = this.notifications.length;
+        this.cdr.detectChanges();
+      },
+      error: () => void 0
+    });
   }
 
   logout(): void {
@@ -311,16 +323,6 @@ export class StudentFeedbackPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  private markAllNotificationsSeen(): void {
-    this.notificationService.markAllSeen().subscribe({
-      next: () => {
-        this.unseenNotificationCount = 0;
-        this.notifications = this.notifications.map((item) => ({ ...item, isSeen: true } as StudentNotificationItem));
-        this.cdr.detectChanges();
-      },
-      error: () => void 0
-    });
-  }
 
   private reorderRowsByFocus(): void {
     if (!this.ratingRows.length) return;

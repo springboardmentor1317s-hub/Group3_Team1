@@ -36,6 +36,7 @@ export class StudentHeaderComponent {
 
   @Output() notificationToggle = new EventEmitter<Event | undefined>();
   @Output() viewMoreNotifications = new EventEmitter<void>();
+  @Output() notificationDelete = new EventEmitter<string>();
 
   constructor(
     private router: Router,
@@ -119,6 +120,14 @@ export class StudentHeaderComponent {
 
   onViewMore(): void {
     this.viewMoreNotifications.emit();
+  }
+
+  onDeleteNotification(event: Event, id: string): void {
+    event.stopPropagation();
+    if (!id) {
+      return;
+    }
+    this.notificationDelete.emit(id);
   }
 
   logout(): void {

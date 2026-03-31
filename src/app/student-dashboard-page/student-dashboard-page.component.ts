@@ -34,6 +34,7 @@ interface DashboardStat {
   styleUrls: ['./student-dashboard-page.component.scss']
 })
 export class StudentDashboardPageComponent implements OnInit {
+  private static readonly DROPDOWN_NOTIFICATION_LIMIT = 7;
   profile: StudentProfile | null = null;
   allEvents: StudentEventCard[] = [];
   filteredEvents: StudentEventCard[] = [];
@@ -65,7 +66,7 @@ export class StudentDashboardPageComponent implements OnInit {
   notificationsLoading = true;
   notificationsDropdownOpen = false;
   unseenNotificationCount = 0;
-  showNotificationViewMore = false;
+  showNotificationViewMore = true;
   reviewActionEventId = '';
   supportQuerySubject = '';
   supportQueryMessage = '';
@@ -403,14 +404,26 @@ export class StudentDashboardPageComponent implements OnInit {
   openNotifications(event?: Event): void {
     event?.stopPropagation();
     this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
-    if (this.notificationsDropdownOpen) {
-      this.markAllNotificationsSeen();
-    }
   }
 
   openNotificationsPage(): void {
     this.notificationsDropdownOpen = false;
     this.router.navigate(['/student-notifications']);
+  }
+
+  deleteNotificationFromDropdown(id: string): void {
+    if (!id) {
+      return;
+    }
+
+    this.notificationService.deleteNotification(id).subscribe({
+      next: () => {
+        this.notifications = this.notifications.filter((item) => item.id !== id);
+        this.unseenNotificationCount = this.notifications.length;
+        this.flushView();
+      },
+      error: () => void 0
+    });
   }
 
   registerForEvent(event: StudentEventCard): void {
@@ -711,7 +724,7 @@ export class StudentDashboardPageComponent implements OnInit {
     const notificationState = this.notificationService.getCachedDropdownState();
     this.notifications = notificationState.items as StudentNotificationItem[];
     this.unseenNotificationCount = notificationState.unseenCount;
-    this.showNotificationViewMore = notificationState.hasMore;
+    this.showNotificationViewMore = true;
     this.notificationsLoading = notificationState.items.length === 0;
     this.flushView();
   }
@@ -830,23 +843,12 @@ export class StudentDashboardPageComponent implements OnInit {
     }, 8000);
   }
 
-  private markAllNotificationsSeen(): void {
-    this.notificationService.markAllSeen().subscribe({
-      next: () => {
-        this.unseenNotificationCount = 0;
-        this.notifications = this.notifications.map((item) => ({ ...item, isSeen: true } as StudentNotificationItem));
-        this.flushView();
-      },
-      error: () => void 0
-    });
-  }
-
   private loadNotificationDropdown(): void {
-    this.notificationService.getDropdownNotifications(15).subscribe({
+    this.notificationService.getDropdownNotifications(StudentDashboardPageComponent.DROPDOWN_NOTIFICATION_LIMIT).subscribe({
       next: (state) => {
         this.notifications = state.items as StudentNotificationItem[];
         this.unseenNotificationCount = state.unseenCount;
-        this.showNotificationViewMore = state.hasMore;
+        this.showNotificationViewMore = true;
         this.notificationsLoading = false;
         this.flushView();
       },

@@ -50,6 +50,7 @@ export class AdminCommonHeaderComponent {
   @Output() notificationsTriggered = new EventEmitter<void>();
   @Output() clearNotifications = new EventEmitter<void>();
   @Output() viewMoreNotifications = new EventEmitter<void>();
+  @Output() notificationDelete = new EventEmitter<string>();
   @Output() exportTriggered = new EventEmitter<void>();
   @Output() logoutTriggered = new EventEmitter<void>();
 
@@ -113,5 +114,13 @@ export class AdminCommonHeaderComponent {
     }
 
     return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  onDeleteNotification(event: Event, id: string): void {
+    event.stopPropagation();
+    if (!id) {
+      return;
+    }
+    this.notificationDelete.emit(id);
   }
 }
