@@ -313,7 +313,10 @@
   right: 0;
   top: calc(100% + 0.75rem);
   width: min(360px, calc(100vw - 1.25rem));
+  min-height: min(74vh, 520px);
   max-height: min(74vh, 520px);
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   padding: 0.9rem;
   border-radius: 20px;
@@ -377,7 +380,8 @@
 .notification-dropdown-list {
   display: grid;
   gap: 0.65rem;
-  max-height: calc(min(74vh, 520px) - 88px);
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   padding-right: 0.2rem;
 }
@@ -467,6 +471,7 @@
 
 .notification-view-more-btn {
   width: 100%;
+  flex: 0 0 auto;
   margin-top: 0.75rem;
   padding: 0.82rem 0.95rem;
   border: 1px solid rgba(203, 173, 112, 0.76);

@@ -83,7 +83,7 @@
             type="button"
             class="notification-view-more-btn"
             *ngIf="showViewMore && !notificationsLoading"
-            (click)="viewMoreNotifications.emit()"
+            (click)="onViewMore($event)"
           >
             View All
           </button>

@@ -15,18 +15,20 @@
 
 :host {
   display: block;
-  height: 100dvh;
-  overflow: hidden;
+  min-height: 100dvh;
+  overflow: visible;
 }
 
 .page {
-  height: 100dvh;
+  height: auto;
   min-height: 100dvh;
   width: 100%;
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: visible;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   background:
     radial-gradient(circle at 10% 14%, rgba(76, 104, 244, 0.2), transparent 32%),
     radial-gradient(circle at 87% 18%, rgba(132, 80, 226, 0.24), transparent 36%),
@@ -34,6 +36,12 @@
     repeating-linear-gradient(135deg, rgba(80, 108, 214, 0.055) 0 2px, transparent 2px 26px),
     linear-gradient(120deg, var(--bg-1) 0%, var(--bg-2) 52%, #eaf2ff 100%);
   position: relative;
+}
+
+.page::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .page::before,

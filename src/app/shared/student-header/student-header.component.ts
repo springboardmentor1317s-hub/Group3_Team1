@@ -122,7 +122,8 @@ export class StudentHeaderComponent {
     this.router.navigate(['/new-student-dashboard'], { fragment: 'notifications-section' });
   }
 
-  onViewMore(): void {
+  onViewMore(event?: Event): void {
+    event?.stopPropagation();
     this.viewMoreNotifications.emit();
   }
 
