@@ -55,6 +55,14 @@
                 <h4>{{ featured.title }}</h4>
                 <p>{{ featured.message }}</p>
               </div>
+              <button
+                type="button"
+                class="notification-delete-btn"
+                aria-label="Delete notification"
+                (click)="onDeleteNotification($event, featured.id)"
+              >
+                <span class="material-icons">delete</span>
+              </button>
             </article>
 
             <article class="notification-dropdown-card" *ngFor="let item of remainingNotifications; trackBy: trackNotification">
@@ -68,16 +76,24 @@
                 <h4>{{ item.title }}</h4>
                 <p>{{ item.message }}</p>
               </div>
+              <button
+                type="button"
+                class="notification-delete-btn"
+                aria-label="Delete notification"
+                (click)="onDeleteNotification($event, item.id)"
+              >
+                <span class="material-icons">delete</span>
+              </button>
             </article>
           </div>
 
           <button
             type="button"
             class="notification-view-more-btn"
-            *ngIf="showViewMore && !notificationsLoading && notificationCount > 0"
+            *ngIf="showViewMore && !notificationsLoading"
             (click)="onViewMore()"
           >
-            View More
+            View All
           </button>
 
           <div class="notification-dropdown-state" *ngIf="!notificationsLoading && notificationCount === 0">

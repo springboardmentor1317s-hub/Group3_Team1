@@ -101,6 +101,7 @@ interface RegistrationGroup {
   styleUrls: ['./admin-dashboard.css']
 })
 export class AdminDashboard implements OnInit, OnDestroy {
+  private static readonly DROPDOWN_NOTIFICATION_LIMIT = 7;
 
   feedbacks: Feedback[] = [];
   averageRating: number = 0;
@@ -204,7 +205,7 @@ export class AdminDashboard implements OnInit, OnDestroy {
   unreadNotificationCount = 0;
   notifications: AdminNotification[] = [];
   notificationsLoading = true;
-  showNotificationViewMore = false;
+  showNotificationViewMore = true;
   queryLoading = false;
   queryErrorMessage = '';
   querySavingId = '';
@@ -376,9 +377,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
 
   toggleNotifications(): void {
     this.showNotifications = !this.showNotifications;
-    if (this.showNotifications) {
-      this.markAllNotificationsSeen();
-    }
   }
 
   clearAllNotifications(): void {
@@ -389,6 +387,21 @@ export class AdminDashboard implements OnInit, OnDestroy {
   openNotificationsPage(): void {
     this.showNotifications = false;
     this.router.navigate(['/admin-notifications']);
+  }
+
+  deleteNotificationFromDropdown(id: string): void {
+    if (!id) {
+      return;
+    }
+
+    this.notificationService.deleteNotification(id).subscribe({
+      next: () => {
+        this.notifications = this.notifications.filter((item) => item.id !== id);
+        this.unreadNotificationCount = this.notifications.filter((item) => !item.isSeen).length;
+        this.cdr.detectChanges();
+      },
+      error: () => void 0
+    });
   }
 
   logout(): void {
@@ -493,14 +506,14 @@ export class AdminDashboard implements OnInit, OnDestroy {
       this.notificationsLoading = true;
     }
 
-    this.notificationService.getDropdownNotifications(15).subscribe({
+    this.notificationService.getDropdownNotifications(AdminDashboard.DROPDOWN_NOTIFICATION_LIMIT).subscribe({
       next: (state) => {
         this.notifications = (state.items || []).map((item: AppNotification) => ({
           ...item,
           timeLabel: this.formatNotificationTime(item.createdAt)
         }));
         this.unreadNotificationCount = state.unseenCount;
-        this.showNotificationViewMore = state.hasMore;
+        this.showNotificationViewMore = true;
         this.notificationsLoading = false;
         this.cdr.detectChanges();
       },
@@ -508,17 +521,6 @@ export class AdminDashboard implements OnInit, OnDestroy {
         this.notificationsLoading = false;
         this.cdr.detectChanges();
       }
-    });
-  }
-
-  private markAllNotificationsSeen(): void {
-    this.notificationService.markAllSeen().subscribe({
-      next: () => {
-        this.unreadNotificationCount = 0;
-        this.notifications = this.notifications.map((item) => ({ ...item, isSeen: true }));
-        this.cdr.detectChanges();
-      },
-      error: () => void 0
     });
   }
 

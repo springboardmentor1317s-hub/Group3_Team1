@@ -316,6 +316,7 @@ async function getNotificationsForUser(userId, options = {}) {
   const normalizedUserId = String(userId || "");
   const page = Math.max(1, Number(options.page || 1));
   const limit = Math.min(100, Math.max(1, Number(options.limit || 15)));
+  const unseenOnly = options.unseenOnly === true;
   const skip = (page - 1) * limit;
 
   const { role } = await syncNotificationsForUser(normalizedUserId);
@@ -326,10 +327,19 @@ async function getNotificationsForUser(userId, options = {}) {
     deletedAt: null
   };
 
+  if (unseenOnly) {
+    baseFilter.isSeen = false;
+  }
+
   const [items, total, unseenCount] = await Promise.all([
     Notification.find(baseFilter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     Notification.countDocuments(baseFilter),
-    Notification.countDocuments({ ...baseFilter, isSeen: false })
+    Notification.countDocuments({
+      userId: normalizedUserId,
+      role,
+      deletedAt: null,
+      isSeen: false
+    })
   ]);
 
   return {
@@ -406,7 +416,7 @@ async function deleteNotificationById(userId, id) {
   return Number(result.modifiedCount || 0) > 0;
 }
 
-async function deleteNotifications(userId, ids, deleteAll = false) {
+async function deleteNotifications(userId, ids, deleteAll = false, unseenOnly = false) {
   const normalizedUserId = String(userId || "");
   const { role } = await syncNotificationsForUser(normalizedUserId);
   const filter = {
@@ -414,6 +424,10 @@ async function deleteNotifications(userId, ids, deleteAll = false) {
     role,
     deletedAt: null
   };
+
+  if (unseenOnly) {
+    filter.isSeen = false;
+  }
 
   if (!deleteAll) {
     const normalizedIds = (ids || [])

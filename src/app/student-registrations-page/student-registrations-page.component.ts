@@ -39,7 +39,7 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
   notificationsLoading = true;
   notificationsDropdownOpen = false;
   unseenNotificationCount = 0;
-  showNotificationViewMore = false;
+  showNotificationViewMore = true;
   errorMessage = '';
   actionEventId = '';
   reviewActionEventId = '';
@@ -206,14 +206,26 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
   openNotifications(event?: Event): void {
     event?.stopPropagation();
     this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
-    if (this.notificationsDropdownOpen) {
-      this.markAllNotificationsSeen();
-    }
   }
 
   openNotificationsPage(): void {
     this.notificationsDropdownOpen = false;
     this.router.navigate(['/student-notifications']);
+  }
+
+  deleteNotificationFromDropdown(id: string): void {
+    if (!id) {
+      return;
+    }
+
+    this.notificationService.deleteNotification(id).subscribe({
+      next: () => {
+        this.notifications = this.notifications.filter((item) => item.id !== id);
+        this.unseenNotificationCount = this.notifications.length;
+        this.flushView();
+      },
+      error: () => void 0
+    });
   }
 
   cancelRegistration(registration: StudentRegistrationRecord): void {
@@ -559,16 +571,6 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
     }, 8000);
   }
 
-  private markAllNotificationsSeen(): void {
-    this.notificationService.markAllSeen().subscribe({
-      next: () => {
-        this.unseenNotificationCount = 0;
-        this.notifications = this.notifications.map((item) => ({ ...item, isSeen: true } as StudentNotificationItem));
-        this.flushView();
-      },
-      error: () => void 0
-    });
-  }
 
   private loadNotificationDropdown(): void {
     this.notificationService.getDropdownNotifications(15).subscribe({

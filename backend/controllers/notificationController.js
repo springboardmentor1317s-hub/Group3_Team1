@@ -11,7 +11,8 @@ exports.getNotifications = async (req, res) => {
   try {
     const page = Number(req.query?.page || 1);
     const limit = Number(req.query?.limit || 15);
-    const payload = await getNotificationsForUser(req.user?.id, { page, limit });
+    const unseenOnly = String(req.query?.unseenOnly || "").toLowerCase() === "true";
+    const payload = await getNotificationsForUser(req.user?.id, { page, limit, unseenOnly });
     res.json(payload);
   } catch (error) {
     console.error("Get notifications error:", error);
@@ -68,7 +69,8 @@ exports.deleteBulkNotifications = async (req, res) => {
   try {
     const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
     const deleteAll = req.body?.deleteAll === true;
-    const deleted = await deleteNotifications(req.user?.id, ids, deleteAll);
+    const unseenOnly = req.body?.unseenOnly === true;
+    const deleted = await deleteNotifications(req.user?.id, ids, deleteAll, unseenOnly);
     res.json({ message: "Notifications deleted.", deleted });
   } catch (error) {
     console.error("Delete bulk notifications error:", error);

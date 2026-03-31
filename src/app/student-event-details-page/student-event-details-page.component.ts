@@ -56,6 +56,7 @@ interface PublicCommentView {
 })
 export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
   private static readonly FALLBACK_DESCRIPTION = 'Explore this campus experience and secure your seat before registrations close.';
+  private static readonly DROPDOWN_NOTIFICATION_LIMIT = 7;
   event: StudentEventCard | null = null;
   currentRegistration: StudentRegistrationRecord | null = null;
   loading = true;
@@ -64,7 +65,7 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
   notificationsLoading = true;
   notificationsDropdownOpen = false;
   unseenNotificationCount = 0;
-  showNotificationViewMore = false;
+  showNotificationViewMore = true;
   actionEventId = '';
   errorMessage = '';
   submitError = '';
@@ -305,14 +306,26 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
   openNotifications(event?: Event): void {
     event?.stopPropagation();
     this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
-    if (this.notificationsDropdownOpen) {
-      this.markAllNotificationsSeen();
-    }
   }
 
   openNotificationsPage(): void {
     this.notificationsDropdownOpen = false;
     this.router.navigate(['/student-notifications']);
+  }
+
+  deleteNotificationFromDropdown(id: string): void {
+    if (!id) {
+      return;
+    }
+
+    this.notificationService.deleteNotification(id).subscribe({
+      next: () => {
+        this.notifications = this.notifications.filter((item) => item.id !== id);
+        this.unseenNotificationCount = this.notifications.length;
+        this.cdr.detectChanges();
+      },
+      error: () => void 0
+    });
   }
 
   canDownloadCertificate(): boolean {
@@ -934,11 +947,11 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
 
   private loadNotifications(): void {
     this.notificationsLoading = this.notifications.length === 0;
-    this.notificationService.getDropdownNotifications(15).subscribe({
+    this.notificationService.getDropdownNotifications(StudentEventDetailsPageComponent.DROPDOWN_NOTIFICATION_LIMIT).subscribe({
       next: (state) => {
         this.notifications = state.items as StudentNotificationItem[];
         this.unseenNotificationCount = state.unseenCount;
-        this.showNotificationViewMore = state.hasMore;
+        this.showNotificationViewMore = true;
         this.notificationsLoading = false;
         this.cdr.detectChanges();
       },
@@ -946,7 +959,7 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
         const cached = this.notificationService.getCachedDropdownState();
         this.notifications = (cached.items.length ? cached.items : this.studentDashboardService.getCachedNotifications()) as StudentNotificationItem[];
         this.unseenNotificationCount = cached.unseenCount;
-        this.showNotificationViewMore = cached.hasMore;
+        this.showNotificationViewMore = true;
         this.notificationsLoading = false;
         this.cdr.detectChanges();
       }
@@ -973,28 +986,17 @@ export class StudentEventDetailsPageComponent implements OnInit, OnDestroy {
     }
 
     this.notificationsRefreshTimer = setInterval(() => {
-      this.notificationService.getDropdownNotifications(15).subscribe({
+      this.notificationService.getDropdownNotifications(StudentEventDetailsPageComponent.DROPDOWN_NOTIFICATION_LIMIT).subscribe({
         next: (state) => {
           this.notifications = state.items as StudentNotificationItem[];
           this.unseenNotificationCount = state.unseenCount;
-          this.showNotificationViewMore = state.hasMore;
+          this.showNotificationViewMore = true;
           this.notificationsLoading = false;
           this.cdr.detectChanges();
         },
         error: () => void 0
       });
     }, 8000);
-  }
-
-  private markAllNotificationsSeen(): void {
-    this.notificationService.markAllSeen().subscribe({
-      next: () => {
-        this.unseenNotificationCount = 0;
-        this.notifications = this.notifications.map((item) => ({ ...item, isSeen: true } as StudentNotificationItem));
-        this.cdr.detectChanges();
-      },
-      error: () => void 0
-    });
   }
 
   private hasActiveCommentDrafts(): boolean {

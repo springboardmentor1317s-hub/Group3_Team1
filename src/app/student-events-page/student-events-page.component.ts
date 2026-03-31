@@ -25,6 +25,7 @@ import { NotificationService } from '../services/notification.service';
   styleUrls: ['./student-events-page.component.scss']
 })
 export class StudentEventsPageComponent implements OnInit, OnDestroy {
+  private static readonly DROPDOWN_NOTIFICATION_LIMIT = 7;
   events: StudentEventCard[] = [];
   filteredEvents: StudentEventCard[] = [];
   registrations: StudentRegistrationRecord[] = [];
@@ -39,7 +40,7 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
   notificationsLoading = true;
   notificationsDropdownOpen = false;
   unseenNotificationCount = 0;
-  showNotificationViewMore = false;
+  showNotificationViewMore = true;
   errorMessage = '';
   eventRatingSummaryByEventId: Record<string, { average: number; count: number }> = {};
   expandedEventIds = new Set<string>();
@@ -195,14 +196,26 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
   openNotifications(event?: Event): void {
     event?.stopPropagation();
     this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
-    if (this.notificationsDropdownOpen) {
-      this.markAllNotificationsSeen();
-    }
   }
 
   openNotificationsPage(): void {
     this.notificationsDropdownOpen = false;
     this.router.navigate(['/student-notifications']);
+  }
+
+  deleteNotificationFromDropdown(id: string): void {
+    if (!id) {
+      return;
+    }
+
+    this.notificationService.deleteNotification(id).subscribe({
+      next: () => {
+        this.notifications = this.notifications.filter((item) => item.id !== id);
+        this.unseenNotificationCount = this.notifications.length;
+        this.flushView();
+      },
+      error: () => void 0
+    });
   }
 
   logout(): void {
@@ -316,7 +329,7 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
 
     this.notifications = (cachedDropdownState.items.length ? cachedDropdownState.items : cachedNotifications) as StudentNotificationItem[];
     this.unseenNotificationCount = cachedDropdownState.unseenCount;
-    this.showNotificationViewMore = cachedDropdownState.hasMore;
+    this.showNotificationViewMore = true;
     this.notificationsLoading = this.notifications.length === 0;
 
     this.flushView();
@@ -425,11 +438,11 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
   private loadNotifications(): void {
     this.notificationsLoading = true;
 
-    this.notificationService.getDropdownNotifications(15).subscribe({
+    this.notificationService.getDropdownNotifications(StudentEventsPageComponent.DROPDOWN_NOTIFICATION_LIMIT).subscribe({
       next: (state) => {
         this.notifications = state.items as StudentNotificationItem[];
         this.unseenNotificationCount = state.unseenCount;
-        this.showNotificationViewMore = state.hasMore;
+        this.showNotificationViewMore = true;
         this.notificationsLoading = false;
         this.flushView();
       },
@@ -437,7 +450,7 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
         const cached = this.notificationService.getCachedDropdownState();
         this.notifications = cached.items as StudentNotificationItem[];
         this.unseenNotificationCount = cached.unseenCount;
-        this.showNotificationViewMore = cached.hasMore;
+        this.showNotificationViewMore = true;
         this.notificationsLoading = false;
         this.flushView();
       }
@@ -466,28 +479,17 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
 
   private startNotificationsRefresh(): void {
     this.notificationsRefreshTimer = setInterval(() => {
-      this.notificationService.getDropdownNotifications(15).subscribe({
+      this.notificationService.getDropdownNotifications(StudentEventsPageComponent.DROPDOWN_NOTIFICATION_LIMIT).subscribe({
         next: (state) => {
           this.notifications = state.items as StudentNotificationItem[];
           this.unseenNotificationCount = state.unseenCount;
-          this.showNotificationViewMore = state.hasMore;
+          this.showNotificationViewMore = true;
           this.notificationsLoading = false;
           this.flushView();
         },
         error: () => void 0
       });
     }, 8000);
-  }
-
-  private markAllNotificationsSeen(): void {
-    this.notificationService.markAllSeen().subscribe({
-      next: () => {
-        this.unseenNotificationCount = 0;
-        this.notifications = this.notifications.map((item) => ({ ...item, isSeen: true } as StudentNotificationItem));
-        this.flushView();
-      },
-      error: () => void 0
-    });
   }
 
   private startRatingsRefresh(): void {

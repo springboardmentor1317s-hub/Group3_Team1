@@ -1,0 +1,123 @@
+<div class="notifications-shell" [class.admin-mode]="!isStudent">
+  <app-student-header
+    *ngIf="isStudent"
+    activeTab="dashboard"
+    [studentName]="userName"
+    [studentPhotoUrl]="userPhotoUrl"
+    notificationMode="route"
+    [notifications]="headerNotifications"
+    [notificationsLoading]="headerLoading"
+    [notificationsOpen]="notificationsOpen"
+    [unseenNotificationCount]="unseenNotificationCount"
+    [showViewMore]="false"
+    (notificationToggle)="toggleHeaderNotifications($event)"
+    (viewMoreNotifications)="closeHeaderDropdown()"
+    (notificationDelete)="deleteNotification($event)"
+  />
+
+  <app-admin-common-header
+    *ngIf="!isStudent"
+    activeTab="none"
+    [userName]="userName"
+    [userAvatarUrl]="userPhotoUrl || null"
+    [showSearch]="false"
+    [showExport]="false"
+    [showNotifications]="true"
+    [notifications]="headerNotifications"
+    [notificationsLoading]="headerLoading"
+    [notificationsOpen]="notificationsOpen"
+    [unreadNotificationCount]="unseenNotificationCount"
+    [showViewMore]="false"
+    (activeTabChange)="onAdminHeaderTabChange($event)"
+    (notificationsTriggered)="toggleHeaderNotifications()"
+    (viewMoreNotifications)="closeHeaderDropdown()"
+    (notificationDelete)="deleteNotification($event)"
+    (brandClick)="goBackHome()"
+    (logoutTriggered)="logout()"
+  />
+
+  <main class="notifications-main">
+    <section class="notifications-hero">
+      <div class="hero-copy-block">
+        <span class="hero-glow hero-glow-one"></span>
+        <span class="hero-glow hero-glow-two"></span>
+        <p class="page-kicker">Notification Inbox</p>
+        <h1>Your notification command center</h1>
+        <p class="page-copy">Track alerts, clean up old updates, and manage seen items from one polished inbox made for fast scanning.</p>
+        <div class="hero-pill-row">
+          <span class="hero-pill">Live Updates</span>
+          <span class="hero-pill">Instant Delete</span>
+          <span class="hero-pill">Auto Refresh</span>
+        </div>
+      </div>
+      <div class="hero-metrics">
+        <article class="metric-card">
+          <span>Unseen</span>
+          <strong>{{ unseenNotificationCount }}</strong>
+        </article>
+        <article class="metric-card">
+          <span>Visible</span>
+          <strong>{{ notifications.length }}</strong>
+        </article>
+      </div>
+    </section>
+
+    <p class="error-banner" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+    <section class="toolbar-card">
+      <div>
+        <p class="toolbar-title">Manage all notifications</p>
+        <p class="toolbar-copy">Use delete on the right side of each notification, or clear the full inbox from here.</p>
+      </div>
+
+      <div class="toolbar-actions">
+        <button type="button" class="solid-btn danger" [disabled]="notifications.length === 0 || actionInProgress" (click)="clearAll()">
+          {{ actionInProgress ? 'Clearing...' : 'Clear All' }}
+        </button>
+      </div>
+    </section>
+
+    <section class="state-card loading-state" *ngIf="loading">
+      <div class="loading-pulse"></div>
+      <p>Loading notifications...</p>
+    </section>
+
+    <section class="notifications-list" *ngIf="!loading && notifications.length > 0">
+      <article class="notification-row" *ngFor="let item of notifications; trackBy: trackByNotification" [class.unseen]="!item.isSeen" [class.row-busy]="isDeleting(item.id) || isMarkingSeen(item.id)">
+        <div class="notification-status-rail" [attr.data-seen]="item.isSeen"></div>
+
+        <div class="notification-icon-wrap" [attr.data-tone]="item.tone || 'info'">
+          <span class="material-icons">{{ item.icon || 'notifications' }}</span>
+        </div>
+
+        <div class="notification-content">
+          <div class="notification-meta">
+            <span class="notification-category">{{ item.category || 'general' }}</span>
+            <span class="notification-time">{{ formatTime(item.createdAt) }}</span>
+          </div>
+          <h3>{{ item.title || 'Notification' }}</h3>
+          <p>{{ item.message }}</p>
+          <div class="notification-badges">
+            <span class="status-chip unseen-chip" *ngIf="!item.isSeen">Unseen</span>
+            <span class="status-chip seen-chip" *ngIf="item.isSeen">Seen</span>
+          </div>
+        </div>
+
+        <div class="row-actions">
+          <button type="button" class="ghost-btn" [disabled]="item.isSeen || isDeleting(item.id) || isMarkingSeen(item.id) || actionInProgress" (click)="markAsSeen(item.id)">
+            {{ isMarkingSeen(item.id) ? 'Updating...' : (item.isSeen ? 'Seen' : 'Mark Seen') }}
+          </button>
+          <button type="button" class="ghost-btn danger" [disabled]="isDeleting(item.id) || actionInProgress" (click)="deleteNotification(item.id)">
+            {{ isDeleting(item.id) ? 'Deleting...' : 'Delete' }}
+          </button>
+        </div>
+      </article>
+    </section>
+
+    <section class="state-card" *ngIf="!loading && notifications.length === 0">
+      <div class="empty-orb"></div>
+      <h3>No notifications right now</h3>
+      <p>Your inbox is clear. New alerts will appear here automatically.</p>
+    </section>
+  </main>
+</div>
