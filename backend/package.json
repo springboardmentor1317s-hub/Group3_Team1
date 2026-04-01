@@ -21,7 +21,8 @@
     "mongoose": "^9.2.1",
     "nodemailer": "^8.0.1",
     "pdfkit": "^0.17.2",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "razorpay": "^2.9.6"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"

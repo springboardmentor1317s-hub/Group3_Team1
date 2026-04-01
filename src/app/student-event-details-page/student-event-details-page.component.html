@@ -3,6 +3,15 @@
     activeTab="events"
     [studentName]="studentName"
     [studentPhotoUrl]="profilePhotoUrl"
+    notificationMode="dropdown"
+    [notifications]="notifications"
+    [notificationsLoading]="notificationsLoading"
+    [notificationsOpen]="notificationsDropdownOpen"
+    [unseenNotificationCount]="unseenNotificationCount"
+    [showViewMore]="showNotificationViewMore"
+    (notificationToggle)="openNotifications($event)"
+    (viewMoreNotifications)="openNotificationsPage()"
+    (notificationDelete)="deleteNotificationFromDropdown($event)"
   />
 
   <main class="event-details-main">
@@ -30,6 +39,7 @@
             <span><span class="material-icons">event_available</span>Last Registration: {{ registrationDeadlineText }}</span>
             <span><span class="material-icons">schedule</span>{{ details.timeLabel }}</span>
             <span><span class="material-icons">location_on</span>{{ details.location }}</span>
+            <span><span class="material-icons">payments</span>{{ details.isPaid ? (details.priceLabel || 'Paid Event') : 'Free Event' }}</span>
           </div>
 
           <button type="button" class="register-btn" [disabled]="registerDisabled" (click)="registerForEvent()">
@@ -68,15 +78,35 @@
         <p *ngIf="currentRegistration.status === 'PENDING'">Your registration is waiting for admin review. Please check back soon.</p>
         <div class="approved-registration-block" *ngIf="currentRegistration.status === 'APPROVED'">
           <p>Your registration has been approved. You are all set for this event.</p>
-          <button
-            type="button"
-            class="download-admit-btn"
-            [disabled]="!canDownloadAdmitCard() || admitCardActionInProgress"
-            (click)="downloadAdmitCard()"
-          >
-            {{ admitCardActionInProgress ? 'Downloading...' : 'Download Admit Card' }}
-          </button>
+          <div class="approved-registration-actions">
+            <button
+              type="button"
+              class="download-admit-btn"
+              [disabled]="!canDownloadAdmitCard() || admitCardActionInProgress"
+              (click)="downloadAdmitCard()"
+            >
+              {{ admitCardActionInProgress ? 'Downloading...' : 'Download Admit Card' }}
+            </button>
+            <button
+              type="button"
+              class="download-admit-btn certificate-download-btn"
+              [disabled]="!canDownloadCertificate() || certificateActionInProgress || certificateStatusLoading"
+              (click)="downloadCertificate()"
+            >
+              {{
+                certificateActionInProgress
+                  ? 'Downloading Certificate...'
+                  : certificateStatusLoading
+                    ? 'Checking Certificate...'
+                    : 'Download Certificate'
+              }}
+            </button>
+          </div>
           <p class="admit-error" *ngIf="admitCardError">{{ admitCardError }}</p>
+          <p class="admit-error" *ngIf="certificateError">{{ certificateError }}</p>
+          <p class="certificate-hint" *ngIf="!certificateStatusLoading && !canDownloadCertificate()">
+            Certificate will be available only after your attendance is marked present and admin generates it for this event.
+          </p>
         </div>
 
         <div class="rejection-reason-card" *ngIf="currentRegistration.status === 'REJECTED'">
@@ -94,7 +124,31 @@
           <div><span class="material-icons">person</span>{{ details.organizer || 'Campus Event Hub' }}</div>
           <div><span class="material-icons">call</span>{{ details.contact }}</div>
           <div><span class="material-icons">groups</span>{{ details.registrations }}/{{ details.maxAttendees && details.maxAttendees > 0 ? details.maxAttendees : 'Unlimited' }} seats filled</div>
+          <div><span class="material-icons">currency_rupee</span>{{ details.isPaid ? (details.priceLabel || 'Paid Event') : 'Free Event' }}</div>
         </div>
+      </section>
+
+      <section class="registration-status-card" *ngIf="details.isPaid">
+        <div class="registration-status-head">
+          <div>
+            <p class="status-kicker">Payment Status</p>
+            <h2>{{ details.title }}</h2>
+          </div>
+          <div class="status-side-actions">
+            <span class="inline-status">{{ paymentStatusLabel }}</span>
+            <button type="button" class="delete-registration-btn" (click)="refreshPaymentStatus()">Check Payment Status</button>
+            <button
+              *ngIf="paymentStatus?.verified && paymentStatus?.status === 'SUCCESS'"
+              type="button"
+              class="register-btn"
+              [disabled]="receiptDownloading"
+              (click)="downloadReceipt()"
+            >
+              {{ receiptDownloading ? 'Preparing PDF...' : 'Download PDF Receipt' }}
+            </button>
+          </div>
+        </div>
+        <p *ngIf="!paymentStatus?.verified">Final payment confirmation comes from the backend after signature verification.</p>
       </section>
 
       <section class="feedback-card">
@@ -217,7 +271,10 @@
               <div class="comment-head" [class.admin-head]="isAdminEntry(item)">
                 <div class="author-stack">
                   <strong>{{ getCommentAuthorDisplayName(item) }}</strong>
-                  <span class="admin-author-badge" *ngIf="isAdminEntry(item)">Admin Reply</span>
+                  <div class="author-meta" *ngIf="isAdminEntry(item)">
+                    <span class="admin-author-badge">Official Admin</span>
+                    <span class="admin-identity">{{ getAdminIdentityLabel(item) }}</span>
+                  </div>
                 </div>
                 <span>{{ formatTime(item.createdAt) }}</span>
               </div>
@@ -273,7 +330,10 @@
           <div class="reply-head" [class.admin-head]="isAdminEntry(reply)">
             <div class="author-stack">
               <strong>{{ getCommentAuthorDisplayName(reply) }}</strong>
-              <span class="admin-author-badge" *ngIf="isAdminEntry(reply)">Admin Reply</span>
+              <div class="author-meta" *ngIf="isAdminEntry(reply)">
+                <span class="admin-author-badge">Official Admin</span>
+                <span class="admin-identity">{{ getAdminIdentityLabel(reply) }}</span>
+              </div>
             </div>
             <span>{{ formatTime(reply.createdAt) }}</span>
           </div>
@@ -314,5 +374,4 @@
     </div>
   </ng-template>
 
-  <app-site-footer></app-site-footer>
 </div>

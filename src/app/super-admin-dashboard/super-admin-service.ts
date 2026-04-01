@@ -175,6 +175,15 @@ export class SuperAdminService {
     return this.http.get<SuperAdminStudent[]>(`${this.baseUrl}/students`, { headers });
   }
 
+  exportStudentsCsv(): Observable<Blob> {
+    const token = localStorage.getItem('token');
+    let headers = new HttpHeaders();
+    if (token) {
+      headers = headers.set('Authorization', `Bearer ${token}`);
+    }
+    return this.http.get(`${this.baseUrl}/students/export`, { headers, responseType: 'blob' });
+  }
+
   getStudentRegistrations(studentId: string): Observable<StudentRegistrationSummary[]> {
     const token = localStorage.getItem('token');
     let headers = new HttpHeaders();
@@ -193,6 +202,15 @@ export class SuperAdminService {
     return this.http.get<AdminCreatedEvent[]>(`${this.baseUrl}/admins/${encodeURIComponent(adminId)}/events`, { headers });
   }
 
+  exportAdminsCsv(): Observable<Blob> {
+    const token = localStorage.getItem('token');
+    let headers = new HttpHeaders();
+    if (token) {
+      headers = headers.set('Authorization', `Bearer ${token}`);
+    }
+    return this.http.get(`${this.baseUrl}/admins/export`, { headers, responseType: 'blob' });
+  }
+
   getAllEvents(): Observable<SuperAdminEvent[]> {
     const token = localStorage.getItem('token');
     let headers = new HttpHeaders();
@@ -209,6 +227,15 @@ export class SuperAdminService {
       headers = headers.set('Authorization', `Bearer ${token}`);
     }
     return this.http.delete<void>(`/api/events/${encodeURIComponent(eventId)}`, { headers });
+  }
+
+  exportEventsCsv(): Observable<Blob> {
+    const token = localStorage.getItem('token');
+    let headers = new HttpHeaders();
+    if (token) {
+      headers = headers.set('Authorization', `Bearer ${token}`);
+    }
+    return this.http.get(`${this.baseUrl}/events/export`, { headers, responseType: 'blob' });
   }
 
   updateUserBlockStatus(userId: string, blocked: boolean): Observable<BlockStatusResponse> {

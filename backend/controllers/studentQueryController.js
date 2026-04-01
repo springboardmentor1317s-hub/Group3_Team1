@@ -123,7 +123,7 @@ exports.createQuery = async (req, res) => {
       });
     }
 
-    const student = await User.findById(studentObjectId).select("userId email name");
+    const student = await User.findById(studentObjectId).select("userId email name college");
     if (!student) {
       return res.status(404).json({ message: "Student not found" });
     }
@@ -253,9 +253,16 @@ exports.getCollegeQueries = async (req, res) => {
     if (!adminUserId || !allowed) {
       return res.status(403).json({ message: "Only college admins can access student queries." });
     }
-    const queries = await StudentQuery.find({
+    const { college } = await resolveAdminCollegeScope(adminUserId);
+    const baseFilter = {
       deletedAt: null
-    }).sort({ updatedAt: -1 });
+    };
+
+    if (college) {
+      baseFilter.studentCollege = { $regex: `^${college.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, $options: "i" };
+    }
+
+    const queries = await StudentQuery.find(baseFilter).sort({ updatedAt: -1 });
 
     res.json(queries.map((item) => serializeQuery(item)));
   } catch (error) {

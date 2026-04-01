@@ -299,6 +299,10 @@
   align-items:start;
 }
 
+.field-group--triple{
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .field{
   display:flex;
   flex-direction:column;
@@ -352,6 +356,11 @@
   outline:none;
   transition: all .25s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 18px rgba(0,0,0,0.06);
+}
+
+.field input[type="date"],
+.field input[type="time"]{
+  min-height:56px;
 }
 
 .field input:focus,
@@ -514,6 +523,9 @@
     min-width: unset;
   }
   .field-group{
+    grid-template-columns: 1fr;
+  }
+  .field-group--triple{
     grid-template-columns: 1fr;
   }
   .grid{

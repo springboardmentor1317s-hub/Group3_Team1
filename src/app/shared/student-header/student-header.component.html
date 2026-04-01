@@ -30,7 +30,7 @@
       <div class="notification-wrapper" (click)="$event.stopPropagation()">
         <button type="button" class="notification-btn" (click)="onNotificationClick($event)" aria-label="Notifications">
           <span class="material-icons">notifications</span>
-          <span class="notification-badge" *ngIf="notificationCount > 0">{{ notificationCount }}</span>
+          <span class="notification-badge" *ngIf="badgeCount > 0">{{ badgeCount > 99 ? '99+' : badgeCount }}</span>
         </button>
 
         <div class="notification-dropdown" *ngIf="notificationMode === 'dropdown' && notificationsOpen">
@@ -55,6 +55,14 @@
                 <h4>{{ featured.title }}</h4>
                 <p>{{ featured.message }}</p>
               </div>
+              <button
+                type="button"
+                class="notification-delete-btn"
+                aria-label="Delete notification"
+                (click)="onDeleteNotification($event, featured.id)"
+              >
+                <span class="material-icons">delete</span>
+              </button>
             </article>
 
             <article class="notification-dropdown-card" *ngFor="let item of remainingNotifications; trackBy: trackNotification">
@@ -68,8 +76,25 @@
                 <h4>{{ item.title }}</h4>
                 <p>{{ item.message }}</p>
               </div>
+              <button
+                type="button"
+                class="notification-delete-btn"
+                aria-label="Delete notification"
+                (click)="onDeleteNotification($event, item.id)"
+              >
+                <span class="material-icons">delete</span>
+              </button>
             </article>
           </div>
+
+          <button
+            type="button"
+            class="notification-view-more-btn"
+            *ngIf="shouldShowViewAllButton"
+            (click)="onViewMore($event)"
+          >
+            View All
+          </button>
 
           <div class="notification-dropdown-state" *ngIf="!notificationsLoading && notificationCount === 0">
             No notifications right now.

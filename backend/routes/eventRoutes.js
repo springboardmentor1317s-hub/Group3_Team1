@@ -38,6 +38,9 @@ function toClient(eventDoc, options = {}) {
     participants: obj.participants ?? 0,
     registrations: registrationsCount,
     maxAttendees: obj.maxAttendees ?? null,
+    isPaid: Boolean(obj.isPaid),
+    amount: Number(obj.amount || 0),
+    currency: obj.currency || "INR",
     collegeName: obj.collegeName,
     createdBy: obj.createdBy || "",
     createdById: obj.createdById || "",
@@ -242,7 +245,12 @@ router.post("/", async (req, res) => {
         : Number(teamSizeValue),
       maxAttendees: maxAttendeesValue === "" || maxAttendeesValue === null || maxAttendeesValue === undefined
         ? null
-        : Number(maxAttendeesValue)
+        : Number(maxAttendeesValue),
+      isPaid: Boolean(req.body?.isPaid),
+      amount: req.body?.amount === "" || req.body?.amount === null || req.body?.amount === undefined
+        ? 0
+        : Number(req.body?.amount),
+      currency: String(req.body?.currency ?? "INR").trim() || "INR"
     };
 
     if (payload.teamSize !== null && (!Number.isFinite(payload.teamSize) || payload.teamSize < 1)) {
@@ -251,6 +259,16 @@ router.post("/", async (req, res) => {
 
     if (payload.maxAttendees !== null && (!Number.isFinite(payload.maxAttendees) || payload.maxAttendees < 1)) {
       return res.status(400).json({ error: "maxAttendees must be a positive number." });
+    }
+
+    if (!Number.isFinite(payload.amount) || payload.amount < 0) {
+      return res.status(400).json({ error: "amount must be zero or greater." });
+    }
+
+    if (!payload.isPaid) {
+      payload.amount = 0;
+    } else if (payload.amount <= 0) {
+      return res.status(400).json({ error: "Paid events must have an amount greater than zero." });
     }
 
     const newEvent = new Event(payload);
@@ -323,6 +341,9 @@ async function updateEvent(req, res) {
       "teamSize",
       "collegeName",
       "maxAttendees",
+      "isPaid",
+      "amount",
+      "currency",
       "createdBy",
       "createdById",
       "ownerId",
@@ -367,6 +388,30 @@ async function updateEvent(req, res) {
           return res.status(400).json({ error: "maxAttendees must be a positive number." });
         }
       }
+    }
+
+    if (updates.isPaid !== undefined) {
+      updates.isPaid = Boolean(updates.isPaid);
+    }
+
+    if (updates.amount !== undefined) {
+      if (updates.amount === "" || updates.amount === null) {
+        updates.amount = 0;
+      } else {
+        updates.amount = Number(updates.amount);
+        if (!Number.isFinite(updates.amount) || updates.amount < 0) {
+          return res.status(400).json({ error: "amount must be zero or greater." });
+        }
+      }
+    }
+
+    const nextIsPaid = updates.isPaid !== undefined ? updates.isPaid : Boolean(event.isPaid);
+    const nextAmount = updates.amount !== undefined ? updates.amount : Number(event.amount || 0);
+    if (nextIsPaid && nextAmount <= 0) {
+      return res.status(400).json({ error: "Paid events must have an amount greater than zero." });
+    }
+    if (!nextIsPaid) {
+      updates.amount = 0;
     }
 
     const updated = await Event.findByIdAndUpdate(req.params.id, updates, {

@@ -1,12 +1,13 @@
 .footer-section {
-  padding: 0 0 18px;
+  margin:0;
+  padding: 0;
   background: #1e293b;
   color: #cbd5f5;
 }
 
 .footer-shell {
   max-width: 1240px;
-  margin: 0 auto;
+  margin: 0;
   padding: 36px 32px 24px;
   display: grid;
   grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.1fr);

@@ -1,0 +1,28 @@
+.payment-result-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  background: linear-gradient(180deg, #ecfeff, #f8fafc);
+}
+
+.payment-card {
+  width: min(720px, 100%);
+  padding: 2rem;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.detail-grid span {
+  display: block;
+  font-size: 0.8rem;
+  color: #475569;
+}

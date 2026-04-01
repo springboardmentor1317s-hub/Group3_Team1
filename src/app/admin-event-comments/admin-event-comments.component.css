@@ -309,6 +309,18 @@
   row-gap: 0.35rem;
 }
 
+.author-stack {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.author-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
 .comment-head > span:last-child {
   margin-left: auto;
   color: #64748b;
@@ -332,6 +344,12 @@
   color: #ffffff;
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
   box-shadow: 0 8px 14px rgba(37, 99, 235, 0.2);
+}
+
+.admin-identity {
+  color: #2563eb;
+  font-size: 0.74rem;
+  font-weight: 700;
 }
 
 .comment-actions {

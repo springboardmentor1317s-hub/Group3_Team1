@@ -3,7 +3,6 @@ import { ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit }
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
-import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 import { EventCardComponent } from '../shared/event-card/event-card.component';
 import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
 import { StudentAdmitCardsPanelComponent } from '../student-admit-cards-panel/student-admit-cards-panel.component';
@@ -18,6 +17,7 @@ import {
   StudentEventReview,
   StudentSupportQuery
 } from '../services/student-dashboard.service';
+import { NotificationService } from '../services/notification.service';
 
 interface DashboardStat {
   title: string;
@@ -29,11 +29,12 @@ interface DashboardStat {
 @Component({
   selector: 'app-student-dashboard-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, EventCardComponent, StudentHeaderComponent, StudentAdmitCardsPanelComponent],
+  imports: [CommonModule, FormsModule, RouterModule, EventCardComponent, StudentHeaderComponent, StudentAdmitCardsPanelComponent],
   templateUrl: './student-dashboard-page.component.html',
   styleUrls: ['./student-dashboard-page.component.scss']
 })
 export class StudentDashboardPageComponent implements OnInit {
+  private static readonly DROPDOWN_NOTIFICATION_LIMIT = 7;
   profile: StudentProfile | null = null;
   allEvents: StudentEventCard[] = [];
   filteredEvents: StudentEventCard[] = [];
@@ -64,6 +65,8 @@ export class StudentDashboardPageComponent implements OnInit {
   registrationsLoading = true;
   notificationsLoading = true;
   notificationsDropdownOpen = false;
+  unseenNotificationCount = 0;
+  showNotificationViewMore = true;
   reviewActionEventId = '';
   supportQuerySubject = '';
   supportQueryMessage = '';
@@ -87,7 +90,8 @@ export class StudentDashboardPageComponent implements OnInit {
     private router: Router,
     private route: ActivatedRoute,
     private cdr: ChangeDetectorRef,
-    private zone: NgZone
+    private zone: NgZone,
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -112,6 +116,7 @@ export class StudentDashboardPageComponent implements OnInit {
     });
     this.prefillFromCache();
     this.loadDashboard();
+    this.loadNotificationDropdown();
     this.loadSupportQuery();
     this.startNotificationsRefresh();
     this.startRatingsRefresh();
@@ -388,13 +393,42 @@ export class StudentDashboardPageComponent implements OnInit {
 
   getSupportQueryStatusLabel(status: StudentSupportQuery['status']): string {
     if (status === 'IN_PROGRESS') return 'In Progress';
-    if (status === 'RESOLVED') return 'Resolved';
+    if (status === 'RESOLVED') return 'Solved';
     return 'Open';
+  }
+
+  getSupportQueryStatusTone(status: StudentSupportQuery['status']): 'approved' | 'pending' {
+    return status === 'RESOLVED' ? 'approved' : 'pending';
   }
 
   openNotifications(event?: Event): void {
     event?.stopPropagation();
     this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
+    if (this.notificationsDropdownOpen) {
+      this.notificationsLoading = this.notifications.length === 0;
+      this.flushView();
+      this.loadNotificationDropdown();
+    }
+  }
+
+  openNotificationsPage(): void {
+    this.notificationsDropdownOpen = false;
+    this.router.navigate(['/student-notifications']);
+  }
+
+  deleteNotificationFromDropdown(id: string): void {
+    if (!id) {
+      return;
+    }
+
+    this.notificationService.deleteNotification(id).subscribe({
+      next: () => {
+        this.notifications = this.notifications.filter((item) => item.id !== id);
+        this.unseenNotificationCount = this.notifications.length;
+        this.flushView();
+      },
+      error: () => void 0
+    });
   }
 
   registerForEvent(event: StudentEventCard): void {
@@ -692,8 +726,11 @@ export class StudentDashboardPageComponent implements OnInit {
     }
 
     this.statsState = this.studentDashboardService.getCachedStats();
-    this.notifications = this.studentDashboardService.getCachedNotifications();
-    this.notificationsLoading = false;
+    const notificationState = this.notificationService.getCachedDropdownState();
+    this.notifications = notificationState.items as StudentNotificationItem[];
+    this.unseenNotificationCount = notificationState.unseenCount;
+    this.showNotificationViewMore = true;
+    this.notificationsLoading = notificationState.items.length === 0;
     this.flushView();
   }
 
@@ -709,10 +746,9 @@ export class StudentDashboardPageComponent implements OnInit {
 
     this.statsState = snapshot.stats;
     this.notifications = snapshot.notifications || [];
-    
+    this.notificationsLoading = false;
     this.loading = false;
     this.registrationsLoading = false;
-    this.notificationsLoading = false;
     this.silentRefreshing = false;
     this.flushView();
   }
@@ -808,18 +844,21 @@ export class StudentDashboardPageComponent implements OnInit {
 
   private startNotificationsRefresh(): void {
     this.notificationsRefreshTimer = setInterval(() => {
-      this.studentDashboardService.refreshDashboardSnapshot().pipe(
-        timeout(9000)
-      ).subscribe({
-        next: (snapshot) => {
-          this.zone.run(() => {
-            this.applySnapshot(snapshot);
-            this.flushView();
-          });
-        },
-        error: () => void 0
-      });
+      this.loadNotificationDropdown();
     }, 8000);
+  }
+
+  private loadNotificationDropdown(): void {
+    this.notificationService.getDropdownNotifications(StudentDashboardPageComponent.DROPDOWN_NOTIFICATION_LIMIT).subscribe({
+      next: (state) => {
+        this.notifications = state.items as StudentNotificationItem[];
+        this.unseenNotificationCount = state.unseenCount;
+        this.showNotificationViewMore = true;
+        this.notificationsLoading = false;
+        this.flushView();
+      },
+      error: () => undefined
+    });
   }
 
   private loadSupportQuery(): void {

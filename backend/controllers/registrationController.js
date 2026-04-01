@@ -1,6 +1,7 @@
 const Registration = require('../models/Registration');
 const Event = require('../models/Event');
 const User = require('../models/User');
+const Payment = require('../models/Payment');
 const StudentProfileDetails = require('../models/StudentProfileDetails');
 const { getCollegeScopedEventIds } = require('../utils/adminCollegeScope');
 const { buildMergedStudentProfile } = require('../utils/studentProfile');
@@ -25,6 +26,11 @@ function serializeRegistration(registration, event) {
     email: registration.email,
     college: registration.college,
     status: normalizedStatus,
+    paymentRequired: Boolean(registration.paymentRequired),
+    paymentStatus: String(registration.paymentStatus || 'NOT_REQUIRED'),
+    paymentVerified: Boolean(registration.paymentVerified),
+    paymentId: registration.paymentId || '',
+    orderId: registration.orderId || '',
     rejectionReason: registration.rejectionReason || '',
     approvedAt: registration.approvedAt || null,
     rejectedAt: registration.rejectedAt || null,
@@ -41,6 +47,9 @@ function serializeRegistration(registration, event) {
       category: event.category,
       posterDataUrl: event.posterDataUrl || null,
       status: event.status,
+      isPaid: Boolean(event.isPaid),
+      amount: Number(event.amount || 0),
+      currency: event.currency || 'INR',
       registrations: event.registrations || 0,
       maxAttendees: event.maxAttendees ?? null,
       dateLabel: eventDate && !Number.isNaN(eventDate.getTime())
@@ -120,6 +129,23 @@ exports.createRegistration = async (req, res) => {
       return res.status(404).json({ error: 'Event not found' });
     }
 
+    const paymentRequired = Boolean(event.isPaid) && Number(event.amount || 0) > 0;
+    let successfulPayment = null;
+    if (paymentRequired) {
+      successfulPayment = await Payment.findOne({
+        userId: String(student._id),
+        eventId,
+        status: 'success',
+        verified: true
+      }).sort({ updatedAt: -1, createdAt: -1 });
+
+      if (!successfulPayment) {
+        return res.status(400).json({
+          error: 'This event requires a verified successful payment before registration can be submitted.'
+        });
+      }
+    }
+
     const existingRegistration = await Registration.findOne({
       eventId,
       studentId: String(student._id)
@@ -132,6 +158,11 @@ exports.createRegistration = async (req, res) => {
         existingRegistration.email = student.email;
         existingRegistration.college = student.college || 'Not Provided';
         existingRegistration.status = 'PENDING';
+        existingRegistration.paymentRequired = paymentRequired;
+        existingRegistration.paymentStatus = paymentRequired ? 'SUCCESS' : 'NOT_REQUIRED';
+        existingRegistration.paymentVerified = !paymentRequired || Boolean(successfulPayment);
+        existingRegistration.paymentId = successfulPayment?.paymentId || '';
+        existingRegistration.orderId = successfulPayment?.orderId || '';
         existingRegistration.rejectionReason = '';
         existingRegistration.rejectedAt = null;
         existingRegistration.approvedAt = null;
@@ -167,7 +198,12 @@ exports.createRegistration = async (req, res) => {
       studentName: student.name,
       email: student.email,
       college: student.college || 'Not Provided',
-      status: 'PENDING'
+      status: 'PENDING',
+      paymentRequired,
+      paymentStatus: paymentRequired ? 'SUCCESS' : 'NOT_REQUIRED',
+      paymentVerified: !paymentRequired || Boolean(successfulPayment),
+      paymentId: successfulPayment?.paymentId || '',
+      orderId: successfulPayment?.orderId || ''
     });
 
     await registration.save();
@@ -281,6 +317,12 @@ exports.approveRegistration = async (req, res) => {
       return res.status(404).json({ error: 'Registration not found' });
     }
 
+    if (event?.isPaid && (!registration.paymentVerified || registration.paymentStatus !== 'SUCCESS')) {
+      return res.status(400).json({
+        error: 'This paid event registration can only be approved after successful payment verification.'
+      });
+    }
+
     registration.status = 'APPROVED';
     registration.rejectionReason = '';
     registration.approvedAt = new Date();
@@ -382,6 +424,23 @@ exports.resubmitRegistration = async (req, res) => {
       return res.status(404).json({ error: 'Event not found' });
     }
 
+    const paymentRequired = Boolean(event.isPaid) && Number(event.amount || 0) > 0;
+    let successfulPayment = null;
+    if (paymentRequired) {
+      successfulPayment = await Payment.findOne({
+        userId: studentId,
+        eventId,
+        status: 'success',
+        verified: true
+      }).sort({ updatedAt: -1, createdAt: -1 });
+
+      if (!successfulPayment) {
+        return res.status(400).json({
+          error: 'This event requires a verified successful payment before resubmission.'
+        });
+      }
+    }
+
     const currentStatus = normalizeRegistrationStatus(registration.status);
 
     if (currentStatus === 'APPROVED') {
@@ -397,6 +456,11 @@ exports.resubmitRegistration = async (req, res) => {
     registration.email = student.email;
     registration.college = student.college || 'Not Provided';
     registration.status = 'PENDING';
+    registration.paymentRequired = paymentRequired;
+    registration.paymentStatus = paymentRequired ? 'SUCCESS' : 'NOT_REQUIRED';
+    registration.paymentVerified = !paymentRequired || Boolean(successfulPayment);
+    registration.paymentId = successfulPayment?.paymentId || '';
+    registration.orderId = successfulPayment?.orderId || '';
     registration.rejectionReason = '';
     registration.rejectedAt = null;
     registration.approvedAt = null;

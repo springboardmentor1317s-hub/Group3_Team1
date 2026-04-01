@@ -7,7 +7,11 @@
     [notifications]="notifications"
     [notificationsLoading]="notificationsLoading"
     [notificationsOpen]="notificationsDropdownOpen"
+    [unseenNotificationCount]="unseenNotificationCount"
+    [showViewMore]="showNotificationViewMore"
     (notificationToggle)="openNotifications($event)"
+    (viewMoreNotifications)="openNotificationsPage()"
+    (notificationDelete)="deleteNotificationFromDropdown($event)"
   />
 
   <main class="registrations-main">
@@ -88,5 +92,4 @@
       <p>Try switching status or date filters, or register for a new event.</p>
     </section>
   </main>
-  <app-site-footer></app-site-footer>
 </div>
