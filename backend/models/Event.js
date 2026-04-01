@@ -16,7 +16,16 @@ const eventSchema = new mongoose.Schema({
   registrations: { type: Number, default: 0 },
   participants: { type: Number, default: 0 },
   collegeName: { type: String, default: "", trim: true },
-  maxAttendees: { type: Number, default: 100 },
+  createdBy: { type: String, default: "", trim: true },
+  createdById: { type: String, default: "", trim: true },
+  ownerId: { type: String, default: "", trim: true },
+  adminId: { type: String, default: "", trim: true },
+  userId: { type: String, default: "", trim: true },
+  email: { type: String, default: "", trim: true },
+  maxAttendees: { type: Number, default: null },
+  isPaid: { type: Boolean, default: false },
+  amount: { type: Number, default: 0, min: 0 },
+  currency: { type: String, default: "INR", trim: true },
   attendeeIds: [{ type: String }],
   createdAt: { type: Date, default: Date.now }
 });

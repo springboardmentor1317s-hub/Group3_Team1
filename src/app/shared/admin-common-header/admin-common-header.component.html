@@ -1,0 +1,115 @@
+<header class="luxury-header">
+  <div class="header-inner">
+    <button class="brand-block" type="button" (click)="brandClick.emit()">
+      <img class="brand-logo" src="/icon2.png" alt="Campus Event Hub" />
+      <div class="brand-copy">
+        <span class="brand-name">
+          <span class="brand-campus">Campus</span>
+          <span class="brand-eventhub">Event Hub</span>
+        </span>
+        <span class="brand-role">College Admin Dashboard</span>
+      </div>
+    </button>
+
+    <nav class="header-nav">
+      <button class="nav-link" [class.active]="activeTab === 'overview'" (click)="setTab('overview')">Dashboard</button>
+      <button class="nav-link" [class.active]="activeTab === 'events'" (click)="setTab('events')">Manage Events</button>
+      <button class="nav-link" [class.active]="activeTab === 'registrations'" (click)="setTab('registrations')">Registrations</button>
+    </nav>
+
+    <div class="header-actions">
+      <div class="notification-wrapper" *ngIf="showNotifications" (click)="$event.stopPropagation()">
+        <button class="notification-btn" aria-label="Notifications" title="Notifications" (click)="notificationsTriggered.emit()">
+          <span class="material-icons">notifications</span>
+          <span class="notification-badge" *ngIf="unreadNotificationCount > 0">
+            {{ unreadNotificationCount > 99 ? '99+' : unreadNotificationCount }}
+          </span>
+        </button>
+        <div class="notification-dropdown" *ngIf="notificationsOpen">
+          <div class="notification-dropdown-head">
+            <div>
+              <p>Notifications</p>
+              <h3>Campus pulse</h3>
+            </div>
+            <span class="notification-count">{{ notificationCount }}</span>
+          </div>
+
+          <div *ngIf="notificationsLoading" class="notification-dropdown-state">Loading notifications...</div>
+
+          <div class="notification-dropdown-list" *ngIf="!notificationsLoading && notificationCount > 0">
+            <article class="notification-dropdown-card featured" *ngIf="featuredNotification as featured">
+              <span class="notification-icon material-icons">{{ featured.icon || 'notifications_active' }}</span>
+              <div class="notification-copy">
+                <div class="notification-chip-row">
+                  <span class="notification-category">{{ featured.category || 'registration' }}</span>
+                  <span class="notification-time">{{ featured.timeLabel || formatNotificationTime(featured.createdAt) }}</span>
+                </div>
+                <h4>{{ featured.title || 'Notification' }}</h4>
+                <p>{{ featured.message }}</p>
+              </div>
+              <button
+                type="button"
+                class="notification-delete-btn"
+                aria-label="Delete notification"
+                (click)="onDeleteNotification($event, featured.id)"
+              >
+                <span class="material-icons">delete</span>
+              </button>
+            </article>
+
+            <article class="notification-dropdown-card" *ngFor="let item of remainingNotifications">
+              <span class="notification-tone" [attr.data-tone]="item.tone || 'info'"></span>
+              <span class="notification-icon material-icons">{{ item.icon || 'notifications_active' }}</span>
+              <div class="notification-copy">
+                <div class="notification-chip-row">
+                  <span class="notification-category">{{ item.category || 'general' }}</span>
+                  <span class="notification-time">{{ item.timeLabel || formatNotificationTime(item.createdAt) }}</span>
+                </div>
+                <h4>{{ item.title || 'Notification' }}</h4>
+                <p>{{ item.message }}</p>
+              </div>
+              <button
+                type="button"
+                class="notification-delete-btn"
+                aria-label="Delete notification"
+                (click)="onDeleteNotification($event, item.id)"
+              >
+                <span class="material-icons">delete</span>
+              </button>
+            </article>
+          </div>
+
+          <button
+            type="button"
+            class="notification-view-more-btn"
+            *ngIf="showViewMore && !notificationsLoading"
+            (click)="onViewMore($event)"
+          >
+            View All
+          </button>
+
+          <div class="notification-dropdown-state" *ngIf="!notificationsLoading && notificationCount === 0">
+            No notifications right now.
+          </div>
+        </div>
+      </div>
+
+      <button *ngIf="showExport" class="icon-btn" aria-label="Export" title="Export" (click)="exportTriggered.emit()">
+        <span class="material-icons">download</span>
+      </button>
+
+      <a *ngIf="showProfileLink" class="profile-chip profile-chip-link" routerLink="/admin-profile">
+        <div class="profile-chip-avatar-wrap">
+          <img *ngIf="userAvatarUrl" [src]="userAvatarUrl" alt="Profile photo" />
+          <span *ngIf="!userAvatarUrl" class="profile-chip-fallback">{{ avatarText }}</span>
+        </div>
+        <span class="profile-chip-name">{{ userName }}</span>
+      </a>
+
+      <button *ngIf="showLogout" type="button" class="logout-btn" (click)="logoutTriggered.emit()">
+        <span class="material-icons">logout</span>
+        <span>Logout</span>
+      </button>
+    </div>
+  </div>
+</header>

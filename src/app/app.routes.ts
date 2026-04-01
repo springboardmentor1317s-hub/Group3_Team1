@@ -4,7 +4,7 @@ import { Loginpage } from './loginpage/loginpage';
 import { Homepage } from './homepage/homepage';
 // import { StudentDashboardComponent } from './student-dashboard/student-dashboard';
 import { AdminDashboard } from './admin-dashboard/admin-dashboard';
-import { AdminProfile } from './admin-profile/admin-profile';
+import { AdminProfilePageComponent } from './admin-profile/admin-profile-page';
 import { SuperAdminDashboard } from './super-admin-dashboard/super-admin-dashboard';
 import { SignupSuccessComponent } from './signup-success/signup-success.component';
 import { roleGuard } from './role/role';
@@ -32,7 +32,37 @@ export const routes: Routes = [
 
   {
     path: 'admin-profile',
-    component: AdminProfile,
+    component: AdminProfilePageComponent,
+    canActivate: [roleGuard('college_admin')]
+  },
+  {
+    path: 'admin-my-events',
+    loadComponent: () => import('./admin-my-events/admin-my-events.component').then(m => m.AdminMyEventsComponent),
+    canActivate: [roleGuard('college_admin')]
+  },
+  {
+    path: 'admin-my-events/:id',
+    loadComponent: () => import('./admin-event-comments/admin-event-comments.component').then(m => m.AdminEventCommentsComponent),
+    canActivate: [roleGuard('college_admin')]
+  },
+  {
+    path: 'admin-registration-details',
+    loadComponent: () => import('./admin-registration-details/admin-registration-details.component').then(m => m.AdminRegistrationDetailsComponent),
+    canActivate: [roleGuard('college_admin')]
+  },
+  {
+    path: 'admin-old-events',
+    loadComponent: () => import('./admin-old-events/admin-old-events.component').then(m => m.AdminOldEventsComponent),
+    canActivate: [roleGuard('college_admin')]
+  },
+  {
+    path: 'admin-create-event',
+    loadComponent: () => import('./create-event/admin-create-event-page.component').then(m => m.AdminCreateEventPageComponent),
+    canActivate: [roleGuard('college_admin')]
+  },
+  {
+    path: 'admin-attendance-screen',
+    loadComponent: () => import('./admin-attendance-workspace/admin-attendance-workspace.component').then(m => m.AdminAttendanceWorkspaceComponent),
     canActivate: [roleGuard('college_admin')]
   },
 
@@ -77,6 +107,21 @@ export const routes: Routes = [
     loadComponent: () => import('./student-event-details-page/student-event-details-page.component').then(m => m.StudentEventDetailsPageComponent),
     canActivate: [roleGuard('student')]
   },
+  {
+    path: 'student-event-registration/:id',
+    loadComponent: () => import('./student-event-registration-page/student-event-registration-page.component').then(m => m.StudentEventRegistrationPageComponent),
+    canActivate: [roleGuard('student')]
+  },
+  {
+    path: 'student-payment-success',
+    loadComponent: () => import('./student-payment-success/student-payment-success.component').then(m => m.StudentPaymentSuccessComponent),
+    canActivate: [roleGuard('student')]
+  },
+  {
+    path: 'student-payment-failure',
+    loadComponent: () => import('./student-payment-failure/student-payment-failure.component').then(m => m.StudentPaymentFailureComponent),
+    canActivate: [roleGuard('student')]
+  },
 
   {
     path: 'student-registrations',
@@ -94,6 +139,16 @@ export const routes: Routes = [
     path: 'student-feedback',
     loadComponent: () => import('./student-feedback-page/student-feedback-page.component').then(m => m.StudentFeedbackPageComponent),
     canActivate: [roleGuard('student')]
+  },
+  {
+    path: 'student-notifications',
+    loadComponent: () => import('./notification-inbox-page/notification-inbox-page.component').then(m => m.NotificationInboxPageComponent),
+    canActivate: [roleGuard('student')]
+  },
+  {
+    path: 'admin-notifications',
+    loadComponent: () => import('./notification-inbox-page/notification-inbox-page.component').then(m => m.NotificationInboxPageComponent),
+    canActivate: [roleGuard('college_admin')]
   }
 ];
 

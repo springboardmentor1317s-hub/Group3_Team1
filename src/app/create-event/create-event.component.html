@@ -1,39 +1,51 @@
-<div class="backdrop" *ngIf="visible" (click)="close()" role="dialog" aria-modal="true">
-  <div class="dialog" (click)="$event.stopPropagation()">
-    <header class="dialog__header">
+<div
+  *ngIf="isOpen"
+  [class.backdrop]="!isPageMode"
+  [class.page-layout]="isPageMode"
+  (click)="!isPageMode && close()"
+  [attr.role]="isPageMode ? null : 'dialog'"
+  [attr.aria-modal]="isPageMode ? null : 'true'"
+>
+  <div [class.dialog]="!isPageMode" [class.page-surface]="isPageMode" (click)="$event.stopPropagation()">
+    <header class="dialog__header" [class.page-header]="isPageMode">
       <div class="titleBlock">
         <div class="title">{{ isEditMode ? 'Edit Event' : 'Create Event' }}</div>
-        <div class="subtitle">Fill in the details and publish in seconds.</div>
+        <div class="subtitle">
+          {{ isPageMode ? 'Set up a polished event page for your campus in one place.' : 'Fill in the details and publish in seconds.' }}
+        </div>
       </div>
-      <button type="button" class="iconClose" (click)="close()" aria-label="Close">&times;</button>
+      <button *ngIf="!isPageMode" type="button" class="iconClose" (click)="close()" aria-label="Close">&times;</button>
     </header>
 
-    <form class="dialog__body" #createEventForm="ngForm" (ngSubmit)="saveEvent(createEventForm)" novalidate>
-      <section class="poster">
+    <form class="dialog__body" [class.page-body]="isPageMode" #createEventForm="ngForm" (ngSubmit)="saveEvent(createEventForm)" novalidate>
+      <section class="poster" [class.poster--page]="isPageMode">
         <div class="poster__preview" *ngIf="createForm.posterDataUrl; else emptyPoster">
           <img [src]="createForm.posterDataUrl" alt="Event poster preview" />
           <button type="button" class="poster__remove" (click)="removePoster()">Remove</button>
         </div>
         <ng-template #emptyPoster>
           <div class="poster__empty">
-            <div class="poster__icon">🖼️</div>
+            <div class="poster__icon material-icons" aria-hidden="true">image</div>
             <div class="poster__copy">
               <div class="poster__title">Poster</div>
-              <div class="poster__hint">JPG/PNG up to ~1.5MB</div>
+              <div class="poster__hint">JPG or PNG up to 1.5 MB</div>
             </div>
           </div>
         </ng-template>
 
         <label class="poster__upload">
           <input id="eventPoster" type="file" accept="image/*" (change)="onPosterSelected($event)" />
-          <span class="poster__uploadBtn">{{ createForm.posterDataUrl ? 'Change poster' : 'Upload poster' }}</span>
+          <span class="poster__uploadBtn">
+            <span class="material-icons" aria-hidden="true">upload</span>
+            {{ createForm.posterDataUrl ? 'Change poster' : 'Upload poster' }}
+          </span>
         </label>
       </section>
 
       <section class="grid">
         <div class="field span-2">
           <label for="eventName">
-            <span class="field-icon">🎉</span>
+            <span class="field-icon material-icons" aria-hidden="true">celebration</span>
             Event Name <span class="req">*</span>
           </label>
           <input
@@ -53,7 +65,7 @@
         <div class="field-group">
           <div class="field">
             <label for="eventCollege">
-              <span class="field-icon">🏫</span>
+              <span class="field-icon material-icons" aria-hidden="true">apartment</span>
               College Name
             </label>
             <input
@@ -62,11 +74,79 @@
               name="collegeName"
               [(ngModel)]="createForm.collegeName"
               placeholder="Your College Name"
+              readonly
+              aria-readonly="true"
+              class="field-input--locked"
             />
           </div>
           <div class="field">
+            <label for="eventLocation">
+              <span class="field-icon material-icons" aria-hidden="true">place</span>
+              Location <span class="req">*</span>
+            </label>
+            <input
+              id="eventLocation"
+              type="text"
+              name="location"
+              #locationModel="ngModel"
+              [(ngModel)]="createForm.location"
+              placeholder="Main Auditorium, Block A"
+              required
+            />
+            <div class="error" *ngIf="locationModel.invalid && (locationModel.touched || createEventForm.submitted)">
+              Location is required.
+            </div>
+          </div>
+        </div>
+
+        <div class="field-group field-group--triple">
+          <div class="field date-group">
+            <label for="eventStartDate">
+              <span class="field-icon material-icons" aria-hidden="true">calendar_month</span>
+              Event Start Date <span class="req">*</span>
+            </label>
+            <input
+              id="eventStartDate"
+              type="date"
+              name="startDate"
+              #startDateModel="ngModel"
+              [(ngModel)]="createForm.dateTime"
+              required
+            />
+            <div class="error" *ngIf="startDateModel.invalid && (startDateModel.touched || createEventForm.submitted)">
+              Start date is required.
+            </div>
+          </div>
+          <div class="field">
+            <label for="eventStartTime">
+              <span class="field-icon material-icons" aria-hidden="true">schedule</span>
+              Event Start Time <span class="req">*</span>
+            </label>
+            <input
+              id="eventStartTime"
+              type="time"
+              name="startTime"
+              #startTimeModel="ngModel"
+              [(ngModel)]="createForm.startTime"
+              required
+            />
+            <div class="error" *ngIf="startTimeModel.invalid && (startTimeModel.touched || createEventForm.submitted)">
+              Start time is required.
+            </div>
+          </div>
+          <div class="field">
+            <label for="eventEndDate">
+              <span class="field-icon material-icons" aria-hidden="true">event_busy</span>
+              Event End Date (Optional)
+            </label>
+            <input id="eventEndDate" type="date" name="endDate" [(ngModel)]="createForm.endDate" />
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field">
             <label for="eventCategory">
-              <span class="field-icon">📂</span>
+              <span class="field-icon material-icons" aria-hidden="true">category</span>
               Category <span class="req">*</span>
             </label>
             <select
@@ -88,57 +168,9 @@
               Category is required.
             </div>
           </div>
-        </div>
-
-        <div class="field-group">
-          <div class="field">
-            <label for="eventLocation">
-              <span class="field-icon">📍</span>
-              Location <span class="req">*</span>
-            </label>
-            <input
-              id="eventLocation"
-              type="text"
-              name="location"
-              #locationModel="ngModel"
-              [(ngModel)]="createForm.location"
-              placeholder="Main Auditorium, Block A"
-              required
-            />
-            <div class="error" *ngIf="locationModel.invalid && (locationModel.touched || createEventForm.submitted)">
-              Location is required.
-            </div>
-          </div>
-          <div class="field date-group">
-            <label for="eventStartDate">
-              <span class="field-icon">📅</span>
-              Event Start Date <span class="req">*</span>
-            </label>
-            <input
-              id="eventStartDate"
-              type="date"
-              name="startDate"
-              #startDateModel="ngModel"
-              [(ngModel)]="createForm.dateTime"
-              required
-            />
-            <div class="error" *ngIf="startDateModel.invalid && (startDateModel.touched || createEventForm.submitted)">
-              Start date is required.
-            </div>
-          </div>
-        </div>
-
-        <div class="field-group">
-          <div class="field">
-            <label for="eventEndDate">
-              <span class="field-icon">📅</span>
-              Event End Date (Optional)
-            </label>
-            <input id="eventEndDate" type="date" name="endDate" [(ngModel)]="createForm.endDate" />
-          </div>
           <div class="field">
             <label for="eventRegistrationDeadline">
-              <span class="field-icon">⏰</span>
+              <span class="field-icon material-icons" aria-hidden="true">hourglass_top</span>
               Registration Deadline
             </label>
             <input
@@ -153,7 +185,7 @@
         <div class="field-group">
           <div class="field">
             <label for="eventOrganizer">
-              <span class="field-icon">👥</span>
+              <span class="field-icon material-icons" aria-hidden="true">groups</span>
               Organizer
             </label>
             <input
@@ -166,7 +198,7 @@
           </div>
           <div class="field">
             <label for="eventContact">
-              <span class="field-icon">📞</span>
+              <span class="field-icon material-icons" aria-hidden="true">call</span>
               Contact
             </label>
             <input
@@ -179,25 +211,56 @@
           </div>
         </div>
 
-        <div class="field">
-          <label for="eventTeamSize">
-            <span class="field-icon">👥</span>
-            Team Size
-          </label>
-          <input id="eventTeamSize" type="number" name="teamSize" [(ngModel)]="createForm.teamSize" placeholder="4" min="1" />
-        </div>
-         <div class="field">
-          <label for="eventCapacity">
-            <span class="field-icon">👥</span>
-            Event capacity
-          </label>
-          <input id="eventCapacity" type="number" name="maxAttendees" [(ngModel)]="createForm.maxAttendees" placeholder="Example: 100" min="1" />
+        <div class="field-group">
+          <div class="field">
+            <label for="eventTeamSize">
+              <span class="field-icon material-icons" aria-hidden="true">group</span>
+              Team Size (Optional)
+            </label>
+            <input id="eventTeamSize" type="number" name="teamSize" [(ngModel)]="createForm.teamSize" placeholder="Leave blank if not needed" min="1" />
+          </div>
+          <div class="field">
+            <label for="eventCapacity">
+              <span class="field-icon material-icons" aria-hidden="true">groups_2</span>
+              Event Capacity (Optional)
+            </label>
+            <input id="eventCapacity" type="number" name="maxAttendees" [(ngModel)]="createForm.maxAttendees" placeholder="Leave blank for unlimited participation" min="1" />
+            <div class="hint">If left empty, the event will be treated as having unlimited seats.</div>
+          </div>
         </div>
 
+        <div class="field-group">
+          <div class="field">
+            <label for="eventPaymentType">
+              <span class="field-icon material-icons" aria-hidden="true">payments</span>
+              Payment Type
+            </label>
+            <select id="eventPaymentType" name="isPaid" [(ngModel)]="createForm.isPaid">
+              <option [ngValue]="false">Free Event</option>
+              <option [ngValue]="true">Paid Event</option>
+            </select>
+          </div>
+          <div class="field" *ngIf="createForm.isPaid">
+            <label for="eventAmount">
+              <span class="field-icon material-icons" aria-hidden="true">currency_rupee</span>
+              Amount <span class="req">*</span>
+            </label>
+            <input
+              id="eventAmount"
+              type="number"
+              name="amount"
+              [(ngModel)]="createForm.amount"
+              placeholder="Enter event fee"
+              min="1"
+              required
+            />
+            <div class="hint">Shown on student and admin event cards.</div>
+          </div>
+        </div>
 
         <div class="field span-2">
           <label for="eventDescription">
-            <span class="field-icon">📝</span>
+            <span class="field-icon material-icons" aria-hidden="true">notes</span>
             Description
           </label>
           <textarea
@@ -210,9 +273,12 @@
         </div>
       </section>
 
-      <footer class="dialog__footer">
-        <button type="button" class="btn btn--ghost" (click)="close()">Cancel</button>
+      <footer class="dialog__footer" [class.page-footer]="isPageMode">
+        <button type="button" class="btn btn--ghost" (click)="close()">{{ isPageMode ? 'Back' : 'Cancel' }}</button>
         <button type="submit" class="btn btn--primary" [disabled]="isSavingEvent">
           {{ isSavingEvent ? 'Saving...' : (isEditMode ? 'Save changes' : 'Create event') }}
         </button>
-</footer>
+      </footer>
+    </form>
+  </div>
+</div>

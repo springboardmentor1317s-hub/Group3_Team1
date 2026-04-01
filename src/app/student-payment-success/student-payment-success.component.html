@@ -1,0 +1,20 @@
+<section class="payment-result-shell">
+  <article class="payment-card">
+    <h1>Payment Successful</h1>
+    <p>Your payment was verified successfully and your registration is now waiting for admin review.</p>
+
+    <div class="detail-grid">
+      <div><span>Student Name</span><strong>{{ studentName }}</strong></div>
+      <div><span>Event Name</span><strong>{{ eventName }}</strong></div>
+      <div><span>Transaction ID</span><strong>{{ state['payment']?.paymentId || 'Not available' }}</strong></div>
+      <div><span>Order ID</span><strong>{{ state['payment']?.orderId || 'Not available' }}</strong></div>
+      <div><span>Date & Time</span><strong>{{ state['payment']?.verifiedAt || state['payment']?.updatedAt || 'Not available' }}</strong></div>
+      <div><span>Status</span><strong>{{ state['payment']?.status || 'SUCCESS' }}</strong></div>
+    </div>
+
+    <div class="detail-grid">
+      <button type="button" (click)="downloadReceipt()">{{ downloadingReceipt ? 'Preparing PDF...' : 'Download PDF Receipt' }}</button>
+      <button type="button" (click)="backToEvent()">Back To Event</button>
+    </div>
+  </article>
+</section>

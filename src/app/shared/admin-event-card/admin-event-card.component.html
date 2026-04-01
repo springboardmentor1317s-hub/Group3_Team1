@@ -1,0 +1,24 @@
+<article class="admin-event-card">
+  <div class="event-media" [style.background-image]="cardBackground">
+    <span class="status-badge" [class.closed]="statusLabel === 'Closed'">{{ statusLabel }}</span>
+    <span class="seat-pill">{{ event.registrations }}/{{ seatCapacityLabel }} seats</span>
+  </div>
+
+  <div class="event-content">
+    <span class="category-pill">{{ event.category || 'General' }}</span>
+    <h3>{{ event.title }}</h3>
+    <span class="category-pill">{{ event.isPaid ? (event.priceLabel || 'Paid') : 'Free' }}</span>
+    <p>{{ safeDescription }}</p>
+
+    <div class="meta-list">
+      <span><span class="material-icons">calendar_today</span>{{ event.dateLabel }}</span>
+      <span><span class="material-icons">schedule</span>{{ event.timeLabel || 'Time TBA' }}</span>
+      <span><span class="material-icons">event_available</span>Last Registration: {{ registrationDeadlineText }}</span>
+      <span><span class="material-icons">location_on</span>{{ event.location }}</span>
+    </div>
+
+    <div class="card-actions">
+      <button type="button" class="view-btn" (click)="openDetails()">View Details</button>
+    </div>
+  </div>
+</article>

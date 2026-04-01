@@ -20,6 +20,11 @@ const studentQuerySchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  studentCollege: {
+    type: String,
+    default: "",
+    index: true
+  },
   subject: {
     type: String,
     required: true
@@ -38,6 +43,14 @@ const studentQuerySchema = new mongoose.Schema({
     default: "Your query has been received and is waiting for review."
   },
   adminResponse: {
+    type: String,
+    default: ""
+  },
+  adminResponseUpdatedAt: {
+    type: Date,
+    default: null
+  },
+  adminRespondedBy: {
     type: String,
     default: ""
   },

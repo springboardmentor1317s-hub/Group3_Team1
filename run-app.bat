@@ -9,7 +9,7 @@ echo.
 cd /d "%~dp0"
 
 echo [1/3] Starting Backend Server on port 5000...
-start "Backend Server" cmd /k "cd /d "%~dp0backend" && set MONGO_URI=mongodb://127.0.0.1:27017/campus-event-hub && node server.js"
+start "Backend Server" cmd /k "cd /d "%~dp0backend" && node server.js"
 
 timeout /t 3 /nobreak >nul
 

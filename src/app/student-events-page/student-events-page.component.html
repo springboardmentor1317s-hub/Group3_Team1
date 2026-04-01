@@ -7,7 +7,11 @@
     [notifications]="notifications"
     [notificationsLoading]="notificationsLoading"
     [notificationsOpen]="notificationsDropdownOpen"
+    [unseenNotificationCount]="unseenNotificationCount"
+    [showViewMore]="showNotificationViewMore"
     (notificationToggle)="openNotifications($event)"
+    (viewMoreNotifications)="openNotificationsPage()"
+    (notificationDelete)="deleteNotificationFromDropdown($event)"
   />
 
   <main class="events-main">
@@ -49,15 +53,15 @@
       </div>
     </section>
 
-    <section *ngIf="loading" class="state-card">Loading events...</section>
+    <section *ngIf="loading && !hasVisibleEventsData" class="state-card">Loading events...</section>
 
-    <section class="event-grid" *ngIf="!loading && filteredEvents.length > 0">
+    <section class="event-grid" *ngIf="filteredEvents.length > 0">
 
       <div class="event-card-stack" *ngFor="let event of filteredEvents; trackBy: trackById">
         <app-event-card
           [event]="event"
           [registerLabel]="getRegisterLabel(event)"
-          [registerDisabled]="event.status !== 'Open' || isEventCompleted(event) || actionEventId === event.id"
+          [registerDisabled]="isRegisterDisabled(event)"
           [showRegisterButton]="!isEventCompleted(event)"
           [showRatingSummary]="isEventCompleted(event)"
           [ratingAverage]="getEventRatingAverage(event.id)"
@@ -69,9 +73,8 @@
 
     </section>
 
-    <section *ngIf="!loading && filteredEvents.length === 0" class="state-card">
+    <section *ngIf="!loading && !hasVisibleEventsData && filteredEvents.length === 0" class="state-card">
       No events matched the selected filters.
     </section>
   </main>
-  <app-site-footer></app-site-footer>
 </div>

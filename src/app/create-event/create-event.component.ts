@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { EventService, BackendEvent } from '../services/event.service';
 import { finalize, timeout } from 'rxjs';
@@ -8,6 +8,7 @@ export interface CreateEventForm {
   name: string;
   collegeName: string;
   dateTime: string;
+  startTime: string;
   endDate: string;
   registrationDeadline: string;
   location: string;
@@ -16,6 +17,9 @@ export interface CreateEventForm {
   description: string;
   teamSize: number | null;
   maxAttendees: number | null;
+  isPaid: boolean;
+  amount: number | null;
+  currency: string;
   posterDataUrl: string | null;
   category: string;
 }
@@ -29,16 +33,19 @@ export interface CreateEventForm {
   templateUrl: './create-event.component.html',
   styleUrls: ['./create-event.component.css']
 })
-export class CreateEventComponent implements OnInit {
+export class CreateEventComponent implements OnInit, OnChanges {
   @Input() visible = false;
   @Input() editingEvent: BackendEvent | null = null;
+  @Input() mode: 'modal' | 'page' = 'modal';
 
   @Output() visibleChange = new EventEmitter<boolean>();
-@Output() eventSaved = new EventEmitter<BackendEvent>();
+  @Output() eventSaved = new EventEmitter<BackendEvent>();
   @Output() eventDeleted = new EventEmitter<BackendEvent>();
+  @Output() cancelRequested = new EventEmitter<void>();
 
   isEditMode = false;
   isSavingEvent = false;
+  adminCollegeName = '';
   createForm: CreateEventForm = this.getEmptyCreateForm();
 
   constructor(
@@ -46,31 +53,20 @@ export class CreateEventComponent implements OnInit {
     private readonly cdr: ChangeDetectorRef
   ) {}
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    this.initializeFormState();
+  }
 
-  ngOnChanges(): void {
-    if (this.visible) {
-      this.isEditMode = !!this.editingEvent;
-      if (this.editingEvent) {
-        this.createForm = {
-          name: this.editingEvent.name ?? '',
-          collegeName: this.editingEvent.collegeName ?? '',
-          dateTime: this.editingEvent.dateTime ?? '',
-          endDate: this.editingEvent.endDate ?? '',
-          registrationDeadline: this.editingEvent.registrationDeadline ?? '',
-          location: this.editingEvent.location ?? '',
-          organizer: this.editingEvent.organizer ?? '',
-          contact: this.editingEvent.contact ?? '',
-          description: this.editingEvent.description ?? '',
-          teamSize: this.editingEvent.teamSize ?? null,
-          maxAttendees: this.editingEvent.maxAttendees ?? null,
-          posterDataUrl: this.editingEvent.posterDataUrl ?? null,
-          category: this.editingEvent.category ?? ''
-        };
-      } else {
-        this.resetCreateForm();
-      }
-    }
+  get isPageMode(): boolean {
+    return this.mode === 'page';
+  }
+
+  get isOpen(): boolean {
+    return this.isPageMode || this.visible;
+  }
+
+  ngOnChanges(_changes: SimpleChanges): void {
+    this.initializeFormState();
   }
 
   onPosterSelected(event: Event): void {
@@ -118,17 +114,24 @@ export class CreateEventComponent implements OnInit {
 
     const name = this.createForm.name.trim();
     const category = this.createForm.category.trim();
-    const dateTime = this.createForm.dateTime.trim();
+    const startDate = this.createForm.dateTime.trim();
+    const startTime = this.createForm.startTime.trim();
     const location = this.createForm.location.trim();
 
-    if (!name || !category || !dateTime || !location || form?.invalid) {
+    if (!name || !category || !startDate || !startTime || !location || form?.invalid) {
       alert('Please fill all required fields before saving the event.');
+      return;
+    }
+
+    const dateTime = this.combineDateAndTime(startDate, startTime);
+    if (!dateTime) {
+      alert('Please enter a valid event start date and time.');
       return;
     }
 
     const payload: any = {
       name,
-      collegeName: this.createForm.collegeName.trim(),
+      collegeName: this.getLockedCollegeName(),
       dateTime,
       endDate: this.createForm.endDate.trim() || null,
       registrationDeadline: this.createForm.registrationDeadline.trim() || "",
@@ -138,12 +141,29 @@ export class CreateEventComponent implements OnInit {
       description: this.createForm.description.trim(),
       teamSize: this.createForm.teamSize ?? null,
       maxAttendees: this.createForm.maxAttendees ?? null,
+      isPaid: Boolean(this.createForm.isPaid),
+      amount: this.createForm.isPaid ? (this.createForm.amount ?? 0) : 0,
+      currency: String(this.createForm.currency || 'INR').trim() || 'INR',
       posterDataUrl: this.createForm.posterDataUrl,
       category,
       status: 'Active',
       registrations: this.editingEvent?.registrations ?? 0,
       participants: this.editingEvent?.participants ?? 0
     };
+
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    const creatorId = currentUser?.userId || currentUser?.id || currentUser?._id || '';
+    const creatorName = currentUser?.name || '';
+    const creatorEmail = currentUser?.email || '';
+    const creatorCollege = this.resolveAdminCollegeName();
+
+    payload.collegeName = creatorCollege || payload.collegeName;
+    payload.createdBy = creatorName;
+    payload.createdById = creatorId;
+    payload.ownerId = creatorId;
+    payload.adminId = creatorId;
+    payload.userId = creatorId;
+    payload.email = creatorEmail;
 
     this.isSavingEvent = true;
     
@@ -160,6 +180,10 @@ export class CreateEventComponent implements OnInit {
     ).subscribe({
       next: (savedEvent: BackendEvent) => {
         this.eventSaved.emit(savedEvent);
+        if (this.isPageMode) {
+          this.resetCreateForm();
+          return;
+        }
         this.close();
       },
       error: (err: any) => {
@@ -173,6 +197,10 @@ export class CreateEventComponent implements OnInit {
   }
 
   close(): void {
+    if (this.isPageMode) {
+      this.cancelRequested.emit();
+      return;
+    }
     this.visible = false;
     this.visibleChange.emit(false);
     this.resetCreateForm();
@@ -180,6 +208,111 @@ export class CreateEventComponent implements OnInit {
 
   private resetCreateForm(): void {
     this.createForm = this.getEmptyCreateForm();
+    this.applyAdminCollegeName();
+  }
+
+  private initializeFormState(): void {
+    if (!this.isOpen) {
+      return;
+    }
+
+    this.isEditMode = !!this.editingEvent;
+    this.adminCollegeName = this.resolveAdminCollegeName();
+
+    if (this.editingEvent) {
+      this.createForm = this.buildFormFromEvent(this.editingEvent);
+      this.applyAdminCollegeName();
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.resetCreateForm();
+    this.cdr.detectChanges();
+  }
+
+  private buildFormFromEvent(event: BackendEvent): CreateEventForm {
+    return {
+      name: event.name ?? '',
+      collegeName: this.adminCollegeName || event.collegeName || '',
+      dateTime: this.extractDateInputValue(event.dateTime),
+      startTime: this.extractTimeInputValue(event.dateTime),
+      endDate: this.normalizeDateInputValue(event.endDate),
+      registrationDeadline: this.normalizeDateInputValue(event.registrationDeadline),
+      location: event.location ?? '',
+      organizer: event.organizer ?? '',
+      contact: event.contact ?? '',
+      description: event.description ?? '',
+      teamSize: event.teamSize ?? null,
+      maxAttendees: event.maxAttendees ?? null,
+      isPaid: event.isPaid === true,
+      amount: typeof event.amount === 'number' ? event.amount : null,
+      currency: event.currency || 'INR',
+      posterDataUrl: event.posterDataUrl ?? null,
+      category: event.category ?? ''
+    };
+  }
+
+  private normalizeDateInputValue(value: string | null | undefined): string {
+    const raw = String(value || '').trim();
+    if (!raw) {
+      return '';
+    }
+
+    const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(raw);
+    if (dateOnlyMatch) {
+      return `${dateOnlyMatch[1]}-${dateOnlyMatch[2]}-${dateOnlyMatch[3]}`;
+    }
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) {
+      return '';
+    }
+
+    const yyyy = parsed.getFullYear();
+    const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+    const dd = String(parsed.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  private extractDateInputValue(value: string | null | undefined): string {
+    return this.normalizeDateInputValue(value);
+  }
+
+  private extractTimeInputValue(value: string | null | undefined): string {
+    const raw = String(value || '').trim();
+    if (!raw) {
+      return '';
+    }
+
+    const timeMatch = /T(\d{2}):(\d{2})/.exec(raw);
+    if (timeMatch) {
+      return `${timeMatch[1]}:${timeMatch[2]}`;
+    }
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) {
+      return '';
+    }
+
+    const hours = String(parsed.getHours()).padStart(2, '0');
+    const minutes = String(parsed.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+
+  private combineDateAndTime(dateValue: string, timeValue: string): string {
+    const normalizedDate = String(dateValue || '').trim();
+    const normalizedTime = String(timeValue || '').trim();
+    if (!normalizedDate || !normalizedTime) {
+      return '';
+    }
+
+    const combined = `${normalizedDate}T${normalizedTime}`;
+    const parsed = new Date(combined);
+    if (Number.isNaN(parsed.getTime())) {
+      return '';
+    }
+
+    return combined;
   }
 
   private getEmptyCreateForm(): CreateEventForm {
@@ -187,6 +320,7 @@ export class CreateEventComponent implements OnInit {
       name: '',
       collegeName: '',
       dateTime: '',
+      startTime: '',
       endDate: '',
       registrationDeadline: '',
       location: '',
@@ -195,9 +329,31 @@ export class CreateEventComponent implements OnInit {
       description: '',
       teamSize: null,
       maxAttendees: null,
+      isPaid: false,
+      amount: null,
+      currency: 'INR',
       posterDataUrl: null,
       category: ''
     };
+  }
+
+  private applyAdminCollegeName(): void {
+    const lockedCollegeName = this.getLockedCollegeName();
+    this.createForm.collegeName = lockedCollegeName;
+  }
+
+  private getLockedCollegeName(): string {
+    return (this.adminCollegeName || this.createForm.collegeName || '').trim();
+  }
+
+  private resolveAdminCollegeName(): string {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    return String(
+      currentUser?.college ||
+      currentUser?.collegeName ||
+      this.editingEvent?.collegeName ||
+      ''
+    ).trim();
   }
 }
 

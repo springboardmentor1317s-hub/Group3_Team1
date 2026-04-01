@@ -1,13 +1,23 @@
 const User = require("../models/User");
 const StudentProfileDetails = require("../models/StudentProfileDetails");
+const AdminProfileDetails = require("../models/AdminProfileDetails");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const Event = require("../models/Event");
 const Registration = require("../models/Registration");
+const StudentQuery = require("../models/StudentQuery");
+const { buildReplyNotificationsForUser } = require("./eventCommentController");
 const { buildMergedStudentProfile } = require("../utils/studentProfile");
+const { buildMergedAdminProfile, ensureAdminProfileDetails } = require("../utils/adminProfile");
+const { getNotificationsForUser } = require("../services/notificationService");
 
 function normalizeText(value) {
   return String(value || "").trim().toLowerCase();
+}
+
+function isAdminRole(role) {
+  const normalized = normalizeText(role);
+  return normalized === "college_admin" || normalized === "admin";
 }
 
 function isValidEmail(value) {
@@ -43,13 +53,20 @@ function buildNotification(id, title, message, tone, createdAt, icon, category) 
   };
 }
 
+function normalizeRegistrationStatus(status) {
+  const normalized = String(status || "").trim().toUpperCase();
+  if (normalized === "APPROVED") return "APPROVED";
+  if (normalized === "REJECTED") return "REJECTED";
+  return "PENDING";
+}
+
 function determineEventStatus(event, isRegistered) {
-  const maxAttendees = event.maxAttendees || event.participants || 100;
+  const maxAttendees = event.maxAttendees ?? null;
   const registrations = event.registrations || 0;
 
   if (event.status === "Past") return "Closed";
   if (isRegistered) return "Registered";
-  if (registrations >= maxAttendees) return "Full";
+  if (typeof maxAttendees === "number" && maxAttendees > 0 && registrations >= maxAttendees) return "Full";
   return "Open";
 }
 
@@ -75,13 +92,14 @@ function mapDashboardEvent(event, registeredSet) {
     contact: event.contact || "Contact admin",
     status: determineEventStatus(event, isRegistered),
     registrations: event.registrations || 0,
-    maxAttendees: event.maxAttendees || event.participants || 100,
+    maxAttendees: event.maxAttendees ?? null,
     collegeName: event.collegeName || "Campus Event Hub"
   };
 }
 
 function mapRegistration(registration, event) {
   const eventDate = event?.dateTime ? new Date(event.dateTime) : null;
+  const normalizedStatus = normalizeRegistrationStatus(registration.status);
 
   return {
     id: String(registration._id),
@@ -91,7 +109,7 @@ function mapRegistration(registration, event) {
     studentName: registration.studentName,
     email: registration.email,
     college: registration.college,
-    status: registration.status,
+    status: normalizedStatus,
     rejectionReason: registration.rejectionReason || "",
     approvedAt: registration.approvedAt || null,
     rejectedAt: registration.rejectedAt || null,
@@ -109,7 +127,7 @@ function mapRegistration(registration, event) {
       posterDataUrl: event.posterDataUrl || null,
       status: event.status,
       registrations: event.registrations || 0,
-      maxAttendees: event.maxAttendees || event.participants || 100,
+      maxAttendees: event.maxAttendees ?? null,
       dateLabel: eventDate && !Number.isNaN(eventDate.getTime())
         ? eventDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
         : event?.dateTime || ""
@@ -117,7 +135,7 @@ function mapRegistration(registration, event) {
   };
 }
 
-function buildStudentNotifications(user, registrations, events, eventMap, approvedCount, pendingCount) {
+function buildStudentNotifications(user, registrations, events, eventMap, approvedCount, pendingCount, supportQueries = [], commentReplyNotifications = []) {
   const notifications = [];
   const userCollege = normalizeText(user.college);
   const now = Date.now();
@@ -135,10 +153,11 @@ function buildStudentNotifications(user, registrations, events, eventMap, approv
   );
 
   registrations.forEach((registration) => {
+    const normalizedStatus = normalizeRegistrationStatus(registration.status);
     const event = eventMap.get(String(registration.eventId));
     const eventName = registration.eventName || event?.name || "your event";
 
-    if (registration.status === "APPROVED") {
+    if (normalizedStatus === "APPROVED") {
       notifications.push(
         buildNotification(
           `registration-approved-${registration._id}`,
@@ -153,7 +172,7 @@ function buildStudentNotifications(user, registrations, events, eventMap, approv
       return;
     }
 
-    if (registration.status === "REJECTED") {
+    if (normalizedStatus === "REJECTED") {
       notifications.push(
         buildNotification(
           `registration-rejected-${registration._id}`,
@@ -211,17 +230,55 @@ function buildStudentNotifications(user, registrations, events, eventMap, approv
       );
     });
 
-  return notifications
+  (supportQueries || [])
+    .filter((query) => !query.deletedAt)
+    .forEach((query) => {
+      if (query.adminResponse && query.adminResponseUpdatedAt) {
+        notifications.push(
+          buildNotification(
+            `query-reply-${query._id}`,
+            "Reply on your query",
+            query.subject
+              ? `Admin replied to your query: ${query.subject}`
+              : "Admin replied to your support query.",
+            "info",
+            query.adminResponseUpdatedAt,
+            "support_agent",
+            "approval"
+          )
+        );
+      }
+
+      if (query.status === "RESOLVED") {
+        notifications.push(
+          buildNotification(
+            `query-resolved-${query._id}`,
+            "Query resolved",
+            query.subject
+              ? `Your query has been marked resolved: ${query.subject}`
+              : "Your support query has been marked resolved.",
+            "success",
+            query.updatedAt || query.adminResponseUpdatedAt || query.createdAt,
+            "task_alt",
+            "approval"
+          )
+        );
+      }
+    });
+
+  return [...notifications, ...(commentReplyNotifications || [])]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 12);
 }
 
 async function buildStudentDashboardPayload(userId) {
-  const [user, details, events, registrations] = await Promise.all([
+  const [user, details, events, registrations, supportQueries, commentReplyNotifications] = await Promise.all([
     User.findById(userId).select("-password"),
     StudentProfileDetails.findOne({ user: userId }).lean(),
     Event.find().sort({ createdAt: -1 }),
-    Registration.find({ studentId: String(userId) }).sort({ createdAt: -1 })
+    Registration.find({ studentId: String(userId) }).sort({ createdAt: -1 }),
+    StudentQuery.find({ student: userId, deletedAt: null }).sort({ updatedAt: -1 }).limit(10).lean(),
+    buildReplyNotificationsForUser(userId, 12)
   ]);
 
   if (!user) {
@@ -251,14 +308,18 @@ async function buildStudentDashboardPayload(userId) {
   });
 
   const eventMap = new Map(enrichedEvents.map((event) => [String(event._id), event]));
-  const registeredSet = new Set(registrations.filter((item) => item.status !== "REJECTED").map((item) => String(item.eventId)));
+  const registeredSet = new Set(
+    registrations
+      .filter((item) => normalizeRegistrationStatus(item.status) !== "REJECTED")
+      .map((item) => String(item.eventId))
+  );
 
   const dashboardEvents = enrichedEvents.map((event) => mapDashboardEvent(event, registeredSet));
   const dashboardRegistrations = registrations.map((registration) => mapRegistration(registration, eventMap.get(String(registration.eventId))));
-  const approvedCount = registrations.filter((item) => item.status === "APPROVED").length;
-  const pendingCount = registrations.filter((item) => item.status === "PENDING").length;
+  const approvedCount = registrations.filter((item) => normalizeRegistrationStatus(item.status) === "APPROVED").length;
+  const pendingCount = registrations.filter((item) => normalizeRegistrationStatus(item.status) === "PENDING").length;
 
-  const notifications = buildStudentNotifications(user, registrations, enrichedEvents, eventMap, approvedCount, pendingCount);
+  const notificationsResponse = await getNotificationsForUser(userId, { page: 1, limit: 15 });
 
   return {
     profile: buildMergedStudentProfile(user, details),
@@ -269,7 +330,7 @@ async function buildStudentDashboardPayload(userId) {
       myRegistrations: registrations.length,
       approvedEntries: approvedCount
     },
-    notifications
+    notifications: notificationsResponse.items
   };
 }
 
@@ -367,6 +428,12 @@ exports.signup = async (req, res) => {
         userId: user.userId,
         email: user.email
       });
+    } else if (isAdminRole(normalizedRole)) {
+      await AdminProfileDetails.create({
+        user: user._id,
+        userId: user.userId,
+        email: user.email
+      });
     }
 
     res.status(201).json({ message: "User registered successfully" });
@@ -416,12 +483,16 @@ exports.login = async (req, res) => {
     }
 
     const normalizedRole = (user.role || "").toLowerCase();
-    const isCollegeAdmin = normalizedRole === "college_admin" || normalizedRole === "admin";
+    const isCollegeAdmin = isAdminRole(normalizedRole);
     const approvalStatus = user.adminApprovalStatus || "pending";
     const details = normalizedRole === "student"
       ? await StudentProfileDetails.findOne({ user: user._id }).lean()
-      : null;
-    const mergedProfile = buildMergedStudentProfile(user, details);
+      : isCollegeAdmin
+        ? await ensureAdminProfileDetails(user)
+        : null;
+    const mergedProfile = normalizedRole === "student"
+      ? buildMergedStudentProfile(user, details)
+      : buildMergedAdminProfile(user, details);
 
     if (isCollegeAdmin && approvalStatus === "pending") {
       return res.status(403).json({
@@ -452,7 +523,7 @@ exports.login = async (req, res) => {
       email: user.email,
       college: user.college,
       profileImageUrl: user.profileImageUrl || "",
-      profileCompleted: normalizedRole === "student" ? mergedProfile.profileCompleted : true,
+      profileCompleted: Boolean(mergedProfile?.profileCompleted),
       adminApprovalStatus: user.adminApprovalStatus || "approved",
       adminRejectionReason: user.adminRejectionReason || ""
     });
@@ -465,12 +536,17 @@ exports.login = async (req, res) => {
 exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
-    const details = await StudentProfileDetails.findOne({ user: req.user.id }).lean();
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
+    if (isAdminRole(user.role)) {
+      const details = await ensureAdminProfileDetails(user);
+      return res.json(buildMergedAdminProfile(user, details));
+    }
+
+    const details = await StudentProfileDetails.findOne({ user: req.user.id }).lean();
     res.json(buildMergedStudentProfile(user, details));
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch profile" });

@@ -9,8 +9,8 @@ import {
   StudentNotificationItem,
   StudentRegistrationRecord
 } from '../services/student-dashboard.service';
-import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
+import { NotificationService } from '../services/notification.service';
 
 interface EventRatingRow {
   eventId: string;
@@ -23,7 +23,7 @@ interface EventRatingRow {
 @Component({
   selector: 'app-student-feedback-page',
   standalone: true,
-  imports: [CommonModule, RouterModule, StudentHeaderComponent, SiteFooterComponent],
+  imports: [CommonModule, RouterModule, StudentHeaderComponent],
   templateUrl: './student-feedback-page.component.html',
   styleUrls: ['./student-feedback-page.component.scss']
 })
@@ -37,6 +37,8 @@ export class StudentFeedbackPageComponent implements OnInit, OnDestroy {
   notifications: StudentNotificationItem[] = [];
   notificationsLoading = true;
   notificationsDropdownOpen = false;
+  unseenNotificationCount = 0;
+  showNotificationViewMore = true;
   private feedbackRefreshTimer: ReturnType<typeof setInterval> | null = null;
   private focusedEventId = '';
   private hasLoadedOnce = false;
@@ -46,7 +48,8 @@ export class StudentFeedbackPageComponent implements OnInit, OnDestroy {
     private auth: Auth,
     private router: Router,
     private route: ActivatedRoute,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -87,6 +90,26 @@ export class StudentFeedbackPageComponent implements OnInit, OnDestroy {
     this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
   }
 
+  openNotificationsPage(): void {
+    this.notificationsDropdownOpen = false;
+    this.router.navigate(['/student-notifications']);
+  }
+
+  deleteNotificationFromDropdown(id: string): void {
+    if (!id) {
+      return;
+    }
+
+    this.notificationService.deleteNotification(id).subscribe({
+      next: () => {
+        this.notifications = this.notifications.filter((item) => item.id !== id);
+        this.unseenNotificationCount = this.notifications.length;
+        this.cdr.detectChanges();
+      },
+      error: () => void 0
+    });
+  }
+
   logout(): void {
     this.auth.logout();
     this.router.navigate(['/login']);
@@ -124,8 +147,7 @@ export class StudentFeedbackPageComponent implements OnInit, OnDestroy {
 
     this.studentDashboardService.refreshDashboardSnapshot().subscribe({
       next: (snapshot) => {
-        this.notifications = snapshot.notifications || [];
-        this.notificationsLoading = false;
+        this.loadNotifications();
 
         const events = snapshot.events || [];
         const attendedIds = this.buildAttendedEventIds(snapshot.registrations || []);
@@ -221,8 +243,11 @@ export class StudentFeedbackPageComponent implements OnInit, OnDestroy {
     const snapshot = this.studentDashboardService.getCachedSnapshot();
     if (!snapshot) return;
 
-    this.notifications = snapshot.notifications || [];
-    this.notificationsLoading = false;
+    const cached = this.notificationService.getCachedDropdownState();
+    this.notifications = (cached.items.length ? cached.items : snapshot.notifications || []) as StudentNotificationItem[];
+    this.unseenNotificationCount = cached.unseenCount;
+    this.showNotificationViewMore = cached.hasMore;
+    this.notificationsLoading = this.notifications.length === 0;
 
     const events = snapshot.events || [];
     const attendedIds = this.buildAttendedEventIds(snapshot.registrations || []);
@@ -284,6 +309,20 @@ export class StudentFeedbackPageComponent implements OnInit, OnDestroy {
       this.refreshFeedback(!this.hasLoadedOnce);
     }, 12000);
   }
+
+  private loadNotifications(): void {
+    this.notificationService.getDropdownNotifications(15).subscribe({
+      next: (state) => {
+        this.notifications = state.items as StudentNotificationItem[];
+        this.unseenNotificationCount = state.unseenCount;
+        this.showNotificationViewMore = state.hasMore;
+        this.notificationsLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => void 0
+    });
+  }
+
 
   private reorderRowsByFocus(): void {
     if (!this.ratingRows.length) return;

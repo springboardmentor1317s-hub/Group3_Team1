@@ -5,12 +5,11 @@ import { Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
 import { AuthService } from '../auth.service';
 import { StudentDashboardService } from '../services/student-dashboard.service';
-import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 
 @Component({
   selector: 'app-loginpage',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './loginpage.html',
   styleUrls: ['./loginpage.css']
 })
@@ -20,6 +19,8 @@ export class Loginpage {
   isLoggingIn = false;
   popupMessage = '';
   isPopupOpen = false;
+  private pendingRouteAfterPopup: string | null = null;
+  private pendingQueryParamsAfterPopup: Record<string, string> | null = null;
   user = {
     email: '',
     password: '',
@@ -63,6 +64,13 @@ export class Loginpage {
 
   closePopup(): void {
     this.isPopupOpen = false;
+    if (this.pendingRouteAfterPopup) {
+      const route = this.pendingRouteAfterPopup;
+      const queryParams = this.pendingQueryParamsAfterPopup || undefined;
+      this.pendingRouteAfterPopup = null;
+      this.pendingQueryParamsAfterPopup = null;
+      this.router.navigate([route], queryParams ? { queryParams } : undefined);
+    }
   }
 
   private openPopup(message: string): void {
@@ -106,9 +114,7 @@ export class Loginpage {
       return;
     } 
 
-  const payload: any = { identifier: this.user.email, password: this.user.password };
-
-  this.authService.login(payload).subscribe({
+  this.authService.login({ identifier: this.user.email, password: this.user.password }).subscribe({
     next: (res: any) => {
       console.log('Login Success', res);
 
@@ -141,6 +147,12 @@ localStorage.setItem('role', res.role);
       // navigate
       if (res.role === 'admin' || res.role === 'college_admin') {
         this.isLoggingIn = false;
+        if (res.profileCompleted === false) {
+          this.pendingRouteAfterPopup = '/admin-profile';
+          this.pendingQueryParamsAfterPopup = { requireProfileUpdate: '1' };
+          this.openPopup('Please complete your admin profile first. Dashboard access will be enabled after profile completion.');
+          return;
+        }
         this.router.navigate(['/admin-dashboard']);
       } else if (res.role === 'super_admin') {
         this.isLoggingIn = false;
@@ -153,10 +165,10 @@ localStorage.setItem('role', res.role);
             this.router.navigate(['/student-dashboard']);
           },
           error: (dashboardError) => {
+            console.error('Student dashboard preload failed', dashboardError);
             this.isLoggingIn = false;
-            this.errorMessage = dashboardError?.error?.message || 'Student dashboard data load nahi hua. Please try again.';
-            this.openPopup(this.errorMessage);
-            this.cdr.detectChanges();
+            this.errorMessage = '';
+            this.router.navigate(['/student-dashboard']);
           }
         });
       }

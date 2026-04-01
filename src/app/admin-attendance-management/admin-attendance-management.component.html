@@ -1,0 +1,163 @@
+<section class="panel attendance-panel">
+  <div class="attendance-hero">
+    <div class="attendance-hero-copy">
+      <p class="eyebrow">Attendance Management</p>
+      <h2>Track Today Events And Approved Students</h2>
+      <p>Use the actions below to open today's event cards and manage approved student attendance flow.</p>
+    </div>
+  </div>
+
+  <div class="attendance-top-actions">
+    <button type="button" class="flow-btn primary" (click)="showTodayEventsSection()">
+      <span class="material-icons">today</span>
+      <span>Show Today's Events in Card Layout</span>
+    </button>
+    <button type="button" class="flow-btn secondary" (click)="openAttendanceScannerPage()">
+      <span class="material-icons">how_to_reg</span>
+      <span>Click Event to Open Attendance Screen</span>
+    </button>
+  </div>
+
+  <p class="flow-notice" *ngIf="notificationMessage" [attr.data-tone]="notificationTone">
+    {{ notificationMessage }}
+  </p>
+
+  <p class="error-text" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+  <div class="loading-card" *ngIf="loadingEvents && showEvents">Loading today's events...</div>
+
+  <div class="event-grid" *ngIf="showEvents && !loadingEvents && hasTodayEvents" #eventsCardSection>
+    <article
+      class="event-card"
+      *ngFor="let event of events"
+      [class.active]="selectedEvent?.eventId === event.eventId"
+      (click)="openAttendanceScreen(event)"
+    >
+      <h3>{{ event.eventName }}</h3>
+      <p><span class="material-icons">event</span>{{ event.eventDateTime | date:'medium' }}</p>
+      <p><span class="material-icons">location_on</span>{{ event.eventLocation }}</p>
+      <div class="event-pill-row">
+        <span>Present {{ event.presentCount }}</span>
+        <span>Total {{ event.approvedCount }}</span>
+      </div>
+    </article>
+  </div>
+
+  <p class="selection-hint" *ngIf="showEvents && hasTodayEvents && !showAttendanceScreen">
+    Click an event card to open the approved students list for that event.
+  </p>
+
+  <div class="empty-state compact" *ngIf="showEvents && !loadingEvents && !hasTodayEvents">
+    <span class="material-icons">event_busy</span>
+    <h3>No events available for today</h3>
+    <p>Today's event cards will appear here automatically.</p>
+  </div>
+
+  <div class="attendance-workspace" *ngIf="showAttendanceScreen && selectedEvent" #attendanceWorkspace>
+    <section class="split-card left-panel">
+      <div class="split-head">
+        <h3>Approved Students</h3>
+        <p>{{ presentCount }} / {{ totalCount }} Present</p>
+      </div>
+
+      <div class="list-actions">
+        <button
+          type="button"
+          class="list-action-btn primary"
+          [disabled]="!selectedEvent || generatingEventId === selectedEvent.eventId"
+          (click)="generateForSelectedEvent()"
+        >
+          {{ generatingEventId === selectedEvent.eventId ? 'Generating...' : 'Generate Admit Card For All Approved Student' }}
+        </button>
+        <button
+          type="button"
+          class="list-action-btn secondary"
+          [disabled]="!selectedEvent || distributionActionInProgress"
+          (click)="distributeForSelectedEvent()"
+        >
+          {{ distributionActionInProgress ? 'Updating...' : 'Distributed All Approved Student' }}
+        </button>
+        <button
+          type="button"
+          class="list-action-btn accent"
+          [disabled]="!selectedEvent || certificateGenerationEventId === selectedEvent.eventId || !roster?.certificateTemplate?.hasSignature"
+          (click)="generateCertificatesForSelectedEvent()"
+        >
+          {{ certificateGenerationEventId === selectedEvent.eventId ? 'Generating...' : 'Generate Certificate For Present Students' }}
+        </button>
+      </div>
+
+      <div class="certificate-template-card" *ngIf="selectedEvent">
+        <div class="certificate-template-head">
+          <div>
+            <h4>Certificate Signature & Branding</h4>
+            <p>Upload the authorized signature first. Certificates will be generated only for students marked present.</p>
+          </div>
+          <span class="template-status" [class.ready]="roster?.certificateTemplate?.hasSignature">
+            {{ roster?.certificateTemplate?.hasSignature ? 'Signature Ready' : 'Signature Missing' }}
+          </span>
+        </div>
+
+        <div class="certificate-template-grid">
+          <label>
+            <span>Organization Name</span>
+            <input type="text" [(ngModel)]="certificateOrganizationName" placeholder="Campus Event Hub">
+          </label>
+          <label>
+            <span>Signer Name</span>
+            <input type="text" [(ngModel)]="certificateSignerName" placeholder="Authorized person">
+          </label>
+          <label>
+            <span>Signer Title</span>
+            <input type="text" [(ngModel)]="certificateSignerTitle" placeholder="Authorized Signature">
+          </label>
+          <label class="signature-upload-field">
+            <span>Upload Signature</span>
+            <input type="file" accept="image/*" (change)="onCertificateSignatureSelected($event)">
+          </label>
+        </div>
+
+        <p class="signature-file-name" *ngIf="certificateSignatureFileName || roster?.certificateTemplate?.hasSignature">
+          {{ certificateSignatureUploading ? 'Uploading signature...' : (certificateSignatureFileName || 'Signature already uploaded for this event.') }}
+        </p>
+
+        <button
+          type="button"
+          class="list-action-btn accent template-save-btn"
+          [disabled]="certificateSignatureUploading"
+          (click)="saveCertificateTemplateDetails()"
+        >
+          {{ certificateSignatureUploading ? 'Saving Template...' : 'Save Certificate Template' }}
+        </button>
+      </div>
+
+      <div class="loading-card" *ngIf="loadingRoster">Loading approved students...</div>
+
+      <div class="student-list" *ngIf="!loadingRoster && roster">
+        <article class="student-item" *ngFor="let student of roster.students">
+          <div class="student-main">
+            <strong>{{ student.studentName }}</strong>
+            <small>ID: {{ student.studentId }}</small>
+            <small *ngIf="student.cardCode">Card: {{ student.cardCode }}</small>
+          </div>
+          <div class="student-item-actions">
+            <span class="student-status" [class]="getStudentStatusClass(student.status)">
+              {{ student.status === 'PRESENT' ? 'Present' : 'Pending' }}
+            </span>
+            <span class="student-certificate-chip" [class.ready]="student.certificateGenerated">
+              {{ student.certificateGenerated ? 'Certificate Ready' : 'No Certificate' }}
+            </span>
+            <button
+              type="button"
+              class="student-card-btn"
+              [disabled]="previewingStudentCardKey === ((selectedEvent.eventId || '') + ':' + student.studentId)"
+              (click)="previewStudentCard(student.studentId, student.studentName)"
+            >
+              {{ previewingStudentCardKey === ((selectedEvent.eventId || '') + ':' + student.studentId) ? 'Opening...' : 'View ID Card' }}
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+</section>

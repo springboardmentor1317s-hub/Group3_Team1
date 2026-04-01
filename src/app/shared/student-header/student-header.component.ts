@@ -3,7 +3,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { Router } from '@angular/router';
 import { Auth } from '../../auth/auth';
 
-export type StudentHeaderTab = 'dashboard' | 'events' | 'registrations' | 'feedback' | 'profile';
+export type StudentHeaderTab = 'dashboard' | 'events' | 'registrations' | 'feedback' | 'query' | 'profile';
 export type StudentHeaderNotificationMode = 'route' | 'dropdown';
 
 export interface StudentHeaderNotification {
@@ -31,8 +31,12 @@ export class StudentHeaderComponent {
   @Input() notifications: StudentHeaderNotification[] = [];
   @Input() notificationsLoading = false;
   @Input() notificationsOpen = false;
+  @Input() unseenNotificationCount = 0;
+  @Input() showViewMore = false;
 
   @Output() notificationToggle = new EventEmitter<Event | undefined>();
+  @Output() viewMoreNotifications = new EventEmitter<void>();
+  @Output() notificationDelete = new EventEmitter<string>();
 
   constructor(
     private router: Router,
@@ -41,6 +45,10 @@ export class StudentHeaderComponent {
 
   get notificationCount(): number {
     return this.notifications.length;
+  }
+
+  get badgeCount(): number {
+    return Math.max(0, Number(this.unseenNotificationCount || 0));
   }
 
   get headerInitials(): string {
@@ -65,7 +73,11 @@ export class StudentHeaderComponent {
     return this.notifications.slice(1);
   }
 
-  navigate(tab: 'dashboard' | 'events' | 'registrations' | 'feedback'): void {
+  get shouldShowViewAllButton(): boolean {
+    return this.showViewMore && !this.notificationsLoading;
+  }
+
+  navigate(tab: 'dashboard' | 'events' | 'registrations' | 'feedback' | 'query'): void {
     if (tab === 'dashboard') {
       if (this.activeTab === 'dashboard') {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -85,7 +97,12 @@ export class StudentHeaderComponent {
       return;
     }
 
-    this.router.navigate(['/student-feedback']);
+    if (tab === 'feedback') {
+      this.router.navigate(['/student-feedback']);
+      return;
+    }
+
+    this.router.navigate(['/new-student-dashboard'], { fragment: 'query-section' });
   }
 
   openProfile(): void {
@@ -103,6 +120,19 @@ export class StudentHeaderComponent {
     }
 
     this.router.navigate(['/new-student-dashboard'], { fragment: 'notifications-section' });
+  }
+
+  onViewMore(event?: Event): void {
+    event?.stopPropagation();
+    this.viewMoreNotifications.emit();
+  }
+
+  onDeleteNotification(event: Event, id: string): void {
+    event.stopPropagation();
+    if (!id) {
+      return;
+    }
+    this.notificationDelete.emit(id);
   }
 
   logout(): void {

@@ -20,10 +20,19 @@ export interface BackendEvent {
   status: 'Active' | 'Draft' | 'Past';
   registrations: number;
   participants: number;
-  maxAttendees?: number;
+  maxAttendees?: number | null;
+  isPaid?: boolean;
+  amount?: number;
+  currency?: string;
   attendeeIds?: string[];
   registered?: boolean;
   collegeName?: string;
+  createdBy?: string;
+  createdById?: string;
+  ownerId?: string;
+  adminId?: string;
+  userId?: string;
+  email?: string;
 }
 
 @Injectable({
@@ -53,6 +62,24 @@ export class EventService {
           .filter((event) => event.registered === true)
           .map((event) => String(event.id));
         this.saveRegistrations(registeredIds);
+      })
+    );
+  }
+
+  fetchMyEvents(): Observable<BackendEvent[]> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.get<BackendEvent[]>(`${this.apiUrl}/events/mine`, { headers }).pipe(
+      tap((events) => {
+        this.eventsSubject.next(events || []);
+      })
+    );
+  }
+
+  fetchCollegeEvents(): Observable<BackendEvent[]> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.get<BackendEvent[]>(`${this.apiUrl}/events/college`, { headers }).pipe(
+      tap((events) => {
+        this.eventsSubject.next(events || []);
       })
     );
   }
@@ -169,7 +196,10 @@ export class EventService {
   convertToFrontendEvent(backendEvent: BackendEvent): any {
     const dateObj = backendEvent.dateTime ? new Date(backendEvent.dateTime) : null;
     const isRegistered = backendEvent.registered === true;
-    const isFull = (backendEvent.registrations || 0) >= (backendEvent.maxAttendees || backendEvent.participants || 100);
+    const capacity = backendEvent.maxAttendees ?? null;
+    const isFull = typeof capacity === 'number' && capacity > 0
+      ? (backendEvent.registrations || 0) >= capacity
+      : false;
 
     let status: 'Open' | 'Registered' | 'Full' | 'Closed' = 'Open';
     if (backendEvent.status === 'Past') {
@@ -185,10 +215,17 @@ export class EventService {
       title: backendEvent.name,
       date: dateObj ? dateObj.toISOString().split('T')[0] : '',
       time: dateObj ? dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+      dateLabel: dateObj ? dateObj.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }) : '',
+      timeLabel: dateObj ? dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Time TBA',
+      dateTime: backendEvent.dateTime,
       location: backendEvent.location,
       category: backendEvent.category || this.determineCategory(backendEvent.name, backendEvent.description || ''),
       attendees: backendEvent.registrations || 0,
-      maxAttendees: backendEvent.maxAttendees || backendEvent.participants || 100,
+      maxAttendees: backendEvent.maxAttendees ?? null,
+      isPaid: backendEvent.isPaid === true,
+      amount: Number(backendEvent.amount || 0),
+      currency: backendEvent.currency || 'INR',
+      priceLabel: backendEvent.isPaid ? `${backendEvent.currency || 'INR'} ${Number(backendEvent.amount || 0).toFixed(2)}` : 'Free',
       status,
       description: backendEvent.description,
       registered: isRegistered,

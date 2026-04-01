@@ -1,0 +1,208 @@
+<section class="panel queries-panel">
+  <header class="queries-header">
+    <p class="section-kicker">Student Support Desk</p>
+    <h2>Query Management Center</h2>
+    <p class="header-subtitle">Track student concerns, update their status, and send clear responses from one clean workflow.</p>
+    <div class="college-badge">
+      <span class="material-icons">school</span>
+      <span>{{ displayCollegeName }}</span>
+    </div>
+  </header>
+
+  <div class="query-stats" *ngIf="!loading">
+    <div class="stat-pill">
+      <span>Total</span>
+      <strong>{{ totalQueries }}</strong>
+    </div>
+    <div class="stat-pill" data-tone="open">
+      <span>Open</span>
+      <strong>{{ openQueries }}</strong>
+    </div>
+    <div class="stat-pill" data-tone="progress">
+      <span>In Progress</span>
+      <strong>{{ inProgressQueries }}</strong>
+    </div>
+    <div class="stat-pill" data-tone="resolved">
+      <span>Resolved</span>
+      <strong>{{ resolvedQueries }}</strong>
+    </div>
+    <div class="stat-pill" data-tone="escalated">
+      <span>Escalated</span>
+      <strong>{{ escalatedQueries }}</strong>
+    </div>
+  </div>
+
+  <p class="error-text" *ngIf="errorMessage">{{ errorMessage }}</p>
+  <div class="loading-card" *ngIf="loading">Loading student queries...</div>
+
+  <ng-container *ngIf="!loading && hasQueries; else noQueries">
+    <div class="table-toolbar">
+      <label class="toolbar-control search-control">
+        <span class="material-icons">search</span>
+        <input
+          type="text"
+          [(ngModel)]="searchTerm"
+          (ngModelChange)="onFilterChange()"
+          placeholder="Search by student, email, subject or college"
+        >
+      </label>
+
+      <label class="toolbar-control">
+        <span>Status</span>
+        <select [(ngModel)]="statusFilter" (ngModelChange)="onFilterChange()">
+          <option value="ALL">All Status</option>
+          <option value="OPEN">Open</option>
+          <option value="IN_PROGRESS">In Progress</option>
+          <option value="RESOLVED">Resolved</option>
+        </select>
+      </label>
+
+      <label class="toolbar-control">
+        <span>Type</span>
+        <select [(ngModel)]="escalationFilter" (ngModelChange)="onFilterChange()">
+          <option value="ALL">All Queries</option>
+          <option value="ESCALATED">Escalated</option>
+          <option value="NORMAL">Normal</option>
+        </select>
+      </label>
+
+    </div>
+
+    <div class="table-shell">
+      <div class="table-scroll">
+        <table class="query-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Email</th>
+              <th>College</th>
+              <th>Subject</th>
+              <th>Status</th>
+              <th>Escalation</th>
+              <th>Updated</th>
+              <th class="actions-col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let query of pagedQueries; trackBy: trackByQueryId"
+              [class.selected-row]="isSelected(query.id)"
+              (click)="selectQuery(query)"
+            >
+              <td>
+                <div class="student-cell">
+                  <span class="avatar">{{ getInitials(query.studentName) }}</span>
+                  <button
+                    type="button"
+                    class="name-link"
+                    (click)="selectQuery(query); $event.stopPropagation()"
+                  >
+                    {{ query.studentName }}
+                  </button>
+                </div>
+              </td>
+              <td>{{ query.studentEmail }}</td>
+              <td>{{ displayStudentCollege(query) }}</td>
+              <td class="subject-cell">{{ query.subject }}</td>
+              <td>
+                <span class="status-pill-table" [attr.data-tone]="getStatusTone(query.status)">
+                  {{ formatStatus(query.status) }}
+                </span>
+              </td>
+              <td>
+                <span class="escalation-badge" [class.active]="query.escalationRequested">
+                  {{ query.escalationRequested ? 'Escalated' : 'Normal' }}
+                </span>
+              </td>
+              <td>{{ query.updatedAt | date:'mediumDate' }}</td>
+              <td class="actions-col">
+                <button type="button" class="action-btn" (click)="selectQuery(query); $event.stopPropagation()">Reply</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-footer">
+        <p>Showing {{ filteredQueries.length }} queries</p>
+      </div>
+    </div>
+
+    <article class="reply-panel" *ngIf="selectedQuery as activeQuery">
+      <div class="reply-panel-head">
+        <div>
+          <h3>{{ activeQuery.subject }}</h3>
+          <p>
+            <strong>{{ activeQuery.studentName }}</strong>
+            <span class="dot">&bull;</span>
+            {{ activeQuery.studentEmail }}
+          </p>
+        </div>
+        <span class="status-pill-table" [attr.data-tone]="getStatusTone(activeQuery.status)">
+          {{ formatStatus(activeQuery.status) }}
+        </span>
+      </div>
+
+      <p class="student-message">{{ activeQuery.message }}</p>
+
+      <form class="reply-form" (ngSubmit)="saveReply(activeQuery)" [class.disabled]="savingQueryId && savingQueryId !== activeQuery.id">
+        <label>
+          <span>Reply to Student</span>
+          <textarea
+            rows="4"
+            [(ngModel)]="draftFor(activeQuery).adminResponse"
+            [ngModelOptions]="{ standalone: true }"
+            placeholder="Write a clear and helpful response for the student..."
+            [disabled]="!!savingQueryId && savingQueryId !== activeQuery.id"
+          ></textarea>
+        </label>
+
+        <div class="reply-grid">
+          <label>
+            <span>Status</span>
+            <select
+              [(ngModel)]="draftFor(activeQuery).status"
+              [ngModelOptions]="{ standalone: true }"
+              [disabled]="!!savingQueryId && savingQueryId !== activeQuery.id"
+            >
+              <option *ngFor="let status of statusOptions" [value]="status">{{ formatStatus(status) }}</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Progress Note</span>
+            <input
+              type="text"
+              [(ngModel)]="draftFor(activeQuery).progressNote"
+              [ngModelOptions]="{ standalone: true }"
+              placeholder="Add a short progress note"
+              [disabled]="!!savingQueryId && savingQueryId !== activeQuery.id"
+            >
+          </label>
+        </div>
+
+        <button
+          type="submit"
+          class="solid-btn premium-reply-btn"
+          [disabled]="!!savingQueryId && savingQueryId !== activeQuery.id"
+        >
+          {{ savingQueryId === activeQuery.id ? 'Sending Reply...' : 'Send Reply' }}
+        </button>
+      </form>
+    </article>
+
+    <div class="select-hint" *ngIf="!selectedQuery">
+      <span class="material-icons">touch_app</span>
+      <p>Click a student name to open the query details and reply section.</p>
+    </div>
+  </ng-container>
+
+  <ng-template #noQueries>
+    <div class="empty-state compact" *ngIf="!loading">
+      <span class="material-icons">contact_support</span>
+      <h3>No student queries yet</h3>
+      <p>New student queries will appear here as soon as they are submitted.</p>
+    </div>
+  </ng-template>
+</section>
+

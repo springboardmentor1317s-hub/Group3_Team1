@@ -1,10 +1,9 @@
 
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
-import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 import { EventCardComponent } from '../shared/event-card/event-card.component';
 import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
 import { timeout } from 'rxjs';
@@ -12,20 +11,24 @@ import {
   StudentDashboardService,
   StudentEventCard,
   StudentNotificationItem,
-  StudentEventReview
+  StudentEventReview,
+  StudentRegistrationRecord
 } from '../services/student-dashboard.service';
+import { NotificationService } from '../services/notification.service';
 
 
 @Component({
   selector: 'app-student-events-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, EventCardComponent, StudentHeaderComponent],
+  imports: [CommonModule, FormsModule, RouterModule, EventCardComponent, StudentHeaderComponent],
   templateUrl: './student-events-page.component.html',
   styleUrls: ['./student-events-page.component.scss']
 })
 export class StudentEventsPageComponent implements OnInit, OnDestroy {
+  private static readonly DROPDOWN_NOTIFICATION_LIMIT = 7;
   events: StudentEventCard[] = [];
   filteredEvents: StudentEventCard[] = [];
+  registrations: StudentRegistrationRecord[] = [];
   notifications: StudentNotificationItem[] = [];
   categories: string[] = ['All'];
   colleges: string[] = ['All'];
@@ -36,7 +39,8 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
   loading = true;
   notificationsLoading = true;
   notificationsDropdownOpen = false;
-  actionEventId = '';
+  unseenNotificationCount = 0;
+  showNotificationViewMore = true;
   errorMessage = '';
   eventRatingSummaryByEventId: Record<string, { average: number; count: number }> = {};
   expandedEventIds = new Set<string>();
@@ -50,7 +54,10 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
     private studentDashboardService: StudentDashboardService,
     private auth: Auth,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private cdr: ChangeDetectorRef,
+    private zone: NgZone,
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -61,6 +68,7 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
 
     this.prefillFromCache();
     this.loadEvents();
+    this.loadRegistrationStatuses();
     this.loadNotifications();
     this.startNotificationsRefresh();
     this.startRatingsRefresh();
@@ -92,21 +100,34 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
     ).trim();
   }
 
+  get hasVisibleEventsData(): boolean {
+    return this.events.length > 0 || this.filteredEvents.length > 0;
+  }
+
   loadEvents(): void {
     this.errorMessage = '';
 
-    this.studentDashboardService.getEvents().subscribe({
+    this.studentDashboardService.getEvents().pipe(
+      timeout(9000)
+    ).subscribe({
       next: (events) => {
-        this.setEvents(events);
-        this.loading = false;
-        setTimeout(() => this.scrollToFocusedEvent(), 0);
+        this.zone.run(() => {
+          this.setEvents(events);
+          this.loading = false;
+          this.flushView();
+          setTimeout(() => this.scrollToFocusedEvent(), 0);
+        });
       },
       error: (error) => {
-        this.setEvents(this.studentDashboardService.getCachedEvents());
-        this.loading = false;
-        if (!this.events.length) {
-          this.errorMessage = error?.error?.message || 'Unable to load events right now.';
-        }
+        this.zone.run(() => {
+          this.prefillFromCache();
+          this.setEvents(this.studentDashboardService.getCachedEvents());
+          this.loading = false;
+          if (!this.events.length) {
+            this.errorMessage = error?.error?.message || 'Unable to load events right now.';
+          }
+          this.flushView();
+        });
       }
     });
   }
@@ -138,20 +159,17 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
   }
 
   registerForEvent(event: StudentEventCard): void {
-    if (event.status !== 'Open' || this.isEventExpired(event)) {
+    if (this.isRegisterDisabled(event)) {
       return;
     }
 
-    this.actionEventId = event.id;
-    this.studentDashboardService.registerForEvent(event.id).subscribe({
-      next: () => {
-        this.actionEventId = '';
-        this.loading = true;
-        this.loadEvents();
-      },
-      error: (error) => {
-        this.actionEventId = '';
-        this.errorMessage = error?.error?.error || error?.error?.message || 'Registration failed. Please try again.';
+    const registration = this.studentDashboardService
+      .getCachedRegistrations()
+      .find((item) => item.eventId === event.id) || null;
+    this.router.navigate(['/student-event-registration', event.id], {
+      state: {
+        event,
+        registration
       }
     });
   }
@@ -180,6 +198,26 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
     this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
   }
 
+  openNotificationsPage(): void {
+    this.notificationsDropdownOpen = false;
+    this.router.navigate(['/student-notifications']);
+  }
+
+  deleteNotificationFromDropdown(id: string): void {
+    if (!id) {
+      return;
+    }
+
+    this.notificationService.deleteNotification(id).subscribe({
+      next: () => {
+        this.notifications = this.notifications.filter((item) => item.id !== id);
+        this.unseenNotificationCount = this.notifications.length;
+        this.flushView();
+      },
+      error: () => void 0
+    });
+  }
+
   logout(): void {
     this.auth.logout();
     this.router.navigate(['/login']);
@@ -187,14 +225,21 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
 
   getRegisterLabel(event: StudentEventCard): string {
     const normalizedStatus = String(event.status || '').toLowerCase();
+    const registration = this.getRegistrationForEvent(event.id);
+    if (registration?.status === 'APPROVED') {
+      return 'Approved';
+    }
+    if (registration?.status === 'PENDING') {
+      return 'Under Review';
+    }
+    if (this.hasRejectedRegistration(event.id)) {
+      return 'Update & Resubmit';
+    }
     if (this.isEventExpired(event)) {
       return 'Event Closed';
     }
     if (normalizedStatus === 'registered') {
       return 'Registered';
-    }
-    if (this.actionEventId === event.id) {
-      return 'Joining...';
     }
     if (normalizedStatus === 'full') {
       return 'Full';
@@ -203,6 +248,28 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
       return 'Closed';
     }
     return 'Register Now';
+  }
+
+  hasRejectedRegistration(eventId: string): boolean {
+    return this.getRegistrationForEvent(eventId)?.status === 'REJECTED';
+  }
+
+  isRegisterDisabled(event: StudentEventCard): boolean {
+    if (this.isEventExpired(event)) {
+      return true;
+    }
+
+    const normalizedStatus = String(event.status || '').toLowerCase();
+    if (normalizedStatus === 'closed' || normalizedStatus === 'full') {
+      return true;
+    }
+
+    const registration = this.getRegistrationForEvent(event.id);
+    if (registration && registration.status !== 'REJECTED') {
+      return true;
+    }
+
+    return false;
   }
 
   isEventCompleted(event: StudentEventCard): boolean {
@@ -247,17 +314,25 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
 
   private prefillFromCache(): void {
     const cachedEvents = this.studentDashboardService.getCachedEvents();
+    const cachedRegistrations = this.studentDashboardService.getCachedRegistrations();
     const cachedNotifications = this.studentDashboardService.getCachedNotifications();
+    const cachedDropdownState = this.notificationService.getCachedDropdownState();
 
     if (cachedEvents.length) {
       this.setEvents(cachedEvents);
       this.loading = false;
     }
 
-    if (cachedNotifications.length) {
-      this.notifications = cachedNotifications;
-      this.notificationsLoading = false;
+    if (cachedRegistrations.length) {
+      this.registrations = cachedRegistrations;
     }
+
+    this.notifications = (cachedDropdownState.items.length ? cachedDropdownState.items : cachedNotifications) as StudentNotificationItem[];
+    this.unseenNotificationCount = cachedDropdownState.unseenCount;
+    this.showNotificationViewMore = true;
+    this.notificationsLoading = this.notifications.length === 0;
+
+    this.flushView();
   }
 
   private setEvents(events: StudentEventCard[]): void {
@@ -266,6 +341,7 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
     this.colleges = ['All', ...Array.from(new Set(this.events.map((event) => event.collegeName).filter(Boolean)))];
     this.applyFilters();
     this.loadVisibleEventRatingSummaries(this.events, true);
+    this.flushView();
   }
 
   private loadVisibleEventRatingSummaries(sourceEvents: StudentEventCard[] = this.filteredEvents, forceRefresh = false): void {
@@ -362,24 +438,54 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
   private loadNotifications(): void {
     this.notificationsLoading = true;
 
-    this.studentDashboardService.refreshDashboardSnapshot().subscribe({
-      next: (snapshot) => {
-        this.notifications = snapshot.notifications || [];
+    this.notificationService.getDropdownNotifications(StudentEventsPageComponent.DROPDOWN_NOTIFICATION_LIMIT).subscribe({
+      next: (state) => {
+        this.notifications = state.items as StudentNotificationItem[];
+        this.unseenNotificationCount = state.unseenCount;
+        this.showNotificationViewMore = true;
         this.notificationsLoading = false;
+        this.flushView();
       },
       error: () => {
-        this.notifications = this.studentDashboardService.getCachedNotifications();
+        const cached = this.notificationService.getCachedDropdownState();
+        this.notifications = cached.items as StudentNotificationItem[];
+        this.unseenNotificationCount = cached.unseenCount;
+        this.showNotificationViewMore = true;
         this.notificationsLoading = false;
+        this.flushView();
       }
     });
   }
 
+  private loadRegistrationStatuses(): void {
+    this.studentDashboardService.fetchLatestRegistrations().pipe(
+      timeout(9000)
+    ).subscribe({
+      next: (registrations) => {
+        this.registrations = registrations || [];
+      },
+      error: () => {
+        this.registrations = this.studentDashboardService.getCachedRegistrations();
+      }
+    });
+  }
+
+  private getRegistrationForEvent(eventId: string): StudentRegistrationRecord | null {
+    const source = this.registrations.length
+      ? this.registrations
+      : this.studentDashboardService.getCachedRegistrations();
+    return source.find((item) => item.eventId === eventId) || null;
+  }
+
   private startNotificationsRefresh(): void {
     this.notificationsRefreshTimer = setInterval(() => {
-      this.studentDashboardService.refreshDashboardSnapshot().subscribe({
-        next: (snapshot) => {
-          this.notifications = snapshot.notifications || [];
+      this.notificationService.getDropdownNotifications(StudentEventsPageComponent.DROPDOWN_NOTIFICATION_LIMIT).subscribe({
+        next: (state) => {
+          this.notifications = state.items as StudentNotificationItem[];
+          this.unseenNotificationCount = state.unseenCount;
+          this.showNotificationViewMore = true;
           this.notificationsLoading = false;
+          this.flushView();
         },
         error: () => void 0
       });
@@ -390,5 +496,9 @@ export class StudentEventsPageComponent implements OnInit, OnDestroy {
     this.ratingRefreshTimer = setInterval(() => {
       this.loadVisibleEventRatingSummaries(this.filteredEvents, true);
     }, 8000);
+  }
+
+  private flushView(): void {
+    this.cdr.detectChanges();
   }
 }

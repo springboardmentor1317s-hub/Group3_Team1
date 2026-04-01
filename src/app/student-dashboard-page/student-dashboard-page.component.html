@@ -1,13 +1,17 @@
 <div class="student-shell">
   <app-student-header
-    activeTab="dashboard"
+    [activeTab]="activeHeaderTab"
     [studentName]="studentName"
     [studentPhotoUrl]="profilePhotoUrl"
     notificationMode="dropdown"
     [notifications]="notifications"
     [notificationsLoading]="notificationsLoading"
     [notificationsOpen]="notificationsDropdownOpen"
+    [unseenNotificationCount]="unseenNotificationCount"
+    [showViewMore]="showNotificationViewMore"
     (notificationToggle)="openNotifications($event)"
+    (viewMoreNotifications)="openNotificationsPage()"
+    (notificationDelete)="deleteNotificationFromDropdown($event)"
   />
 
   <main class="dashboard-main">
@@ -87,14 +91,14 @@
         </div>
       </div>
 
-      <div *ngIf="loading" class="loading-card">Loading events and registrations...</div>
+      <div *ngIf="loading && !hasVisibleEventsData" class="loading-card">Loading events and registrations...</div>
 
-      <div class="event-grid" *ngIf="!loading && displayedEvents.length > 0">
+      <div class="event-grid" *ngIf="displayedEvents.length > 0">
         <div class="event-card-stack" *ngFor="let event of displayedEvents; trackBy: trackById">
           <app-event-card
             [event]="event"
             [registerLabel]="getRegisterLabel(event)"
-            [registerDisabled]="event.status !== 'Open' || isEventCompleted(event) || actionEventId === event.id"
+            [registerDisabled]="isRegisterDisabled(event)"
             [showRegisterButton]="!shouldShowRating(event)"
             [showRatingSummary]="isEventCompleted(event)"
             [ratingAverage]="getEventRatingAverage(event.id)"
@@ -107,7 +111,7 @@
         </div>
       </div>
 
-      <div *ngIf="!loading && filteredEvents.length === 0" class="empty-state">
+      <div *ngIf="!loading && !hasVisibleEventsData && filteredEvents.length === 0" class="empty-state">
         <span class="material-icons">event_busy</span>
         <h3>No events found</h3>
         <p>Try changing your search, category, or date filters.</p>
@@ -122,9 +126,9 @@
         <button type="button" class="view-all-btn" (click)="openRegistrationsPage()">Open Full Page</button>
       </div>
 
-      <div *ngIf="registrationsLoading" class="loading-card">Loading your registrations summary...</div>
+      <div *ngIf="registrationsLoading && !hasVisibleRegistrationsData" class="loading-card">Loading your registrations summary...</div>
 
-      <div class="registrations-spotlight" *ngIf="!registrationsLoading">
+      <div class="registrations-spotlight" *ngIf="!registrationsLoading || hasVisibleRegistrationsData">
         <article class="registration-summary-card">
           <span class="summary-icon material-icons">inventory_2</span>
           <div>
@@ -150,7 +154,7 @@
         </article>
       </div>
 
-      <div class="registrations-cta" *ngIf="!registrationsLoading">
+      <div class="registrations-cta" *ngIf="!registrationsLoading || hasVisibleRegistrationsData">
         <div>
           <p class="section-kicker">Dedicated Registrations Hub</p>
           <h3>Use the new page for filters, status tracking, and full registration history.</h3>
@@ -160,7 +164,9 @@
       </div>
     </section>
 
-    <section class="panel feedback-panel" id="feedback-section">
+    <app-student-admit-cards-panel></app-student-admit-cards-panel>
+
+    <section class="panel feedback-panel" id="query-section">
       <div class="panel-head">
         <div>
           <p class="section-kicker">Student Support Desk</p>
@@ -219,11 +225,15 @@
             <div>
               <h3>Current Query Status</h3>
               <p *ngIf="supportQuery">Live database-backed status for your latest active query.</p>
-              <p *ngIf="!supportQuery && latestResolvedSupportQuery">No active query right now. Your last resolved query is shown below.</p>
+              <p *ngIf="!supportQuery && latestResolvedSupportQuery">No active query right now. Your latest query is marked as solved below.</p>
               <p *ngIf="!supportQuery && !latestResolvedSupportQuery">No query submitted yet. Your first query will appear here after you send it.</p>
             </div>
-            <span class="status-pill-table" *ngIf="supportQuery" [attr.data-tone]="supportQuery.status === 'RESOLVED' ? 'approved' : supportQuery.status === 'IN_PROGRESS' ? 'pending' : 'pending'">
-              {{ getSupportQueryStatusLabel(supportQuery.status) }}
+            <span
+              class="status-pill-table"
+              *ngIf="supportQuery || latestResolvedSupportQuery"
+              [attr.data-tone]="getSupportQueryStatusTone((supportQuery || latestResolvedSupportQuery)!.status)"
+            >
+              {{ getSupportQueryStatusLabel((supportQuery || latestResolvedSupportQuery)!.status) }}
             </span>
           </div>
 
@@ -270,14 +280,19 @@
           <ng-template #resolvedQueryPreview>
             <div class="query-thread" *ngIf="latestResolvedSupportQuery as resolvedQuery">
               <article class="query-bubble student">
-                <span class="query-bubble-label">Last Resolved Query</span>
+                <span class="query-bubble-label">Last Query</span>
                 <strong>{{ resolvedQuery.subject }}</strong>
                 <p>{{ resolvedQuery.message }}</p>
               </article>
-              <article class="query-bubble admin">
-                <span class="query-bubble-label">Resolution</span>
-                <p>{{ resolvedQuery.adminResponse || resolvedQuery.progressNote || 'Marked as resolved.' }}</p>
+              <article class="query-bubble system">
+                <span class="query-bubble-label">System Status</span>
+                <strong>{{ getSupportQueryStatusLabel(resolvedQuery.status) }}</strong>
+                <p>{{ resolvedQuery.progressNote || 'Your query was resolved successfully.' }}</p>
                 <small>Updated {{ resolvedQuery.updatedAt | date:'medium' }}</small>
+              </article>
+              <article class="query-bubble admin">
+                <span class="query-bubble-label">Admin Reply</span>
+                <p>{{ resolvedQuery.adminResponse || resolvedQuery.progressNote || 'Marked as resolved.' }}</p>
               </article>
             </div>
           </ng-template>
@@ -285,5 +300,4 @@
       </div>
     </section>
   </main>
-  <app-site-footer></app-site-footer>
 </div>

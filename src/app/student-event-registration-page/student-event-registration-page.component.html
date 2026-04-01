@@ -1,0 +1,260 @@
+<div class="student-registration-shell">
+  <app-student-header
+    activeTab="events"
+    [studentName]="studentName"
+    [studentPhotoUrl]="profilePhotoUrl"
+  />
+
+  <main class="registration-main">
+    <p *ngIf="errorMessage" class="banner error-banner">{{ errorMessage }}</p>
+    <p *ngIf="successMessage" class="banner success-banner">{{ successMessage }}</p>
+    <section *ngIf="loading" class="state-card">Loading registration form...</section>
+
+    <ng-container *ngIf="!loading && event as details">
+      <section class="hero-card">
+        <div class="hero-copy">
+          <p class="eyebrow">Student Registration Form</p>
+          <h1>{{ pageTitle }}</h1>
+          <p>Review your profile, update anything missing, and {{ isPaidEvent ? 'complete payment before the registration goes to admin review.' : 'submit it for college admin approval.' }}</p>
+        </div>
+
+        <div class="hero-side">
+          <div class="hero-chip">{{ details.category || 'Campus Event' }}</div>
+          <div class="hero-chip">{{ isPaidEvent ? (details.priceLabel || 'Paid Event') : 'Free Event' }}</div>
+        </div>
+      </section>
+
+      <section class="status-card" *ngIf="registration">
+        <div class="status-header">
+          <div>
+            <p class="eyebrow">Registration Status</p>
+            <h2>{{ registration.eventName }}</h2>
+          </div>
+          <span
+            class="status-pill"
+            [class.pending]="isPending"
+            [class.approved]="isApproved"
+            [class.rejected]="isRejected"
+          >
+            {{ registration.status }}
+          </span>
+        </div>
+
+        <p *ngIf="isPending">Your registration is currently under admin review. You can check this page again after the admin updates the status.</p>
+        <p *ngIf="isApproved">Your registration has been approved. You are already registered for this event.</p>
+        <div class="rejection-note" *ngIf="isRejected">
+          <strong>Reason For Rejection</strong>
+          <span>{{ registration.rejectionReason || 'Please update your details and submit again for review.' }}</span>
+        </div>
+      </section>
+
+      <form class="registration-form-card" (ngSubmit)="submitRegistration()">
+        <div class="form-head">
+          <div class="form-head-copy">
+            <p class="eyebrow">Profile Review</p>
+            <h2>Your Registration Details</h2>
+            <p class="form-head-description">These details come from your student profile and can be updated here before submission.</p>
+          </div>
+          <button type="button" class="back-btn subtle-back" (click)="goBack()">Back</button>
+        </div>
+
+        <section class="form-section">
+          <div class="section-title">
+            <h3>Basic Details</h3>
+            <span>Keep your identity and contact details accurate.</span>
+          </div>
+          <div class="form-grid two-column">
+            <label class="field">
+              <span>Full Name</span>
+              <input type="text" [(ngModel)]="form.name" name="name" [disabled]="!canEditForm">
+            </label>
+            <label class="field">
+              <span>Email</span>
+              <input type="email" [(ngModel)]="form.email" name="email" [disabled]="!canEditForm">
+            </label>
+            <label class="field">
+              <span>College</span>
+              <input type="text" [(ngModel)]="form.college" name="college" disabled>
+            </label>
+            <label class="field">
+              <span>Phone Number</span>
+              <input type="text" [(ngModel)]="form.phone" name="phone" [disabled]="!canEditForm">
+            </label>
+            <label class="field">
+              <span>Parent Phone</span>
+              <input type="text" [(ngModel)]="form.parentPhone" name="parentPhone" [disabled]="!canEditForm">
+            </label>
+            <label class="field">
+              <span>Gender</span>
+              <select [(ngModel)]="form.gender" name="gender" [disabled]="!canEditForm">
+                <option value="">Select gender</option>
+                <option *ngFor="let option of genderOptions" [value]="option">{{ option }}</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Date Of Birth</span>
+              <input type="date" [(ngModel)]="form.dateOfBirth" name="dateOfBirth" [disabled]="!canEditForm">
+            </label>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <div class="section-title">
+            <h3>Academic Details</h3>
+            <span>These details are shown to the college admin during review.</span>
+          </div>
+          <div class="form-grid two-column">
+            <label class="field">
+              <span>Current Class / Program</span>
+              <select [(ngModel)]="form.currentClass" name="currentClass" [disabled]="!canEditForm">
+                <option value="">Select program</option>
+                <option *ngFor="let option of programOptions" [value]="option">{{ option }}</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Department</span>
+              <select [(ngModel)]="form.department" name="department" [disabled]="!canEditForm">
+                <option value="">Select department</option>
+                <option *ngFor="let option of departmentOptions" [value]="option">{{ option }}</option>
+              </select>
+            </label>
+            <label class="field" *ngIf="form.department === 'Other'">
+              <span>Other Department</span>
+              <input type="text" [(ngModel)]="form.departmentOther" name="departmentOther" [disabled]="!canEditForm">
+            </label>
+            <label class="field">
+              <span>Semester</span>
+              <select [(ngModel)]="form.semester" name="semester" [disabled]="!canEditForm">
+                <option value="">Select semester</option>
+                <option *ngFor="let option of semesterOptions" [value]="option">{{ option }}</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Current CGPA</span>
+              <input type="text" [(ngModel)]="form.currentCgpa" name="currentCgpa" [disabled]="!canEditForm">
+            </label>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <div class="section-title">
+            <h3>Permanent Address</h3>
+            <span>Use your latest residential details.</span>
+          </div>
+          <div class="form-grid two-column">
+            <label class="field">
+              <span>State</span>
+              <select [(ngModel)]="form.permanentState" name="permanentState" (ngModelChange)="onPermanentStateChange()" [disabled]="!canEditForm">
+                <option value="">Select state</option>
+                <option *ngFor="let option of stateOptions" [value]="option">{{ option }}</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>District</span>
+              <select [(ngModel)]="form.permanentDistrict" name="permanentDistrict" [disabled]="!canEditForm">
+                <option value="">Select district</option>
+                <option *ngFor="let option of permanentDistrictOptions" [value]="option">{{ option }}</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>City</span>
+              <input type="text" [(ngModel)]="form.permanentCity" name="permanentCity" [disabled]="!canEditForm">
+            </label>
+            <label class="field">
+              <span>Pincode</span>
+              <input type="text" [(ngModel)]="form.permanentPincode" name="permanentPincode" [disabled]="!canEditForm">
+            </label>
+            <label class="field field-wide">
+              <span>Address Line</span>
+              <textarea rows="3" [(ngModel)]="form.permanentAddressLine" name="permanentAddressLine" [disabled]="!canEditForm"></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <div class="section-title">
+            <h3>Current Address</h3>
+            <span>Keep this updated so admins can verify your active location.</span>
+          </div>
+
+          <label class="check-row" *ngIf="canEditForm">
+            <input type="checkbox" [(ngModel)]="form.currentSameAsPermanent" name="currentSameAsPermanent" (ngModelChange)="syncCurrentAddress()">
+            <span>Current address is the same as permanent address.</span>
+          </label>
+
+          <div class="form-grid two-column">
+            <label class="field">
+              <span>State</span>
+              <select [(ngModel)]="form.currentState" name="currentState" (ngModelChange)="onCurrentStateChange()" [disabled]="!canEditForm">
+                <option value="">Select state</option>
+                <option *ngFor="let option of stateOptions" [value]="option">{{ option }}</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>District</span>
+              <select [(ngModel)]="form.currentDistrict" name="currentDistrict" [disabled]="!canEditForm">
+                <option value="">Select district</option>
+                <option *ngFor="let option of currentDistrictOptions" [value]="option">{{ option }}</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>City</span>
+              <input type="text" [(ngModel)]="form.currentCity" name="currentCity" [disabled]="!canEditForm">
+            </label>
+            <label class="field">
+              <span>Pincode</span>
+              <input type="text" [(ngModel)]="form.currentPincode" name="currentPincode" [disabled]="!canEditForm">
+            </label>
+            <label class="field field-wide">
+              <span>Address Line</span>
+              <textarea rows="3" [(ngModel)]="form.currentAddressLine" name="currentAddressLine" [disabled]="!canEditForm"></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <div class="section-title">
+            <h3>Payment Details</h3>
+            <span>{{ isPaidEvent ? 'This event requires payment before admin review.' : 'No payment is required for this event.' }}</span>
+          </div>
+          <div class="form-grid two-column">
+            <label class="field">
+              <span>Event Type</span>
+              <input type="text" [value]="isPaidEvent ? 'PAID' : 'FREE'" disabled>
+            </label>
+            <label class="field">
+              <span>Payable Amount</span>
+              <input type="text" [value]="details.priceLabel || 'Free'" disabled>
+            </label>
+          </div>
+        </section>
+
+        <section class="submit-card">
+          <label class="check-row" *ngIf="canEditForm">
+            <input type="checkbox" [(ngModel)]="confirmChecked" name="confirmChecked">
+            <span class="check-copy">
+              <strong>I checked every detail carefully.</strong>
+              <small>I understand that incorrect details are my responsibility, paid registrations are non-refundable, and final payment confirmation depends on backend verification.</small>
+            </span>
+          </label>
+
+          <div class="submit-actions">
+            <button type="button" class="back-btn subtle-back" (click)="goBack()">Cancel</button>
+            <button type="submit" class="submit-btn" [disabled]="!canSubmit">
+              {{ submitLabel }}
+            </button>
+          </div>
+        </section>
+      </form>
+    </ng-container>
+  </main>
+
+  <div class="popup-backdrop" *ngIf="successPopupOpen" (click)="closeSuccessPopup()">
+    <div class="popup-card" (click)="$event.stopPropagation()" role="alertdialog" aria-modal="true" aria-labelledby="registration-success-title">
+      <h3 id="registration-success-title">{{ popupTitle }}</h3>
+      <p>{{ popupMessage }}</p>
+      <button type="button" class="popup-btn" (click)="closeSuccessPopup()">OK</button>
+    </div>
+  </div>
+
+</div>

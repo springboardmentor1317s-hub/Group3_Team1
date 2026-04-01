@@ -1,0 +1,46 @@
+
+> campus-event-hub@0.0.0 start
+> ng serve --proxy-config proxy.conf.json --host 127.0.0.1
+
+[33m>[39m Building...
+[32m√[39m Building...
+[1mInitial chunk files[22m[2m | [22m[1mNames[22m                                    [2m | [22m [1mRaw size[22m
+[32mmain.js[39m            [2m | [22m[2mmain[22m                                     [2m | [22m  [36m1.19 MB[39m[2m | [22m
+[32mchunk-C37W5FAH.js[39m  [2m | [22m[2m-[22m                                        [2m | [22m [36m58.77 kB[39m[2m | [22m
+[32mchunk-GFGR2OOB.js[39m  [2m | [22m[2m-[22m                                        [2m | [22m [36m51.68 kB[39m[2m | [22m
+[32mchunk-JTK7NQAP.js[39m  [2m | [22m[2m-[22m                                        [2m | [22m [36m35.45 kB[39m[2m | [22m
+[32mchunk-R2QDUOAO.js[39m  [2m | [22m[2m-[22m                                        [2m | [22m [36m18.45 kB[39m[2m | [22m
+[32mstyles.css[39m         [2m | [22m[2mstyles[22m                                   [2m | [22m [36m11.91 kB[39m[2m | [22m
+[32mchunk-7PPYZACU.js[39m  [2m | [22m[2m-[22m                                        [2m | [22m  [36m5.55 kB[39m[2m | [22m
+[32mchunk-MBGYIWQP.js[39m  [2m | [22m[2m-[22m                                        [2m | [22m  [36m5.42 kB[39m[2m | [22m
+[32mchunk-L7OZSOHX.js[39m  [2m | [22m[2m-[22m                                        [2m | [22m  [36m5.07 kB[39m[2m | [22m
+[32mchunk-3UQMFCYE.js[39m  [2m | [22m[2m-[22m                                        [2m | [22m  [36m4.70 kB[39m[2m | [22m
+[32mchunk-EKRNV3IS.js[39m  [2m | [22m[2m-[22m                                        [2m | [22m  [36m4.52 kB[39m[2m | [22m
+[32mchunk-73NTBZFN.js[39m  [2m | [22m[2m-[22m                                        [2m | [22m  [36m2.73 kB[39m[2m | [22m
+[32mchunk-CZJLB7T5.js[39m  [2m | [22m[2m-[22m                                        [2m | [22m  [36m1.08 kB[39m[2m | [22m
+
+[1m [22m                  [2m | [22m[1mInitial total[22m                            [2m | [22m  [1m1.40 MB[22m
+
+[1mLazy chunk files[22m   [2m | [22m[1mNames[22m                                    [2m | [22m [1mRaw size[22m
+[32mchunk-3YI7ORO5.js[39m  [2m | [22m[2mstudent-dashboard-page-component[22m         [2m | [22m[36m250.44 kB[39m[2m | [22m
+[32mchunk-CVOQIDQO.js[39m  [2m | [22m[2mstudent-profile-page-component[22m           [2m | [22m[36m211.06 kB[39m[2m | [22m
+[32mchunk-P52CLLXF.js[39m  [2m | [22m[2mstudent-event-details-page-component[22m     [2m | [22m[36m166.18 kB[39m[2m | [22m
+[32mchunk-2FU3VT5A.js[39m  [2m | [22m[2mstudent-registrations-page-component[22m     [2m | [22m[36m111.59 kB[39m[2m | [22m
+[32mchunk-ITMX27UL.js[39m  [2m | [22m[2mstudent-events-page-component[22m            [2m | [22m[36m111.48 kB[39m[2m | [22m
+[32mchunk-GXFAATOB.js[39m  [2m | [22m[2msuper-admin-students-component[22m           [2m | [22m[36m105.57 kB[39m[2m | [22m
+[32mchunk-GAOSMELL.js[39m  [2m | [22m[2mstudent-event-registration-page-component[22m[2m | [22m[36m104.24 kB[39m[2m | [22m
+[32mchunk-RXFPBRVI.js[39m  [2m | [22m[2msuper-admin-admins-component[22m             [2m | [22m[36m102.77 kB[39m[2m | [22m
+[32mchunk-73K3DTDG.js[39m  [2m | [22m[2madmin-create-event-page-component[22m        [2m | [22m [36m99.73 kB[39m[2m | [22m
+[32mchunk-2OHFKCWD.js[39m  [2m | [22m[2madmin-event-comments-component[22m           [2m | [22m [36m94.16 kB[39m[2m | [22m
+[32mchunk-WWP42ZKA.js[39m  [2m | [22m[2madmin-registration-details-component[22m     [2m | [22m [36m91.38 kB[39m[2m | [22m
+[32mchunk-6IA3ZZBV.js[39m  [2m | [22m[2msuper-admin-events-component[22m             [2m | [22m [36m89.88 kB[39m[2m | [22m
+[32mchunk-RR3ILI4T.js[39m  [2m | [22m[2m-[22m                                        [2m | [22m [36m67.24 kB[39m[2m | [22m
+[32mchunk-ZCRKDWKI.js[39m  [2m | [22m[2madmin-attendance-workspace-component[22m     [2m | [22m [36m60.15 kB[39m[2m | [22m
+[32mchunk-YSOBB3SC.js[39m  [2m | [22m[2m-[22m                                        [2m | [22m [36m58.76 kB[39m[2m | [22m
+[2m...and 6 more lazy chunks files. Use "--verbose" to show all the files.[22m
+
+Application bundle generation complete. [66.068 seconds] - 2026-03-31T17:25:01.012Z
+
+Watch mode enabled. Watching for file changes...
+NOTE: Raw file sizes do not reflect development server per-request transformations.
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://127.0.0.1:[1m4200[22m/[39m

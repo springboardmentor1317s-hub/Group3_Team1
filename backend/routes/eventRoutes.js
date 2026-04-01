@@ -2,8 +2,14 @@ const express = require("express");
 const router = express.Router();
 const Event = require("../models/Event");
 const Registration = require("../models/Registration");
+const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const protect = require("../middleware/authMiddleware");
+const {
+  normalizeValue,
+  escapeRegex,
+  getCollegeScopedEvents
+} = require("../utils/adminCollegeScope");
 
 function toClient(eventDoc, options = {}) {
   const obj = eventDoc.toObject({ versionKey: false });
@@ -31,8 +37,17 @@ function toClient(eventDoc, options = {}) {
     status: obj.status,
     participants: obj.participants ?? 0,
     registrations: registrationsCount,
-    maxAttendees: obj.maxAttendees || 100,
+    maxAttendees: obj.maxAttendees ?? null,
+    isPaid: Boolean(obj.isPaid),
+    amount: Number(obj.amount || 0),
+    currency: obj.currency || "INR",
     collegeName: obj.collegeName,
+    createdBy: obj.createdBy || "",
+    createdById: obj.createdById || "",
+    ownerId: obj.ownerId || "",
+    adminId: obj.adminId || "",
+    userId: obj.userId || "",
+    email: obj.email || "",
     attendeeIds,
     registered: isRegistered
   };
@@ -50,51 +65,140 @@ function getUserIdFromRequest(req) {
   }
 }
 
+function buildExactStringMatch(field, value) {
+  const trimmed = normalizeValue(value);
+  if (!trimmed) {
+    return null;
+  }
+
+  return {
+    [field]: { $regex: `^${escapeRegex(trimmed)}$`, $options: "i" }
+  };
+}
+
+async function buildOwnershipFilter(userId) {
+  if (!userId) {
+    return null;
+  }
+
+  const user = await User.findById(userId).select("name email userId college").lean();
+  if (!user) {
+    return {
+      strict: { $or: [] },
+      fallback: { $or: [] }
+    };
+  }
+
+  const strictCandidates = Array.from(new Set([
+    normalizeValue(user._id),
+    normalizeValue(user.userId),
+    normalizeValue(user.email),
+    normalizeValue(user.name)
+  ].filter(Boolean)));
+
+  const fallbackCandidates = Array.from(new Set([
+    normalizeValue(user.name),
+    normalizeValue(user.college)
+  ].filter(Boolean)));
+
+  const strictFilter = strictCandidates.flatMap((candidate) => ([
+    buildExactStringMatch("createdById", candidate),
+    buildExactStringMatch("ownerId", candidate),
+    buildExactStringMatch("adminId", candidate),
+    buildExactStringMatch("userId", candidate),
+    buildExactStringMatch("email", candidate),
+    buildExactStringMatch("createdBy", candidate)
+  ].filter(Boolean)));
+
+  const fallbackFilter = fallbackCandidates.flatMap((candidate) => ([
+    buildExactStringMatch("createdBy", candidate),
+    buildExactStringMatch("organizer", candidate)
+  ].filter(Boolean)));
+
+  if (normalizeValue(user.college)) {
+    fallbackFilter.push(buildExactStringMatch("collegeName", user.college));
+  }
+
+  return {
+    strict: { $or: strictFilter.filter(Boolean) },
+    fallback: { $or: fallbackFilter.filter(Boolean) }
+  };
+}
+
+async function appendRegistrationCounts(events, currentUserId) {
+  const eventIds = events.map((event) => String(event._id));
+
+  const registrationCounts = await Registration.aggregate([
+    {
+      $match: {
+        eventId: { $in: eventIds },
+        status: { $ne: "REJECTED" }
+      }
+    },
+    {
+      $group: {
+        _id: "$eventId",
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  const countMap = new Map(
+    registrationCounts.map((row) => [String(row._id), row.count])
+  );
+
+  let registeredSet = new Set();
+  if (currentUserId) {
+    const userRegs = await Registration.find({
+      studentId: String(currentUserId),
+      eventId: { $in: eventIds },
+      status: { $ne: "REJECTED" }
+    }).select("eventId");
+    registeredSet = new Set(userRegs.map((r) => String(r.eventId)));
+  }
+
+  return events.map((event) =>
+    toClient(event, {
+      registrationsCount: countMap.get(String(event._id)) || 0,
+      registered: registeredSet.has(String(event._id))
+    })
+  );
+}
+
 // Get Events
 router.get("/", async (req, res) => {
   try {
     const currentUserId = getUserIdFromRequest(req);
     const events = await Event.find().sort({ createdAt: -1 });
+    res.json(await appendRegistrationCounts(events, currentUserId));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
-    const eventIds = events.map((event) => String(event._id));
+router.get("/mine", protect, async (req, res) => {
+  try {
+    const ownershipFilter = await buildOwnershipFilter(req.user?.id);
+    let events = [];
 
-    const registrationCounts = await Registration.aggregate([
-      {
-        $match: {
-          eventId: { $in: eventIds },
-          status: { $ne: "REJECTED" }
-        }
-      },
-      {
-        $group: {
-          _id: "$eventId",
-          count: { $sum: 1 }
-        }
-      }
-    ]);
-
-    const countMap = new Map(
-      registrationCounts.map((row) => [String(row._id), row.count])
-    );
-
-    let registeredSet = new Set();
-    if (currentUserId) {
-      const userRegs = await Registration.find({
-        studentId: String(currentUserId),
-        eventId: { $in: eventIds },
-        status: { $ne: "REJECTED" }
-      }).select("eventId");
-      registeredSet = new Set(userRegs.map((r) => String(r.eventId)));
+    if (ownershipFilter?.strict?.$or?.length) {
+      events = await Event.find(ownershipFilter.strict).sort({ createdAt: -1 });
     }
 
-    res.json(
-      events.map((event) =>
-        toClient(event, {
-          registrationsCount: countMap.get(String(event._id)) || 0,
-          registered: registeredSet.has(String(event._id))
-        })
-      )
-    );
+    if (!events.length && ownershipFilter?.fallback?.$or?.length) {
+      events = await Event.find(ownershipFilter.fallback).sort({ createdAt: -1 });
+    }
+
+    res.json(await appendRegistrationCounts(events, String(req.user?.id || "")));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get("/college", protect, async (req, res) => {
+  try {
+    const events = await getCollegeScopedEvents(req.user?.id);
+    res.json(await appendRegistrationCounts(events, String(req.user?.id || "")));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -130,20 +234,41 @@ router.post("/", async (req, res) => {
       registrations: Number(req.body?.registrations ?? 0) || 0,
       participants: Number(req.body?.participants ?? 0) || 0,
       collegeName: String(req.body?.collegeName ?? "").trim(),
+      createdBy: String(req.body?.createdBy ?? "").trim(),
+      createdById: String(req.body?.createdById ?? "").trim(),
+      ownerId: String(req.body?.ownerId ?? "").trim(),
+      adminId: String(req.body?.adminId ?? "").trim(),
+      userId: String(req.body?.userId ?? "").trim(),
+      email: String(req.body?.email ?? "").trim(),
       teamSize: teamSizeValue === "" || teamSizeValue === null || teamSizeValue === undefined
         ? null
         : Number(teamSizeValue),
       maxAttendees: maxAttendeesValue === "" || maxAttendeesValue === null || maxAttendeesValue === undefined
-        ? 100
-        : Number(maxAttendeesValue)
+        ? null
+        : Number(maxAttendeesValue),
+      isPaid: Boolean(req.body?.isPaid),
+      amount: req.body?.amount === "" || req.body?.amount === null || req.body?.amount === undefined
+        ? 0
+        : Number(req.body?.amount),
+      currency: String(req.body?.currency ?? "INR").trim() || "INR"
     };
 
     if (payload.teamSize !== null && (!Number.isFinite(payload.teamSize) || payload.teamSize < 1)) {
       return res.status(400).json({ error: "teamSize must be a positive number." });
     }
 
-    if (!Number.isFinite(payload.maxAttendees) || payload.maxAttendees < 1) {
+    if (payload.maxAttendees !== null && (!Number.isFinite(payload.maxAttendees) || payload.maxAttendees < 1)) {
       return res.status(400).json({ error: "maxAttendees must be a positive number." });
+    }
+
+    if (!Number.isFinite(payload.amount) || payload.amount < 0) {
+      return res.status(400).json({ error: "amount must be zero or greater." });
+    }
+
+    if (!payload.isPaid) {
+      payload.amount = 0;
+    } else if (payload.amount <= 0) {
+      return res.status(400).json({ error: "Paid events must have an amount greater than zero." });
     }
 
     const newEvent = new Event(payload);
@@ -215,7 +340,16 @@ async function updateEvent(req, res) {
       "status",
       "teamSize",
       "collegeName",
-      "maxAttendees"
+      "maxAttendees",
+      "isPaid",
+      "amount",
+      "currency",
+      "createdBy",
+      "createdById",
+      "ownerId",
+      "adminId",
+      "userId",
+      "email"
     ];
 
     const updates = {};
@@ -246,10 +380,38 @@ async function updateEvent(req, res) {
     }
 
     if (updates.maxAttendees !== undefined) {
-      updates.maxAttendees = Number(updates.maxAttendees);
-      if (!Number.isFinite(updates.maxAttendees) || updates.maxAttendees < 1) {
-        return res.status(400).json({ error: "maxAttendees must be a positive number." });
+      if (updates.maxAttendees === "" || updates.maxAttendees === null) {
+        updates.maxAttendees = null;
+      } else {
+        updates.maxAttendees = Number(updates.maxAttendees);
+        if (!Number.isFinite(updates.maxAttendees) || updates.maxAttendees < 1) {
+          return res.status(400).json({ error: "maxAttendees must be a positive number." });
+        }
       }
+    }
+
+    if (updates.isPaid !== undefined) {
+      updates.isPaid = Boolean(updates.isPaid);
+    }
+
+    if (updates.amount !== undefined) {
+      if (updates.amount === "" || updates.amount === null) {
+        updates.amount = 0;
+      } else {
+        updates.amount = Number(updates.amount);
+        if (!Number.isFinite(updates.amount) || updates.amount < 0) {
+          return res.status(400).json({ error: "amount must be zero or greater." });
+        }
+      }
+    }
+
+    const nextIsPaid = updates.isPaid !== undefined ? updates.isPaid : Boolean(event.isPaid);
+    const nextAmount = updates.amount !== undefined ? updates.amount : Number(event.amount || 0);
+    if (nextIsPaid && nextAmount <= 0) {
+      return res.status(400).json({ error: "Paid events must have an amount greater than zero." });
+    }
+    if (!nextIsPaid) {
+      updates.amount = 0;
     }
 
     const updated = await Event.findByIdAndUpdate(req.params.id, updates, {

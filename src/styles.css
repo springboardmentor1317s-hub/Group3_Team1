@@ -2,6 +2,17 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+app-root {
+  display: block;
+  min-height: 100vh;
+}
+
 body.homepage-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(109, 126, 191, 0.7) rgba(227, 233, 249, 0.85);

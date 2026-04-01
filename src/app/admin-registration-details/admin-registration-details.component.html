@@ -1,0 +1,250 @@
+﻿<div class="student-shell admin-registration-shell">
+  <app-admin-common-header
+    [activeTab]="'registrations'"
+    [userName]="userName"
+    [userAvatarUrl]="userAvatarUrl"
+    [searchPlaceholder]="'Search event or student...'"
+    [(searchQuery)]="searchQuery"
+    [showExport]="false"
+    (brandClick)="goToDashboard()"
+    (activeTabChange)="handleTabChange($event)"
+    (searchTriggered)="searchQuery = searchQuery.trim()"
+    (notificationsTriggered)="goToSummary()"
+    (logoutTriggered)="logout()"
+  ></app-admin-common-header>
+
+  <div class="dashboard-layout" [class.sidebar-collapsed]="sidebarCollapsed">
+    <app-admin-dashboard-sidebar
+      [activeTab]="'registrations'"
+      [collapsed]="sidebarCollapsed"
+      (tabChange)="handleTabChange($event)"
+      (collapsedChange)="setSidebarCollapsed($event)"
+      (createEvent)="openCreateEvent()"
+      (myEvents)="goToMyEvents()"
+    ></app-admin-dashboard-sidebar>
+
+    <main class="page-main">
+      <p *ngIf="errorMessage" class="error-banner">{{ errorMessage }}</p>
+      <p *ngIf="reviewError && directReviewMode" class="error-banner">{{ reviewError }}</p>
+      <section *ngIf="loading" class="state-card">Loading registration details...</section>
+
+      <section class="group-list" *ngIf="!loading && !directReviewMode && filteredGroups.length > 0">
+        <article class="group-card" *ngFor="let group of filteredGroups; trackBy: trackByGroup">
+          <div class="group-head">
+            <div>
+              <h2>{{ group.eventName }}</h2>
+              <p>{{ group.total }} students registered</p>
+            </div>
+            <span class="status-pill" [class.closed]="group.statusLabel === 'Closed'">{{ group.statusLabel }}</span>
+          </div>
+
+          <div class="empty-inline" *ngIf="group.registrations.length === 0">
+            No registrations are available for this event right now.
+          </div>
+
+          <div class="student-list" *ngIf="group.registrations.length > 0">
+            <article class="student-card" *ngFor="let registration of group.registrations; trackBy: trackByRegistration">
+              <div>
+                <h3>{{ registration.studentName }}</h3>
+                <p>{{ registration.college }}</p>
+              </div>
+
+              <div class="student-meta">
+                <span><strong>Email:</strong> {{ registration.email }}</span>
+                <span><strong>Submitted:</strong> {{ formatTime(registration.createdAt) }}</span>
+                <span><strong>Status:</strong> {{ formatStatus(registration.status) }}</span>
+                <span *ngIf="registration.paymentRequired"><strong>Payment:</strong> {{ registration.paymentStatus || 'PENDING' }}</span>
+                <span *ngIf="registration.rejectionReason"><strong>Reason:</strong> {{ registration.rejectionReason }}</span>
+              </div>
+
+              <div class="student-actions">
+                <button type="button" class="review-btn" (click)="openReviewDetails(registration)">Review Details</button>
+              </div>
+            </article>
+          </div>
+        </article>
+      </section>
+
+      <section class="state-card" *ngIf="!loading && !directReviewMode && filteredGroups.length === 0">
+        Registration details for your events are not available right now.
+      </section>
+
+      <section *ngIf="directReviewMode" class="review-page-shell">
+        <section *ngIf="reviewLoading" class="state-card">Loading student profile for review...</section>
+
+        <div class="review-dialog premium-review" *ngIf="!reviewLoading && selectedRegistration && reviewProfile as profile">
+          <div class="review-overview-card">
+            <div class="review-card-topbar">
+              <div
+                class="hero-chip status-chip"
+                [class.approved]="selectedRegistration.status === 'APPROVED'"
+                [class.pending]="selectedRegistration.status === 'PENDING'"
+                [class.rejected]="selectedRegistration.status === 'REJECTED'"
+              >
+                {{ formatStatus(selectedRegistration.status) }}
+              </div>
+              <button type="button" class="close-btn primary-back-btn card-back-btn" (click)="goToSummary()">Back</button>
+            </div>
+
+            <div class="identity-block">
+              <div class="identity-avatar">{{ selectedRegistration.studentName.charAt(0) }}</div>
+              <div class="identity-copy">
+                <h2>{{ selectedRegistration.studentName }}</h2>
+                <p>{{ selectedRegistration.college }}</p>
+              </div>
+            </div>
+
+            <div class="overview-grid">
+              <div class="overview-stat">
+                <span>Event</span>
+                <strong>{{ selectedRegistration.eventName }}</strong>
+              </div>
+              <div class="overview-stat">
+                <span>Status</span>
+                <strong>{{ formatStatus(selectedRegistration.status) }}</strong>
+              </div>
+              <div class="overview-stat">
+                <span>Submitted On</span>
+                <strong>{{ formatTime(selectedRegistration.createdAt) }}</strong>
+              </div>
+              <div class="overview-stat">
+                <span>Student Email</span>
+                <strong>{{ selectedRegistration.email }}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="review-body-grid">
+            <div class="review-main-column">
+              <section class="review-section feature-section">
+                <div class="section-heading-row">
+                  <div class="section-heading">
+                    <h3>Registration Summary</h3>
+                    <span>Event-specific registration information</span>
+                  </div>
+                </div>
+                <div class="detail-grid two-column">
+                  <div class="detail-card"><span>Student Name</span><strong>{{ selectedRegistration.studentName }}</strong></div>
+                  <div class="detail-card"><span>Event Name</span><strong>{{ selectedRegistration.eventName }}</strong></div>
+                  <div class="detail-card"><span>Registration Status</span><strong>{{ formatStatus(selectedRegistration.status) }}</strong></div>
+                  <div class="detail-card"><span>Payment Status</span><strong>{{ selectedRegistration.paymentRequired ? (selectedRegistration.paymentStatus || 'PENDING') : 'Not Required' }}</strong></div>
+                  <div class="detail-card"><span>Submitted On</span><strong>{{ formatTime(selectedRegistration.createdAt) }}</strong></div>
+                  <div class="detail-card"><span>College</span><strong>{{ selectedRegistration.college || 'Not available' }}</strong></div>
+                  <div class="detail-card"><span>Student Email</span><strong>{{ selectedRegistration.email }}</strong></div>
+                  <div class="detail-card" *ngIf="selectedRegistration.paymentId"><span>Transaction ID</span><strong>{{ selectedRegistration.paymentId }}</strong></div>
+                  <div class="detail-card" *ngIf="selectedRegistration.orderId"><span>Order ID</span><strong>{{ selectedRegistration.orderId }}</strong></div>
+                </div>
+              </section>
+
+              <section class="review-section feature-section">
+                <div class="section-heading-row">
+                  <div class="section-heading">
+                    <h3>Basic Profile</h3>
+                    <span>Read-only student identity details</span>
+                  </div>
+                </div>
+                <div class="detail-grid two-column">
+                  <div class="detail-card"><span>Full Name</span><strong>{{ profile.name }}</strong></div>
+                  <div class="detail-card"><span>User ID</span><strong>{{ profile.userId }}</strong></div>
+                  <div class="detail-card"><span>Email</span><strong>{{ profile.email }}</strong></div>
+                  <div class="detail-card"><span>College</span><strong>{{ profile.college || 'Not available' }}</strong></div>
+                  <div class="detail-card"><span>Gender</span><strong>{{ profile.gender || 'Not added yet' }}</strong></div>
+                  <div class="detail-card"><span>Date of Birth</span><strong>{{ profile.dateOfBirth || 'Not added yet' }}</strong></div>
+                  <div class="detail-card"><span>Phone Number</span><strong>{{ profile.phone || 'Not added yet' }}</strong></div>
+                  <div class="detail-card"><span>Parent Phone</span><strong>{{ profile.parentPhone || 'Not added yet' }}</strong></div>
+                </div>
+              </section>
+
+              <section class="review-section feature-section">
+                <div class="section-heading-row">
+                  <div class="section-heading">
+                    <h3>Academic Details</h3>
+                    <span>Same student profile fields used on the student dashboard</span>
+                  </div>
+                </div>
+                <div class="detail-grid two-column">
+                  <div class="detail-card"><span>Current Class / Program</span><strong>{{ profile.currentClass || 'Not added yet' }}</strong></div>
+                  <div class="detail-card"><span>Department</span><strong>{{ resolvedDepartmentLabel }}</strong></div>
+                  <div class="detail-card"><span>Semester</span><strong>{{ profile.semester || 'Not added yet' }}</strong></div>
+                  <div class="detail-card"><span>Current CGPA</span><strong>{{ profile.currentCgpa || 'Not added yet' }}</strong></div>
+                  <div class="detail-card detail-card-wide"><span>Profile Updated</span><strong>{{ formatDate(profile.updatedAt) }}</strong></div>
+                </div>
+              </section>
+
+              <section class="review-section feature-section">
+                <div class="section-heading-row">
+                  <div class="section-heading">
+                    <h3>Address Details</h3>
+                    <span>Review both permanent and current address</span>
+                  </div>
+                </div>
+                <div class="detail-grid one-column">
+                  <div class="detail-card"><span>Permanent Address</span><strong>{{ permanentAddressPreview }}</strong></div>
+                  <div class="detail-card"><span>Current Address</span><strong>{{ currentAddressPreview }}</strong></div>
+                </div>
+              </section>
+            </div>
+
+            <aside class="review-side-column">
+              <section class="review-section decision-panel">
+                <div class="section-heading">
+                  <h3>Verification Decision</h3>
+                  <span>Approve only after verifying all submitted details.</span>
+                </div>
+
+                <div class="decision-status-card">
+                  <span class="decision-label">Current Review State</span>
+                  <strong>{{ formatStatus(selectedRegistration.status) }}</strong>
+                  <p *ngIf="selectedRegistration.status === 'PENDING'">Review the profile, confirm the details, and choose an action.</p>
+                  <p *ngIf="selectedRegistration.status === 'APPROVED'">This registration has already been approved and no further action is needed.</p>
+                  <p *ngIf="selectedRegistration.status === 'REJECTED'">This registration has already been rejected. The reason is shown below.</p>
+                </div>
+
+                <label class="verify-check premium-check" *ngIf="selectedRegistration.status === 'PENDING'">
+                  <input type="checkbox" [(ngModel)]="reviewVerified">
+                  <span>All submitted student profile details are correct and verified.</span>
+                </label>
+
+                <label class="reject-reason" *ngIf="selectedRegistration.status !== 'APPROVED'">
+                  <span>Rejection reason</span>
+                  <textarea
+                    rows="5"
+                    [(ngModel)]="reviewRejectReason"
+                    placeholder="Explain the exact issue if you need to reject this registration."
+                  ></textarea>
+                </label>
+
+                <div class="review-actions action-stack" *ngIf="selectedRegistration.status === 'PENDING'">
+                  <button
+                    type="button"
+                    class="reject-btn"
+                    [disabled]="actionInProgress"
+                    (click)="rejectReviewedRegistration()"
+                  >
+                    {{ actionInProgress ? 'Processing...' : 'Reject Registration' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="approve-btn"
+                    [disabled]="!reviewVerified || actionInProgress"
+                    (click)="approveReviewedRegistration()"
+                  >
+                    {{ actionInProgress ? 'Processing...' : 'Approve Registration' }}
+                  </button>
+                </div>
+
+                <div class="state-chip approved-chip" *ngIf="selectedRegistration.status === 'APPROVED'">
+                  This registration is already approved.
+                </div>
+
+                <div class="state-chip rejected-chip" *ngIf="selectedRegistration.status === 'REJECTED'">
+                  This registration was rejected{{ selectedRegistration.rejectionReason ? ': ' + selectedRegistration.rejectionReason : '.' }}
+                </div>
+              </section>
+            </aside>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>

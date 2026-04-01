@@ -1,9 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Auth } from '../auth/auth';
-import { SiteFooterComponent } from '../shared/site-footer/site-footer.component';
 import { StudentHeaderComponent } from '../shared/student-header/student-header.component';
 import { EventCardComponent } from '../shared/event-card/event-card.component';
 import { finalize, timeout } from 'rxjs';
@@ -16,11 +15,12 @@ import {
   StudentProfile,
   StudentRegistrationRecord
 } from '../services/student-dashboard.service';
+import { NotificationService } from '../services/notification.service';
 
 @Component({
   selector: 'app-student-registrations-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, SiteFooterComponent, StudentHeaderComponent, EventCardComponent],
+  imports: [CommonModule, FormsModule, RouterModule, StudentHeaderComponent, EventCardComponent],
   templateUrl: './student-registrations-page.component.html',
   styleUrls: ['./student-registrations-page.component.scss']
 })
@@ -38,6 +38,8 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
   loading = true;
   notificationsLoading = true;
   notificationsDropdownOpen = false;
+  unseenNotificationCount = 0;
+  showNotificationViewMore = true;
   errorMessage = '';
   actionEventId = '';
   reviewActionEventId = '';
@@ -53,12 +55,16 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
   constructor(
     private studentDashboardService: StudentDashboardService,
     private auth: Auth,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef,
+    private zone: NgZone,
+    private notificationService: NotificationService
   ) {}
 
   ngOnInit(): void {
     this.prefillFromCache();
     this.loadRegistrationsPage();
+    this.loadNotificationDropdown();
     this.startNotificationsRefresh();
   }
 
@@ -113,21 +119,34 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
     return this.registrations.filter((item) => item.status === 'PENDING').length;
   }
 
+  get hasVisibleRegistrationsData(): boolean {
+    return this.registrations.length > 0 || this.filteredRegistrations.length > 0;
+  }
+
   loadRegistrationsPage(): void {
     this.errorMessage = '';
     this.loading = !this.registrations.length;
     this.notificationsLoading = !this.notifications.length;
 
-    this.studentDashboardService.refreshDashboardSnapshot().subscribe({
+    this.studentDashboardService.refreshDashboardSnapshot().pipe(
+      timeout(9000)
+    ).subscribe({
       next: (snapshot) => {
-        this.applySnapshot(snapshot);
+        this.zone.run(() => {
+          this.applySnapshot(snapshot);
+          this.flushView();
+        });
       },
       error: (error) => {
-        this.loading = false;
-        this.notificationsLoading = false;
-        if (!this.registrations.length) {
-          this.errorMessage = error?.error?.message || 'Unable to load registrations right now.';
-        }
+        this.zone.run(() => {
+          this.prefillFromCache();
+          this.loading = false;
+          this.notificationsLoading = false;
+          if (!this.registrations.length) {
+            this.errorMessage = error?.error?.message || 'Unable to load registrations right now.';
+          }
+          this.flushView();
+        });
       }
     });
   }
@@ -189,8 +208,36 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
     this.notificationsDropdownOpen = !this.notificationsDropdownOpen;
   }
 
+  openNotificationsPage(): void {
+    this.notificationsDropdownOpen = false;
+    this.router.navigate(['/student-notifications']);
+  }
+
+  deleteNotificationFromDropdown(id: string): void {
+    if (!id) {
+      return;
+    }
+
+    this.notificationService.deleteNotification(id).subscribe({
+      next: () => {
+        this.notifications = this.notifications.filter((item) => item.id !== id);
+        this.unseenNotificationCount = this.notifications.length;
+        this.flushView();
+      },
+      error: () => void 0
+    });
+  }
+
   cancelRegistration(registration: StudentRegistrationRecord): void {
-    const shouldCancel = window.confirm('Are you sure want to cancel from this event?');
+    if (!this.canDeleteRegistration(registration) || this.actionEventId === registration.eventId) {
+      return;
+    }
+
+    const shouldCancel = window.confirm(
+      registration.status === 'REJECTED'
+        ? 'Are you sure you want to delete this rejected registration?'
+        : 'Are you sure you want to delete this pending registration?'
+    );
     if (!shouldCancel) {
       return;
     }
@@ -222,6 +269,10 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
 
   getRegistrationStatusLabel(status: StudentRegistrationRecord['status']): string {
     return this.studentDashboardService.formatRegistrationStatus(status);
+  }
+
+  canDeleteRegistration(registration: StudentRegistrationRecord): boolean {
+    return registration.status === 'PENDING' || registration.status === 'REJECTED';
   }
 
   isEventCompleted(registration: StudentRegistrationRecord): boolean {
@@ -274,7 +325,7 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
       contact: registration.event?.contact || registration.email || 'Contact admin',
       status: eventStatus,
       registrations: Number(registration.event?.registrations || 0),
-      maxAttendees: Number(registration.event?.maxAttendees || 0),
+      maxAttendees: registration.event?.maxAttendees ?? null,
       collegeName: registration.college || 'Campus Event Hub',
       registered: registration.status === 'APPROVED',
       endDate: null,
@@ -467,6 +518,7 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
 
     if (cachedSnapshot) {
       this.applySnapshot(cachedSnapshot);
+      this.flushView();
       return;
     }
 
@@ -481,30 +533,56 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
       this.loading = false;
     }
 
-    this.notifications = this.studentDashboardService.getCachedNotifications();
-    this.notificationsLoading = false;
+    const cached = this.notificationService.getCachedDropdownState();
+    this.notifications = (cached.items.length ? cached.items : this.studentDashboardService.getCachedNotifications()) as StudentNotificationItem[];
+    this.unseenNotificationCount = cached.unseenCount;
+    this.showNotificationViewMore = cached.hasMore;
+    this.notificationsLoading = this.notifications.length === 0;
+    this.flushView();
   }
 
   private applySnapshot(snapshot: StudentDashboardSnapshot): void {
     this.profile = snapshot.profile;
     this.registrations = snapshot.registrations || [];
-    this.notifications = snapshot.notifications || [];
+    const cached = this.notificationService.getCachedDropdownState();
+    this.notifications = (cached.items.length ? cached.items : snapshot.notifications || []) as StudentNotificationItem[];
+    this.unseenNotificationCount = cached.unseenCount;
+    this.showNotificationViewMore = cached.hasMore;
     this.applyFilters();
     this.loadSavedReviews();
     this.loadVisibleEventRatingSummaries(this.registrations, true);
     this.loading = false;
-    this.notificationsLoading = false;
+    this.notificationsLoading = this.notifications.length === 0;
+    this.flushView();
   }
 
   private startNotificationsRefresh(): void {
     this.notificationsRefreshTimer = setInterval(() => {
-      this.studentDashboardService.refreshDashboardSnapshot().subscribe({
-        next: (snapshot) => {
-          this.applySnapshot(snapshot);
+      this.notificationService.getDropdownNotifications(15).subscribe({
+        next: (state) => {
+          this.notifications = state.items as StudentNotificationItem[];
+          this.unseenNotificationCount = state.unseenCount;
+          this.showNotificationViewMore = state.hasMore;
+          this.notificationsLoading = false;
+          this.flushView();
         },
-        error: () => undefined
+        error: () => void 0
       });
     }, 8000);
+  }
+
+
+  private loadNotificationDropdown(): void {
+    this.notificationService.getDropdownNotifications(15).subscribe({
+      next: (state) => {
+        this.notifications = state.items as StudentNotificationItem[];
+        this.unseenNotificationCount = state.unseenCount;
+        this.showNotificationViewMore = state.hasMore;
+        this.notificationsLoading = false;
+        this.flushView();
+      },
+      error: () => void 0
+    });
   }
 
   private loadSavedReviews(): void {
@@ -563,6 +641,10 @@ export class StudentRegistrationsPageComponent implements OnInit, OnDestroy {
 
       this.fetchEventRatingSummary(eventId);
     }
+  }
+
+  private flushView(): void {
+    this.cdr.detectChanges();
   }
 
   private fetchEventRatingSummary(eventId: string): void {
